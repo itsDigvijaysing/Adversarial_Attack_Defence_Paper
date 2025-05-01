@@ -2,8 +2,9 @@
 
 This repository contains the Jupyter notebooks, research report (PDF), and necessary setup files for the project focused on evaluating the adversarial robustness of the Florence-2 base model (specifically for object detection) and implementing a multi-layered defense strategy.
 
-**Authors:** Rajput Digvijaysing Bhatesing
-**Supervisors:** Popat Raj Rameshkumar (TA), Prof. C. Krishna Mohan (Instructor)
+**Author:** Rajput Digvijaysing Bhatesing  
+**Instructor:** Prof. C. Krishna Mohan  
+**TA:** Popat Raj Rameshkumar  
 **Institution:** Indian Institute of Technology Hyderabad
 
 ---
@@ -27,7 +28,7 @@ This repository contains the Jupyter notebooks, research report (PDF), and neces
 
 ## Overview
 
-Vision Foundation Models (VFMs) like Florence-2 \cite{xiao2024florence2} demonstrate remarkable capabilities across diverse visual tasks. However, their robustness against adversarial attacks is often under-explored yet critical for real-world deployment. This project provides an empirical study on the adversarial resilience of the Florence-2-Base model for COCO object detection against standard FGSM and PGD attacks. We find significant vulnerability and propose a practical, multi-layered defense pipeline combining input and feature-level transformations. Our results show that this defense recovers a substantial portion ($\approx$21.6\%) of the performance lost due to these attacks without requiring model retraining.
+Vision Foundation Models (VFMs) like Florence-2 \cite{xiao2024florence2} demonstrate remarkable capabilities across diverse visual tasks. However, their robustness against adversarial attacks is often under-explored yet critical for real-world deployment. This project provides an empirical study on the adversarial resilience of the Florence-2-Base model for COCO object detection against standard FGSM and PGD attacks. We find significant vulnerability and propose a practical, multi-layered defense pipeline combining input and feature-level transformations. Our results show that this defense recovers a substantial portion 21.6% - 40.1% of the performance lost due to these attacks without requiring model retraining.
 
 ---
 
@@ -66,15 +67,14 @@ It is recommended to use Conda to manage dependencies for the Jupyter notebooks.
 
 2.  **Activate Environment:** Activate the newly created environment:
     ```bash
-    conda activate florence2_robustness
+    conda activate vlm_ftune
     ```
     *(Note: Check the `name:` field in `environment.yml` for the exact environment name).*
 
 3.  **Install Jupyter Kernel (Optional but Recommended):** To make the environment easily accessible from Jupyter:
     ```bash
-    python -m ipykernel install --user --name=florence2_robustness --display-name="Python (Florence2 Robustness)"
+    python -m ipykernel install --user --name=vlm_ftune --display-name="Python (Florence2 Robustness)"
     ```
-    *(Replace `florence2_robustness` with the actual environment name if different).*
 
 4.  **Key Dependencies:** The environment includes PyTorch, Transformers, PIL (Pillow), NumPy, tqdm, pycocotools, GPUtil, Matplotlib, Jupyter, etc. Ensure you have compatible CUDA drivers installed if using a GPU.
 
@@ -102,7 +102,7 @@ It is recommended to use Conda to manage dependencies for the Jupyter notebooks.
 
 ## Usage / Running Experiments
 
-Ensure the Conda environment is activated (`conda activate florence2_robustness`).
+Ensure the Conda environment is activated (`conda activate vlm_ftune`).
 
 1.  **Start Jupyter:** Launch Jupyter Lab or Jupyter Notebook from your terminal:
     ```bash

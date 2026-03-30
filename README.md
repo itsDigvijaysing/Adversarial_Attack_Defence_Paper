@@ -1,10 +1,10 @@
 # Evaluating and Enhancing the Adversarial Robustness of Florence-2 Model
 
-This repository contains the Jupyter notebooks, research report (PDF), and necessary setup files for the project focused on evaluating the adversarial robustness of the Florence-2 base model (specifically for object detection) and implementing a multi-layered defense strategy.
+This repository contains the code, notebooks, research paper, and setup files for evaluating the adversarial robustness of the Florence-2-Base vision foundation model (specifically for object detection) and developing defense strategies against adversarial attacks.
 
-**Author:** Rajput Digvijaysing Bhatesing  
-**Instructor:** Prof. C. Krishna Mohan  
-**TA:** Popat Raj Rameshkumar  
+**Author:** Rajput Digvijaysing Bhatesing
+**Instructor:** Prof. C. Krishna Mohan
+**TA:** Popat Raj Rameshkumar
 **Institution:** Indian Institute of Technology Hyderabad
 
 ---
@@ -12,44 +12,119 @@ This repository contains the Jupyter notebooks, research report (PDF), and neces
 ## Table of Contents
 
 1.  [Overview](#overview)
-2.  [Key Contributions](#key-contributions)
-3.  [Repository Contents](#repository-contents)
-4.  [Setup Instructions](#setup-instructions)
-    *   [Environment Setup (Conda)](#environment-setup-conda)
-    *   [Dataset Setup (COCO 2017)](#dataset-setup-coco-2017)
-5.  [Usage / Running Experiments](#usage--running-experiments)
-    *   [Running FGSM Evaluation Notebook](#running-fgsm-evaluation-notebook)
-    *   [Running PGD Evaluation Notebook](#running-pgd-evaluation-notebook)
-    *   [Notes on Execution](#notes-on-execution)
-6.  [Expected Output](#expected-output)
-7.  [Research Paper](#research-paper)
+2.  [What Has Been Done (Phase 1)](#what-has-been-done-phase-1)
+3.  [Key Results (Phase 1)](#key-results-phase-1)
+4.  [Known Limitations](#known-limitations)
+5.  [Planned Extensions (Phase 2)](#planned-extensions-phase-2)
+6.  [Repository Contents](#repository-contents)
+7.  [Setup Instructions](#setup-instructions)
+8.  [Usage / Running Experiments](#usage--running-experiments)
+9.  [References](#references)
 
 ---
 
 ## Overview
 
-Vision Foundation Models (VFMs) like Florence-2 \cite{xiao2024florence2} demonstrate remarkable capabilities across diverse visual tasks. However, their robustness against adversarial attacks is often under-explored yet critical for real-world deployment. This project provides an empirical study on the adversarial resilience of the Florence-2-Base model for COCO object detection against standard FGSM and PGD attacks. We find significant vulnerability and propose a practical, multi-layered defense pipeline combining input and feature-level transformations. Our results show that this defense recovers a substantial portion 21.6% - 40.1% of the performance lost due to these attacks without requiring model retraining.
+Vision Foundation Models (VFMs) like Florence-2 (Xiao et al., CVPR 2024) demonstrate remarkable capabilities across diverse visual tasks. However, their robustness against adversarial attacks remains under-explored and is critical for real-world deployment. This project provides an empirical study on the adversarial resilience of Florence-2-Base for COCO object detection.
+
+**Phase 1 (Completed):** Evaluated Florence-2-Base under FGSM and PGD attacks. Proposed a multi-layered, inference-time defense pipeline that recovers 21.6%--40.1% of lost performance without model retraining.
+
+**Phase 2 (In Progress):** After identifying critical issues in Phase 1's defense pipeline (see [plan.md](plan.md)), we rebuilt the evaluation with fair baselines and 5 principled defenses backed by published research. The new notebook `phase2_fgsm.ipynb` fixes all known issues and adds DiffPure (Nie et al., ICML 2022) and SVD spectral filtering (Darabi et al., 2025). Next: cross-task transfer, PGD, C&W attacks.
 
 ---
 
-## Key Contributions
+## What Has Been Done (Phase 1)
 
-*   **First Robustness Evaluation:** Quantitative assessment of Florence-2-B's object detection vulnerability to FGSM and PGD attacks on COCO val2017.
-*   **Multi-Layered Defense Proposal:** Introduction of a practical defense framework combining JPEG compression, prompt/image smoothing ensembles, adaptive Gaussian noise, spatial smoothing, and quantization/mixing.
-*   **Defense Validation:** Empirical results demonstrating significant mAP recovery under both FGSM and PGD attacks using the proposed defense.
-*   **Reproducibility Insights:** Documentation of challenges faced (baseline discrepancy, compute constraints, specification gaps) when evaluating large VFMs.
+### Attacks Implemented
+- **FGSM** (Fast Gradient Sign Method) -- single-step gradient attack at epsilon = {0.001, 0.003, 0.03}
+- **PGD** (Projected Gradient Descent) -- iterative multi-step attack at epsilon = {0.007, 0.01, 0.03}, alpha = {0.002, 0.0025}, iterations = {5, 10}
+
+### Defense Pipeline (Inference-Time, No Retraining)
+```
+Input Image
+    |
+JPEG Compression (quality=75)
+    |
+Gaussian Noise Injection (adaptive, sigma=0.01-0.08)
+    |
+Spatial Smoothing (5x5 Gaussian kernel)
+    |
+Model Inference with Prompt Ensemble (4 prompt variants)
+    |
+Non-Maximum Suppression (IoU=0.45)
+    |
+Final Detections
+```
+
+### Dataset
+- **COCO 2017 Validation Set** -- 5,000 images with standard bounding box annotations
+- Evaluation via pycocotools COCOeval (mAP, AP50, AP75)
+
+---
+
+## Key Results (Phase 1)
+
+- Florence-2-Base shows **significant vulnerability** to both FGSM and PGD attacks, with substantial mAP drops under all tested epsilon values.
+- The multi-layered defense recovers **21.6%--40.1%** of the performance lost due to attacks.
+- Defense effectiveness scales with attack intensity (higher recovery at stronger attacks).
+- The defense adds manageable computational overhead and requires **no model retraining**.
+
+---
+
+## Known Limitations
+
+These are honest assessments of what the current work does not address:
+
+1. **Limited attack diversity**: Only FGSM and PGD were tested. Stronger attacks like C&W (Carlini & Wagner, 2017) and AutoAttack (Croce & Hein, ICML 2020) were not evaluated.
+2. **No adaptive attack evaluation**: The defense was not tested against an attacker who knows the defense pipeline (Tramer et al., 2020).
+3. **No defense baselines**: The proposed defense is not compared against other methods (diffusion purification, spectral filtering, adversarial training).
+4. **Single model**: No cross-model comparison with other VLMs (LLaVA, Qwen2-VL, BLIP-2).
+5. **Single task**: Only object detection was evaluated. Florence-2 supports multiple tasks, and cross-task adversarial transfer was not studied.
+6. **Modest recovery**: 21--40% recovery leaves the majority of performance still lost.
+7. **No ablation study**: Individual contributions of each defense component are not isolated.
+
+---
+
+## Planned Extensions (Phase 2)
+
+The current focused plan is in [plan.md](plan.md). A broader long-term roadmap is in [future.md](future.md). The key stages are:
+
+| Stage | Description | Key Reference |
+|-------|-------------|---------------|
+| 1 | Stronger attacks (C&W, AutoAttack) | Croce & Hein, ICML 2020 |
+| 2 | Cross-task adversarial transfer within Florence-2 | Zhao et al., arXiv:2507.07709, 2025 |
+| 3 | Defense baselines (diffusion purification, spectral filtering) | Nie et al., ICML 2022; Darabi et al., arXiv:2502.14976 |
+| 4 | Cross-model robustness comparison | Fox et al., arXiv:2512.17902, 2025 |
+| 5 | Adaptive attack evaluation | Tramer et al., arXiv:2002.09532, 2020 |
+| 6 | Transferability analysis across VLMs | Xie et al., CVPR 2025; Huang et al., ICML 2025 |
+| 7 | Ablation, consolidation, paper update | -- |
 
 ---
 
 ## Repository Contents
 
-*   **`F2_final_fgsm.ipynb`**: Jupyter Notebook containing the code to run the full evaluation pipeline (Clean, FGSM Attack without Defense, FGSM Attack with Defense) on COCO val2017. Includes attack generation and defense implementations.
-*   **`F2_final_pgd.ipynb`**: Jupyter Notebook containing the code to run the full evaluation pipeline (Clean, PGD Attack without Defense, PGD Attack with Defense) on COCO val2017. Includes attack generation and defense implementations.
-*   **`paper`**: Directory likely containing the research report.
-    *   `Report.pdf`: The final research report detailing the project. *(Modify filename as needed)*
-*   **`environment.yml`**: Full Conda environment file listing all dependencies required to run the notebooks.
-*   **`mini_env.yml`**: (If applicable) A minimal Conda environment file with only essential packages.
-*   **`README.md`**: This file.
+```
+.
+├── phase2_fgsm.ipynb            # [NEW] FGSM attack + 5 principled defenses, fair evaluation
+├── plan.md                      # Current research plan (concise, issues marked fixed)
+├── future.md                    # Long-term roadmap (cross-model, adaptive attacks, etc.)
+├── llm_memory.md                # Project state for LLM context
+├── environment.yml              # Full Conda environment specification
+├── mini_env.yml                 # Minimal environment specification
+├── Presentation.pdf             # Project presentation
+├── README.md                    # This file
+├── results_phase2/              # Output directory for Phase 2 results
+└── OLD/                         # Phase 1 files (preserved, not modified)
+    ├── F2_final_fgsm.ipynb      # Phase 1 FGSM notebook (with results)
+    ├── F2_final_pgd.ipynb       # Phase 1 PGD notebook (with results)
+    ├── F2_Updated.ipynb         # Phase 1 integrated notebook
+    ├── F2_Optimized.ipynb       # Phase 1 optimized framework
+    ├── F2_Optimized.py          # Phase 1 Python module
+    ├── Report.pdf               # Research report
+    ├── MCA Presentation - 1.pdf
+    ├── MCA Presentation - 2.pdf
+    └── Adversarial_Attack_Paper_APSCON_IEEE_eXpress.pdf
+```
 
 ---
 
@@ -57,97 +132,75 @@ Vision Foundation Models (VFMs) like Florence-2 \cite{xiao2024florence2} demonst
 
 ### Environment Setup (Conda)
 
-It is recommended to use Conda to manage dependencies for the Jupyter notebooks.
+```bash
+# Create environment from the provided YAML
+conda env create -f environment.yml
 
-1.  **Create Environment:** Open your terminal or Anaconda Prompt and navigate to the project's root directory. Create the environment using the provided YAML file:
-    ```bash
-    conda env create -f environment.yml
-    ```
-    *(Alternatively, use `mini_env.yml` and install `jupyter`, `matplotlib`, `gputil`, `ipywidgets` manually if needed).*
+# Activate environment
+conda activate vlm_ftune
 
-2.  **Activate Environment:** Activate the newly created environment:
-    ```bash
-    conda activate vlm_ftune
-    ```
-    *(Note: Check the `name:` field in `environment.yml` for the exact environment name).*
+# (Optional) Install Jupyter kernel
+python -m ipykernel install --user --name=vlm_ftune --display-name="Python (Florence2 Robustness)"
+```
 
-3.  **Install Jupyter Kernel (Optional but Recommended):** To make the environment easily accessible from Jupyter:
-    ```bash
-    python -m ipykernel install --user --name=vlm_ftune --display-name="Python (Florence2 Robustness)"
-    ```
-
-4.  **Key Dependencies:** The environment includes PyTorch, Transformers, PIL (Pillow), NumPy, tqdm, pycocotools, GPUtil, Matplotlib, Jupyter, etc. Ensure you have compatible CUDA drivers installed if using a GPU.
+**Key dependencies:** PyTorch 2.6.0 + CUDA 11.8, Transformers 4.51.0, pycocotools 2.0.8, Pillow, NumPy, Matplotlib, tqdm.
 
 ### Dataset Setup (COCO 2017)
 
-1.  **Download:** Obtain the COCO 2017 dataset:
-    *   Validation images (`val2017.zip`)
-    *   Annotations (`annotations_trainval2017.zip`)
+Download the COCO 2017 validation images and annotations. Place them as:
 
-2.  **Extract and Place:** Extract the files. The Jupyter notebooks expect the data in the following structure relative to the notebook's location:
-    ```
-    ./Dataset/
-    └── coco/
-        ├── images/
-        │   └── val2017/      <-- Contains all 5000 validation images
+```
+./Dataset/
+└── coco/
+    ├── images/
+    │   └── val2017/          # 5,000 validation images
+    └── annotations/
         └── annotations/
-            └── annotations/  <-- Note the double 'annotations' folder
-                └── instances_val2017.json
-    ```
+            └── instances_val2017.json
+```
 
-3.  **IMPORTANT - Path Modification:**
-    *   If your dataset is located elsewhere, **you MUST modify the paths** defined within the code cells of both Jupyter notebooks (`F2_final_fgsm.ipynb` and `F2_final_pgd.ipynb`). Look for lines defining `ann_file` and `image_dir` (likely near the beginning or in the setup cells) and update them with the correct paths.
+If your dataset is elsewhere, update `ann_file` and `image_dir` paths in the notebook cells.
 
 ---
 
 ## Usage / Running Experiments
 
-Ensure the Conda environment is activated (`conda activate vlm_ftune`).
+```bash
+conda activate vlm_ftune
+jupyter lab
+```
 
-1.  **Start Jupyter:** Launch Jupyter Lab or Jupyter Notebook from your terminal:
-    ```bash
-    jupyter lab
-    # or
-    jupyter notebook
-    ```
+Open `F2_final_fgsm.ipynb` or `F2_final_pgd.ipynb` and run all cells sequentially. Each notebook:
+1. Loads Florence-2-Base and the COCO dataset
+2. Runs clean evaluation (baseline mAP)
+3. Generates adversarial examples and evaluates (attacked mAP)
+4. Applies the defense pipeline and evaluates (defended mAP)
+5. Prints the defense effectiveness analysis
 
-2.  **Open Notebook:** Navigate to and open either `F2_final_fgsm.ipynb` or `F2_final_pgd.ipynb` in the Jupyter interface.
-
-3.  **Select Kernel:** Ensure the correct kernel corresponding to your Conda environment (e.g., "Python (Florence2 Robustness)") is selected for the notebook.
-
-### Running FGSM Evaluation Notebook
-
-*   Open `F2_final_fgsm.ipynb`.
-*   Run the cells sequentially ("Run All Cells" or step-by-step). This will perform the setup, load the model, execute the clean evaluation, generate FGSM attacks, run the attacked evaluation (no defense), run the attacked evaluation (with defense), and print results.
-
-### Running PGD Evaluation Notebook
-
-*   Open `F2_final_pgd.ipynb`.
-*   Run the cells sequentially. This follows the same process as the FGSM notebook but uses the PGD attack.
-
-### Notes on Execution
-
-*   **GPU Requirement:** A CUDA-enabled GPU is highly recommended for reasonable execution times. The code should automatically attempt to use an available GPU.
-*   **Execution Time:** Full evaluations on COCO val2017 are **very time-consuming** (potentially 6-10+ hours per notebook, especially PGD).
-*   **Testing with Subset:** To test quickly, modify the file iteration loop within the notebooks. Look for the line processing `files` (e.g., `for fname in tqdm(files, ...):`) and consider adding a slice like `files = files[:50]` *after* sorting but *before* the loop to process only the first 50 images. Remember to revert this for the full evaluation.
-*   **Visualization:** Attack visualization code (using `matplotlib`) might be present in the notebooks. Ensure this runs correctly in your Jupyter environment or disable it if not needed.
+**GPU recommended.** Full evaluation takes 6--10+ hours per notebook. For quick testing, add `files = files[:50]` before the main loop.
 
 ---
 
-## Expected Output
+## References
 
-Running the cells in the notebooks will:
+### Core References (This Work)
+1. Xiao, B. et al. "Florence-2: Advancing a Unified Representation for a Variety of Vision Tasks." CVPR, 2024.
+2. Goodfellow, I. et al. "Explaining and Harnessing Adversarial Examples." ICLR, 2015. (FGSM)
+3. Madry, A. et al. "Towards Deep Learning Models Resistant to Adversarial Attacks." ICLR, 2018. (PGD)
 
-1.  Display cell outputs, including status messages (device info, progress bars via `tqdm`).
-2.  Generate and save intermediate detection results to JSON files in the same directory as the notebooks (e.g., `coco_clean_results.json`, `coco_fgsm_results.json`, etc.).
-3.  Display the standard COCO evaluation summary tables within the notebook output for each scenario (Clean, Attacked, Defended).
-4.  Display the "Defense Effectiveness Analysis" summary comparing AP scores and recovery percentages.
-5.  Display the total execution time for the evaluation portion.
-
----
-
-## Research Paper
-
-The detailed findings, methodology, and discussion are presented in the research paper PDF included in this repository (e.g., in the `paper/` directory or as a top-level file like `Report.pdf`).
+### Key Recent Work (2025--2026)
+4. Zhao, J. et al. "One Object, Multiple Lies: Cross-task Adversarial Attack on Unified VLMs." arXiv:2507.07709, 2025.
+5. Fu, X. & Zhang, L. "Adversarial Defense in Vision-Language Models: An Overview." arXiv:2601.12443, 2026.
+6. Darabi, N. et al. "EigenShield: Causal Subspace Filtering via Random Matrix Theory." arXiv:2502.14976, 2025.
+7. Huang, H. et al. "X-Transfer Attacks: Super Transferable Adversarial Attacks on CLIP." ICML, 2025.
+8. Wang, Z. et al. "Double Visual Defense." arXiv:2501.09446, 2025.
+9. Fox, J. et al. "Adversarial Robustness of Vision in Open Foundation Models." IEEE Access, 2025.
+10. Xie et al. "Chain of Attack." CVPR, 2025.
+11. Croce, F. & Hein, M. "Reliable evaluation of adversarial robustness." ICML, 2020. (AutoAttack)
+12. Carlini, N. & Wagner, D. "Towards Evaluating the Robustness of Neural Networks." IEEE S&P, 2017. (C&W)
+13. Tramer, F. et al. "On Adaptive Attacks to Machine Learning Defenses." arXiv:2002.09532, 2020.
+14. Nie, W. et al. "Diffusion Models for Adversarial Purification." ICML, 2022.
+15. Schlarmann, C. et al. "Robust CLIP: Unsupervised Adversarial Fine-Tuning." ICML, 2024. (FARE)
+16. La Torre, A.P. "Adversarial attacks against Modern Vision-Language Models." arXiv:2603.16960, 2026.
 
 ---

@@ -72,6 +72,14 @@ Pick one small VLM (Qwen2-VL-2B or LLaVA-1.5-7B). Run same FGSM attack + best de
 
 ---
 
+## MODELS: [Under 0.5B Parameters for Fast Iteration]
+
+1. Florence 2 0.3B
+2. Moondream 0.5B
+3. SMoLVLM 0.2B
+
+---
+
 ## Priority Order
 
 1. Run `phase2_fgsm.ipynb` (Stage 1) -- immediate

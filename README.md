@@ -3,10 +3,10 @@
 This repository contains the code, notebooks, research paper, and setup files for evaluating the adversarial robustness of the Florence-2-Base vision foundation model (specifically for object detection) and developing defense strategies against adversarial attacks.
 
 **Author:** Rajput Digvijaysing Bhatesing
-**Instructor:** Prof. C. Krishna Mohan
-**TA:** Popat Raj Rameshkumar
 **Institution:** Indian Institute of Technology Hyderabad
 
+DATASET:
+gdown --fuzzy https://drive.google.com/file/d/1AznvHgZc2JwQhgg-0pLuZWsZLt8PAAJp/view?usp=sharing
 ---
 
 ## Table of Contents

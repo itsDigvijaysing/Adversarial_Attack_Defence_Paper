@@ -14,12 +14,22 @@
 6. Clean mAP with defense never measured -> now measured
 7. Edge mask on wrong image -> replaced with standard filters
 
-## Current Defenses (Phase 2)
-- JPEG (q=75) -- Dziugaite et al., 2016
-- Gaussian Blur (sigma=1.0) -- Xu et al., NDSS 2018
-- Median Filter (3x3) -- Xu et al., NDSS 2018
-- DiffPure (t=100) -- Nie et al., ICML 2022 (requires `pip install diffusers`)
-- SVD Spectral Filter (90%) -- Darabi et al., 2025
+## Phase 2 Defense Selection (Research-Backed)
+
+### SELECTED for Phase 2 variant 2 (5 defenses, all paper-backed for OD/classification):
+1. **JPEG Compression (q=75)** -- Dziugaite et al. 2016; Guo et al. ICLR 2018 rated it "weak" but it's a standard baseline
+2. **TVM - Total Variance Minimization (w=0.05)** -- Guo et al. ICLR 2018 rated TVM "very effective"; `skimage.restoration.denoise_tv_chambolle`
+3. **NLM - Non-Local Means (h=6)** -- Buades et al. 2005; Xie et al. CVPR 2019 used NLM to WIN CAAD 2018 defense competition
+4. **Random Resize + Padding** -- Xie et al. ICLR 2018; ranked #2/107 in NIPS 2017 adversarial defense competition; stochastic defense
+5. **Combined Ensemble (JPEG→TVM→NLM)** -- stacked pipeline; Guo et al. 2018 showed combined transforms outperform individual
+
+### DROPPED (no OD paper backing):
+- ~~DiffPure~~ -- Nie et al. ICML 2022 tested ONLY on classification (CIFAR-10, ImageNet classifiers), never OD. Church-trained DDPM destroyed COCO images.
+- ~~SmoothVLM~~ -- Sun et al. 2024 tested ONLY on VLM text generation (harmful content), never object detection.
+- ~~Bit Depth Reduction~~ -- Guo et al. ICLR 2018 explicitly rated it "weak defense"
+
+### Phase 2 variant 1 defenses (kept as-is):
+- JPEG (q=75), Gaussian Blur (sigma=1.0), Median Filter (3x3), DiffPure, SVD Spectral Filter
 
 ## Key Technical Details
 - Model: Florence-2-Base via HuggingFace transformers
@@ -136,30 +146,33 @@ PGD mAP recovered from 0.166 → 0.194 (21.4% recovery of 0.131 drop).
 4. **Replace DiffPure model** with natural-image diffusion model
 5. **Reconsider defense approach** — OLD's integrated defense outperformed simple PIL transforms
 
+## Research References (Attacks)
+- **FGSM**: Goodfellow et al. ICLR 2015, "Explaining and Harnessing Adversarial Examples"
+- **PGD (Projected Gradient Descent)**: Madry et al. ICLR 2018, "Towards Deep Learning Models Resistant to Adversarial Attacks" -- iterative FGSM with random start, stronger than single-step FGSM
+- **C&W**: Carlini & Wagner IEEE S&P 2017 -- optimization-based, bypasses many defenses
+- **AutoAttack**: Croce & Hein ICML 2020 -- ensemble of attacks, gold standard for robustness evaluation
+- **Patch attacks**: Brown et al. 2017 -- adversarial patches, physical-world threat
+
+## Research References (Defenses)
+- **Guo et al. ICLR 2018** "Countering Adversarial Images using Input Transformations" -- DEFINITIVE ranking: TVM and image quilting "very effective", JPEG and bit-depth "weak". Tested on ImageNet classifiers.
+- **Xie et al. ICLR 2018** "Mitigating Adversarial Effects Through Randomization" -- random resize+pad, ranked #2/107 in NIPS 2017 defense competition. Stochastic defense harder for attacker to optimize against.
+- **Xie et al. CVPR 2019** "Feature Denoising for Improving Adversarial Robustness" -- NLM-based denoising WON CAAD 2018 defense competition. Feature-level denoising even better but requires model modification.
+- **Xu et al. NDSS 2018** "Feature Squeezing" -- JPEG, bit-depth, spatial smoothing as detection method. Simple but well-cited baseline.
+- **Nie et al. ICML 2022** DiffPure -- diffusion-based purification, tested on CIFAR-10/ImageNet classification only (NOT object detection).
+- **Sun et al. 2024** SmoothVLM -- randomized smoothing for VLMs, tested on text generation/safety only (NOT object detection).
+- **Madry et al. ICLR 2018** -- adversarial training is gold standard but requires fine-tuning (high effort for our timeline).
+- **Realistic OD defense recovery**: 3-12% mAP recovery typical (2025 autoencoder OD defense papers).
+
 ## Next Steps
-1. Fix the 3 critical issues in phase2_fgsm_variant2.ipynb (scores, labels, gen params)
-2. Re-run with fixes and verify clean mAP ≈ 0.29
-3. Cross-task transfer notebook
-4. PGD attack notebook
-5. C&W attack notebook
+1. ~~Fix 3 critical issues in variant2 (scores, labels, gen params)~~ DONE
+2. Update variant2 defenses: replace DiffPure+SmoothVLM with random_resize_pad + combined_ensemble
+3. Run variant2 on 100 images first for validation (~30-45 min), then scale to 500
+4. PGD attack notebook (future)
+5. Cross-task transfer notebook (future)
 
-## Additional Defenses Found (web search 2026-04-11)
-### Easy to add (PIL→PIL, same API as current defenses):
-- Bit Depth Reduction (Xu et al. 2018) -- quantize 8-bit to 4-bit
-- Total Variance Minimization (Guo et al. ICLR 2018) -- `skimage.restoration.denoise_tv_chambolle`
-- Random Resize + Padding (Xie et al. ICLR 2018) -- stochastic defense
-- Non-Local Means Denoising (Buades et al. 2005 / OpenCV) -- `cv2.fastNlMeansDenoisingColored`
-
-### Moderate effort (VLM-specific, recent):
-- SmoothVLM (Sun et al. 2024) -- randomized smoothing + majority voting for VLMs
-- MirrorCheck (Fares et al. ICLR 2025) -- cross-modal consistency check (detection only)
-- DPS (2025) -- partial-perception supervision, training-free
-- Denoising Autoencoder -- plug-and-play, needs training on clean COCO
-
-### Advanced (high effort, state-of-art):
-- PuriFlow (ICCV 2025) -- SR + diffusion, outperforms DiffPure
-- ZeroPur (2025) -- zero-shot purification
-- Adversarial Training (Madry 2018, MMCoA 2024) -- fine-tune on adversarial examples
-- TPAP (CVPR 2025) -- test-time pixel-level purification via FGSM overfitting
-- Attack-as-Defense (ACL 2025) -- protective perturbations
+## Future Defense Ideas (if time allows)
+- **MirrorCheck** (Fares et al. ICLR 2025) -- cross-modal consistency, detection-specific
+- **PuriFlow** (ICCV 2025) -- SR + diffusion, outperforms DiffPure
+- **Adversarial Training** (Madry 2018, MMCoA 2024) -- gold standard but needs fine-tuning
+- **TPAP** (CVPR 2025) -- test-time pixel purification via FGSM overfitting
 

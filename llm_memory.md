@@ -24,10 +24,16 @@
 ## Key Technical Details
 - Model: Florence-2-Base via HuggingFace transformers
 - Attack loss: `model(..., labels=labels).loss`
-- Dataset: COCO val2017, path: `./Dataset/coco/`
+- Dataset: COCO val2017, path: `./val2017` (annotations: `./annotations/instances_val2017.json`)
 - Eval: pycocotools COCOeval for detection, pycocoevalcap for captioning
 - Tasks: `<OD>`, `<CAPTION>`, `<DETAILED_CAPTION>`, `<DENSE_REGION_CAPTION>`
 - Env: conda `vlm_ftune`, PyTorch 2.6.0+cu118, Transformers 4.51.0
+- GPU Control: `NUM_GPUS` in cell 2 (imports cell), BEFORE `import torch`. Enforced via
+  `os.environ["CUDA_VISIBLE_DEVICES"]` using nvidia-smi to pick GPU(s) with most free memory.
+  Must be set before torch import or it has no effect. Default: NUM_GPUS=1.
+- Generation params: `repetition_penalty=1.8, length_penalty=1.0` on ALL generate() calls
+- Scores: Heuristic `score = 0.6 + 0.2*area_ratio + 0.15*(1-center_dist)` [0.60-0.98]
+- Labels: `FLORENCE_TO_COCO` dict (~70 mappings) + `_map_label()` in cell 10
 
 ## File Map
 - phase2_fgsm_variant1.ipynb -- FGSM + 5 defenses (JPEG, blur, median, DiffPure, SVD)
@@ -72,11 +78,70 @@
 - SVD is per-channel, keeps top 90% singular values
 - FGSM perturbation is in normalized space, not raw pixel space
 
+## CRITICAL: Why Phase 2 Variant 2 Fails (analyzed 2026-04-11)
+
+### OLD code (F2_final_fgsm.ipynb): Clean mAP = 0.297, Defended mAP = 0.242
+### NEW code (phase2_fgsm_variant2.ipynb): Clean mAP = 0.030, Everything "NOT HELPFUL"
+
+### Root Cause #1: NO SYNTHETIC SCORES (biggest impact)
+- **OLD**: Heuristic confidence scores based on box area + center distance:
+  `score = 0.6 + 0.2 * area_ratio + 0.15 * (1 - center_dist)` → range [0.60, 0.98]
+  COCO mAP REQUIRES varying scores to build precision-recall curves.
+- **NEW**: All scores hardcoded to 1.0. COCO eval degenerates — can't rank detections.
+- **Impact**: This alone explains most of the 10x mAP drop (0.297 → 0.030).
+
+### Root Cause #2: NO FLORENCE-2 → COCO LABEL MAPPING (55% detections silently dropped)
+- Florence-2 outputs labels like: `television`, `mobile phone`, `man`, `houseplant`, 
+  `kitchen & dining room table`, `computer keyboard`, `ski`, `studio couch`, `footwear`, etc.
+- COCO expects: `tv`, `cell phone`, `person`, `potted plant`, `dining table`, 
+  `keyboard`, `skis`, `couch`, (no footwear equivalent), etc.
+- `category_mapping.get(label)` returns None → detection silently discarded.
+- Tested on 20 images: 233 total labels, only 105 matched (45%), 128 dropped (55%).
+- OLD code had same issue BUT mitigated by generation params (see #3).
+
+### Root Cause #3: MISSING GENERATION PARAMETERS
+- **OLD**: `model.generate(..., repetition_penalty=1.8, length_penalty=1.0)`
+  These constrain Florence-2 to produce more standard, COCO-like category names.
+- **NEW**: Neither parameter set (uses defaults).
+  Florence-2 outputs broader vocabulary with many non-COCO names.
+
+### Root Cause #4: DiffPure uses WRONG diffusion model
+- Uses `google/ddpm-ema-church-256` — trained on church images only.
+- Applying to COCO images completely destroys them: clean+diffpure mAP = 0.0001.
+- Need an ImageNet-trained or general-purpose diffusion model instead.
+
+### Why defenses all show "NOT HELPFUL"
+1. Baseline mAP=0.030 means attack damage is tiny (0.003-0.007 absolute drop)
+2. eps=0.01 attacked mAP (0.0258) > eps=0.003 (0.0256) — differences are just noise
+3. Defense distortion cost > attack damage at this scale
+4. DiffPure destroys images (mAP→0.0001), SmoothVLM too aggressive (mAP→0.007)
+5. Net gain = defended - max(clean+defense, attacked) is always negative
+
+### OLD Code's Defense Strategy (what actually worked)
+The OLD defenses were fundamentally different from the new ones:
+1. **Preemptive defense** (JPEG q=75 + bit quantization BEFORE attack)
+2. **Gradient attenuation** (suppress high-variance gradient regions during FGSM)
+3. **Gaussian noise injection** (adaptive, frequency-aware, in normalized pixel space)
+4. **Spatial smoothing** (edge-preserving hybrid avg+median filter, in normalized space)
+5. **Combined defense pipeline** (noise → smoothing → quantization → channel mixing → dropout)
+6. **Prompt ensemble** (multi-prompt + multi-augmentation with consensus voting)
+All applied as INTEGRATED pipeline, not simple post-hoc PIL transforms.
+Result: FGSM mAP recovered from 0.226 → 0.242 (22.5% recovery of 0.071 drop).
+PGD mAP recovered from 0.166 → 0.194 (21.4% recovery of 0.131 drop).
+
+### FIX PRIORITY (in order)
+1. **Add synthetic scores** (copy OLD formula: area_ratio + center_distance heuristic)
+2. **Add Florence→COCO label mapping** dictionary (television→tv, man→person, etc.)
+3. **Add `repetition_penalty=1.8, length_penalty=1.0`** to all generate() calls
+4. **Replace DiffPure model** with natural-image diffusion model
+5. **Reconsider defense approach** — OLD's integrated defense outperformed simple PIL transforms
+
 ## Next Steps
-1. Run phase2_fgsm.ipynb (NUM_IMAGES=50 debug, then 500, then full)
-2. Cross-task transfer notebook
-3. PGD attack notebook
-4. C&W attack notebook
+1. Fix the 3 critical issues in phase2_fgsm_variant2.ipynb (scores, labels, gen params)
+2. Re-run with fixes and verify clean mAP ≈ 0.29
+3. Cross-task transfer notebook
+4. PGD attack notebook
+5. C&W attack notebook
 
 ## Additional Defenses Found (web search 2026-04-11)
 ### Easy to add (PIL→PIL, same API as current defenses):

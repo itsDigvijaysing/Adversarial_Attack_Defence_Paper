@@ -1,0 +1,1 @@
+srun -p cse-gpu-all --nodelist=dgx-a100-02 --pty bash

@@ -1,0 +1,43 @@
+tmux new -s detection_train
+tmux new -s classification_train
+tmux new -s segmentation_train
+tmux new -s segmentation_train
+tmux new -s mlore_train_pascal
+tmux new -s mlore_train_nyud
+tmux new -s problem1_train
+tmux new -s problem1_val
+
+tmux new -s gulshan
+
+Detach when running
+Ctrl + b, then d
+
+Reattach later
+tmux attach -t problem1_val
+tmux attach -t problem1_train
+tmux attach -t mlore_train
+tmux attach -t detection_train
+tmux attach -t classification_train
+tmux attach -t segmentation_train
+
+
+Or list active sessions:
+tmux ls
+
+Monitor GPU usage (optional)
+watch -n 1 nvidia-smi
+
+Stop training
+tmux attach -t mlore_train
+Ctrl + C   # to stop training
+exit       # to close tmux session
+
+tmux kill-session -t mlore_train
+tmux kill-session -t segmentation_train
+tmux kill-session -t detection_train
+
+
+
+conda activate vlm_ftune
+cd /u/student/2024/cs24mtech11009/Loki_CV
+jupyter lab --no-browser --ip=0.0.0.0 --port=8888

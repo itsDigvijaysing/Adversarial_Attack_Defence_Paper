@@ -61,6 +61,7 @@ dependencies:
   - zeromq=4.3.5
   - zlib=1.2.13
   - pip:
+      - --extra-index-url https://download.pytorch.org/whl/cu118
       - accelerate==1.6.0
       - aiohappyeyeballs==2.6.1
       - aiohttp==3.11.16
@@ -204,4 +205,3 @@ dependencies:
       - xxhash==3.5.0
       - yarl==1.19.0
       - zipp==3.21.0
-prefix: /u/student/2024/cs24mtech14020/miniconda3/envs/vlm_ftune

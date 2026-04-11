@@ -1,0 +1,99 @@
+{
+  "clean_mAP": 0.009838134993201969,
+  "clean_AP50": 0.012147527252725271,
+  "defense_cost": {
+    "jpeg_tvm_nlm": {
+      "mAP": 0.00805261560483947,
+      "mAP_drop": 0.0017855193883624994
+    },
+    "blur_tvm": {
+      "mAP": 0.00905483127352548,
+      "mAP_drop": 0.0007833037196764894
+    },
+    "nlm_resize": {
+      "mAP": 0.003723344209420941,
+      "mAP_drop": 0.006114790783781028
+    },
+    "full_pipeline": {
+      "mAP": 0.003365240958996441,
+      "mAP_drop": 0.006472894034205527
+    }
+  },
+  "attack_results": {
+    "0.003": {
+      "attacked_mAP": 0.0,
+      "defenses": {
+        "jpeg_tvm_nlm": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        },
+        "blur_tvm": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        },
+        "nlm_resize": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        },
+        "full_pipeline": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        }
+      }
+    },
+    "0.01": {
+      "attacked_mAP": 0.0,
+      "defenses": {
+        "jpeg_tvm_nlm": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        },
+        "blur_tvm": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        },
+        "nlm_resize": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        },
+        "full_pipeline": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        }
+      }
+    },
+    "0.03": {
+      "attacked_mAP": 0.0,
+      "defenses": {
+        "jpeg_tvm_nlm": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        },
+        "blur_tvm": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        },
+        "nlm_resize": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        },
+        "full_pipeline": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        }
+      }
+    }
+  }
+}

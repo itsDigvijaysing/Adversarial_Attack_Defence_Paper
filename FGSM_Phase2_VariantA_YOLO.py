@@ -1,22 +1,30 @@
 #!/usr/bin/env python
 """
-FGSM Phase 2 — Variant B: Advanced Denoising (YOLOv8x-worldv2)
+FGSM Phase 2 — Variant A: Classical Input Squeezing (YOLOv8x-worldv2)
 
-Defenses:
-  | Defense               | Reference                         | Notes                              |
-  |-----------------------|-----------------------------------|------------------------------------|
-  | TVM (w=0.05)          | Guo et al., ICLR 2018             | Rated "very effective"             |
-  | NLM (h=6)             | Buades 2005; Xie CVPR 2019        | Won CAAD 2018 defense competition  |
-  | SVD Spectral (90%)    | Channel-wise SVD truncation        | Removes low-energy perturbations   |
-  | Random Resize + Pad   | Xie et al., ICLR 2018             | #2/107 in NIPS 2017 defense comp   |
+Same defense pipeline as the Florence-2 version, but using YOLOv8x-worldv2
+(73.7M params) for ~10-50x faster iteration.
 
-Strongest individual defenses backed by competition results.
+Key differences from Florence-2 version:
+  - No label mapping needed (YOLO outputs COCO categories directly)
+  - Real confidence scores (no heuristic scoring)
+  - Built-in NMS (no custom implementation)
+  - FGSM uses detection confidence loss (not autoregressive cross-entropy)
+  - Single forward pass per inference (not autoregressive token generation)
+
+Defenses (same "Feature Squeezing" family — model-agnostic):
+  | Defense              | Reference                         |
+  |----------------------|-----------------------------------|
+  | JPEG Compression q75 | Dziugaite et al., 2016            |
+  | Gaussian Blur σ=1.0  | Xu et al., NDSS 2018              |
+  | Median Filter 3×3    | Xu et al., NDSS 2018              |
+  | Bit Depth Reduction  | Xu et al., NDSS 2018; Guo ICLR 18 |
 
 Usage:
   conda activate vlm_ftune
-  pip install ultralytics scikit-image opencv-python  # if not installed
+  pip install ultralytics  # if not installed
   cd /path/to/Loki_CV
-  python FGSM_Phase2_VariantB_YOLO.py
+  python FGSM_Phase2_VariantA_YOLO.py
 """
 
 # ============================================================
@@ -58,13 +66,11 @@ from io import BytesIO
 from tqdm.auto import tqdm
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
-import cv2
-from skimage.restoration import denoise_tv_chambolle
 import time
 import warnings
 import gc
 import matplotlib
-matplotlib.use("Agg")
+matplotlib.use("Agg")  # Non-interactive backend for scripts
 import matplotlib.pyplot as plt
 
 warnings.filterwarnings("ignore")
@@ -123,8 +129,8 @@ print(f"PyTorch: {torch.__version__}, CUDA: {torch.version.cuda}")
 print("=" * 70)
 
 # ============================================================
-# 2. Configuration — Variant B: Advanced Denoising
-# =================₹===========================================
+# 2. Configuration
+# ============================================================
 
 # Dataset paths
 IMAGE_DIR = "./Dataset/val2017"
@@ -137,33 +143,31 @@ NUM_IMAGES = 5000
 EPSILONS = [0.003, 0.01, 0.03]
 
 # Defenses
-RUN_TVM = True
-RUN_NLM = True
-RUN_SVD = True
-RUN_RANDOM_RESIZE = True
+RUN_JPEG = True
+RUN_GAUSSIAN_BLUR = True
+RUN_MEDIAN_FILTER = True
+RUN_BIT_DEPTH = True
 
 # Parameters
-TVM_WEIGHT = 0.05              # Guo et al., ICLR 2018
-NLM_H = 6                     # Filter strength
-NLM_TEMPLATE = 7
-NLM_SEARCH = 21
-SVD_KEEP_RATIO = 0.90         # Keep top 90% singular values
-RAND_RESIZE_RANGE = (0.8, 1.0) # Xie et al., ICLR 2018
+JPEG_QUALITY = 75          # Dziugaite et al., 2016
+BLUR_SIGMA = 1.0           # Xu et al., NDSS 2018
+MEDIAN_KERNEL = 3          # Xu et al., NDSS 2018
+BIT_DEPTH = 4              # Xu et al., NDSS 2018 (reduce 8-bit to 4-bit)
 
 # YOLO settings
 YOLO_MODEL = "yolov8x-worldv2.pt"
-YOLO_IMGSZ = 640
-YOLO_CONF = 0.001
-YOLO_IOU_NMS = 0.5
+YOLO_IMGSZ = 640           # Model input size
+YOLO_CONF = 0.001          # Low threshold for COCO mAP evaluation
+YOLO_IOU_NMS = 0.5         # NMS IoU threshold
 
 # Output
-OUTPUT_DIR = "./results_phase2_variantB_yolo"
+OUTPUT_DIR = "./results_phase2_variantA_yolo"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-print("Variant B: Advanced Denoising (YOLOv8x-worldv2)")
+print("Variant A: Classical Squeezing (YOLOv8x-worldv2)")
 print(f"  Images: {NUM_IMAGES}, Epsilons: {EPSILONS}")
 print(f"  Model: {YOLO_MODEL} (imgsz={YOLO_IMGSZ})")
-print(f"  Defenses: TVM={RUN_TVM}, NLM={RUN_NLM}, SVD={RUN_SVD}, RandomResize={RUN_RANDOM_RESIZE}")
+print(f"  Defenses: JPEG={RUN_JPEG}, Blur={RUN_GAUSSIAN_BLUR}, Median={RUN_MEDIAN_FILTER}, BitDepth={RUN_BIT_DEPTH}")
 
 # ============================================================
 # 3. Load Model and Dataset
@@ -177,8 +181,8 @@ cats = coco_gt.loadCats(coco_gt.getCatIds())
 cats_sorted = sorted(cats, key=lambda x: x["id"])
 
 # COCO class names and IDs in standard order
-COCO_NAMES = [c["name"] for c in cats_sorted]
-COCO_IDS = [c["id"] for c in cats_sorted]
+COCO_NAMES = [c["name"] for c in cats_sorted]   # 80 class names
+COCO_IDS = [c["id"] for c in cats_sorted]        # 80 category IDs (1,2,3,...,90 with gaps)
 
 # Mapping: YOLO class index i -> COCO category ID
 YOLO_TO_COCO_ID = {i: cid for i, cid in enumerate(COCO_IDS)}
@@ -188,9 +192,12 @@ print(f"COCO categories loaded: {len(COCO_NAMES)}")
 # Load YOLOv8x-worldv2
 print(f"Loading {YOLO_MODEL}...")
 model = YOLO(YOLO_MODEL)
+
+# Set COCO classes as the vocabulary for open-vocabulary detection
 model.set_classes(COCO_NAMES)
 print(f"Model loaded and classes set ({len(COCO_NAMES)} COCO categories).")
 
+# Get model input size and ensure model is on GPU
 model.to(device)
 
 # Image file list
@@ -198,6 +205,7 @@ files = sorted(os.listdir(IMAGE_DIR))
 if NUM_IMAGES is not None:
     files = files[:NUM_IMAGES]
 
+# Track which image IDs we evaluate (needed for COCOeval filtering)
 evaluated_img_ids = sorted([int(os.path.splitext(f)[0]) for f in files])
 print(f"Will process {len(files)} images (img_ids tracked for COCOeval).")
 
@@ -257,6 +265,7 @@ print("Inference pipeline ready (native COCO categories + real confidence scores
 # 5. FGSM Attack
 # ============================================================
 
+
 def _letterbox_image(pil_img, target_size=640, fill=(114, 114, 114)):
     """Resize image with letterbox padding (matching YOLO preprocessing)."""
     w, h = pil_img.size
@@ -264,10 +273,12 @@ def _letterbox_image(pil_img, target_size=640, fill=(114, 114, 114)):
     new_w = int(w * scale)
     new_h = int(h * scale)
     resized = pil_img.resize((new_w, new_h), Image.BILINEAR)
+
     canvas = Image.new("RGB", (target_size, target_size), fill)
     pad_left = (target_size - new_w) // 2
     pad_top = (target_size - new_h) // 2
     canvas.paste(resized, (pad_left, pad_top))
+
     return canvas, scale, pad_left, pad_top, new_w, new_h
 
 
@@ -278,45 +289,84 @@ def _unletterbox_image(lb_np, orig_size, pad_left, pad_top, new_w, new_h):
 
 
 def fgsm_attack(pil_img, eps=0.01):
-    """FGSM attack on YOLOv8-World. Minimizes detection confidence."""
-    orig_size = pil_img.size
-    lb_img, scale, pad_left, pad_top, new_w, new_h = _letterbox_image(pil_img, YOLO_IMGSZ)
+    """
+    FGSM attack on YOLOv8-World.
 
+    Strategy: Minimize total detection confidence by computing gradient
+    of the sum of max class probabilities w.r.t. the input image.
+
+    Unlike Florence-2 (which attacks autoregressive cross-entropy loss),
+    this directly attacks the detection confidence output.
+    """
+    orig_size = pil_img.size  # (W, H)
+
+    # Letterbox to model input size (matches YOLO's internal preprocessing)
+    lb_img, scale, pad_left, pad_top, new_w, new_h = _letterbox_image(
+        pil_img, YOLO_IMGSZ
+    )
+
+    # Convert to tensor [B, C, H, W] in [0, 1]
     img_np = np.array(lb_img).astype(np.float32) / 255.0
-    img_tensor = torch.from_numpy(img_np.transpose(2, 0, 1)).unsqueeze(0).to(device)
+    img_tensor = torch.from_numpy(
+        img_np.transpose(2, 0, 1)
+    ).unsqueeze(0).to(device)
 
+    # Compute gradient
     adv_tensor = img_tensor.clone().detach().requires_grad_(True)
+
+    # Forward pass through raw YOLO model
     preds = model.model(adv_tensor)
     if isinstance(preds, (list, tuple)):
         pred = preds[0]
     else:
         pred = preds
 
+    # YOLOv8 output: [batch, 4+nc, num_anchors]
+    # Extract class scores (everything after first 4 channels = bbox)
     nc = pred.shape[1] - 4
-    cls_scores = pred[:, 4:, :]
-    max_cls = cls_scores.max(dim=1)[0]
+    cls_scores = pred[:, 4:, :]          # [1, nc, anchors]
+    max_cls = cls_scores.max(dim=1)[0]   # [1, anchors] - max class prob per anchor
+
+    # Loss = negative total confidence
+    # Maximizing this loss = minimizing detection confidence = degrading detection
     loss = -max_cls.sum()
     loss.backward()
 
     grad_sign = adv_tensor.grad.sign()
+
+    # Standard FGSM: x_adv = x + eps * sign(∇_x loss)
     perturbed = img_tensor.detach() + eps * grad_sign
     perturbed = torch.clamp(perturbed, 0.0, 1.0)
 
+    # Convert back to PIL at original resolution
     adv_np = (perturbed.squeeze(0).permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
     adv_pil = _unletterbox_image(adv_np, orig_size, pad_left, pad_top, new_w, new_h)
+
     return adv_pil
 
 print("FGSM attack function ready.")
 
 
 def fgsm_attack_multi_eps(pil_img, epsilons):
-    """FGSM for multiple epsilons in one shot. Computes gradient ONCE."""
+    """
+    FGSM for multiple epsilons in one shot.
+    Computes gradient ONCE and applies different step sizes.
+    Saves 1 forward + 1 backward per extra epsilon.
+    """
     orig_size = pil_img.size
-    lb_img, scale, pad_left, pad_top, new_w, new_h = _letterbox_image(pil_img, YOLO_IMGSZ)
 
+    # Letterbox
+    lb_img, scale, pad_left, pad_top, new_w, new_h = _letterbox_image(
+        pil_img, YOLO_IMGSZ
+    )
+
+    # To tensor
     img_np = np.array(lb_img).astype(np.float32) / 255.0
-    img_tensor = torch.from_numpy(img_np.transpose(2, 0, 1)).unsqueeze(0).to(device)
+    img_tensor = torch.from_numpy(
+        img_np.transpose(2, 0, 1)
+    ).unsqueeze(0).to(device)
 
+    # Compute gradient (ONE forward + backward)
     adv_tensor = img_tensor.clone().detach().requires_grad_(True)
     preds = model.model(adv_tensor)
     if isinstance(preds, (list, tuple)):
@@ -332,6 +382,7 @@ def fgsm_attack_multi_eps(pil_img, epsilons):
 
     grad_sign = adv_tensor.grad.sign()
 
+    # Generate adversarial images for each epsilon (cheap tensor ops only)
     adv_images = {}
     for eps in epsilons:
         perturbed = img_tensor.detach() + eps * grad_sign
@@ -345,57 +396,41 @@ def fgsm_attack_multi_eps(pil_img, epsilons):
 print("Multi-epsilon FGSM attack ready (computes gradient once for all epsilons).")
 
 # ============================================================
-# 6. Defense Functions — Variant B: Advanced Denoising
+# 6. Defense Functions — Variant A: Classical Squeezing
 # ============================================================
 
-# Defense 1: Total Variance Minimization
-# Reference: Guo et al., ICLR 2018 — rated "very effective"
-def defend_tvm(pil_img, weight=TVM_WEIGHT):
-    arr = np.array(pil_img).astype(np.float64) / 255.0
-    denoised = denoise_tv_chambolle(arr, weight=weight, channel_axis=-1)
-    return Image.fromarray((np.clip(denoised, 0, 1) * 255).astype(np.uint8))
+# Defense 1: JPEG Compression (Dziugaite et al., 2016)
+def defend_jpeg(pil_img, quality=JPEG_QUALITY):
+    buffer = BytesIO()
+    pil_img.save(buffer, format="JPEG", quality=quality)
+    buffer.seek(0)
+    return Image.open(buffer).convert("RGB")
 
-# Defense 2: Non-Local Means Denoising
-# Reference: Buades et al. 2005; Won CAAD 2018 (Xie CVPR 2019)
-def defend_nlm(pil_img, h=NLM_H, template_size=NLM_TEMPLATE, search_size=NLM_SEARCH):
+# Defense 2: Gaussian Blur (Xu et al., NDSS 2018)
+def defend_gaussian_blur(pil_img, sigma=BLUR_SIGMA):
+    return pil_img.filter(ImageFilter.GaussianBlur(radius=sigma))
+
+# Defense 3: Median Filter (Xu et al., NDSS 2018)
+def defend_median_filter(pil_img, kernel=MEDIAN_KERNEL):
+    return pil_img.filter(ImageFilter.MedianFilter(size=kernel))
+
+# Defense 4: Bit Depth Reduction (Xu et al., NDSS 2018; Guo et al., ICLR 2018)
+def defend_bit_depth(pil_img, bits=BIT_DEPTH):
     arr = np.array(pil_img)
-    denoised = cv2.fastNlMeansDenoisingColored(arr, None, h, h, template_size, search_size)
-    return Image.fromarray(denoised)
-
-# Defense 3: SVD Spectral Filter
-# Per-channel SVD, keep top K% singular values
-def defend_svd(pil_img, keep_ratio=SVD_KEEP_RATIO):
-    arr = np.array(pil_img).astype(np.float64)
-    result = np.zeros_like(arr)
-    for c in range(3):
-        U, S, Vt = np.linalg.svd(arr[:, :, c], full_matrices=False)
-        k = max(1, int(len(S) * keep_ratio))
-        result[:, :, c] = (U[:, :k] * S[:k]) @ Vt[:k, :]
-    return Image.fromarray(np.clip(result, 0, 255).astype(np.uint8))
-
-# Defense 4: Random Resize + Padding
-# Reference: Xie et al., ICLR 2018 — #2/107 NIPS 2017
-def defend_random_resize_pad(pil_img, resize_range=RAND_RESIZE_RANGE):
-    w, h = pil_img.size
-    ratio = np.random.uniform(*resize_range)
-    new_w, new_h = int(w * ratio), int(h * ratio)
-    resized = pil_img.resize((new_w, new_h), Image.BICUBIC)
-    pad_x = np.random.randint(0, w - new_w + 1)
-    pad_y = np.random.randint(0, h - new_h + 1)
-    padded = Image.new("RGB", (w, h), (128, 128, 128))
-    padded.paste(resized, (pad_x, pad_y))
-    return padded
+    shift = 8 - bits
+    arr = (arr >> shift) << shift
+    return Image.fromarray(arr)
 
 # Defense registry
 DEFENSES = {}
-if RUN_TVM:
-    DEFENSES["tvm"] = defend_tvm
-if RUN_NLM:
-    DEFENSES["nlm"] = defend_nlm
-if RUN_SVD:
-    DEFENSES["svd"] = defend_svd
-if RUN_RANDOM_RESIZE:
-    DEFENSES["random_resize_pad"] = defend_random_resize_pad
+if RUN_JPEG:
+    DEFENSES["jpeg"] = defend_jpeg
+if RUN_GAUSSIAN_BLUR:
+    DEFENSES["gaussian_blur"] = defend_gaussian_blur
+if RUN_MEDIAN_FILTER:
+    DEFENSES["median_filter"] = defend_median_filter
+if RUN_BIT_DEPTH:
+    DEFENSES["bit_depth"] = defend_bit_depth
 
 print(f"Defenses: {list(DEFENSES.keys())}")
 
@@ -418,7 +453,7 @@ else:
 try:
     test_img = Image.open(os.path.join(IMAGE_DIR, files[0])).convert("RGB")
     test_dets = run_inference(test_img)
-    print(f"  [OK] Model inference: {len(test_dets)} detections")
+    print(f"  [OK] Model inference: {len(test_dets)} detections (with real confidence scores)")
 except Exception as e:
     errors.append(f"Inference failed: {e}")
 
@@ -521,7 +556,7 @@ def run_full_evaluation():
         img_path = os.path.join(IMAGE_DIR, fname)
         pil_img = Image.open(img_path).convert("RGB")
 
-        # ---- Prepare all image variants ----
+        # ---- Prepare all image variants for this image ----
         batch_imgs = []
         batch_tags = []
 
@@ -551,6 +586,7 @@ def run_full_evaluation():
                 batch_tags.append(f"{eps_tag}+{dname}")
 
         # ---- Run inference on all variants ----
+        # YOLO is fast enough to process all at once
         all_dets = run_inference_batch(batch_imgs)
 
         for tag, dets in zip(batch_tags, all_dets):
@@ -591,7 +627,7 @@ clean_ap50 = eval_stats["clean"][1]
 all_defense_names = list(DEFENSES.keys())
 
 print("=" * 90)
-print(f"{'FGSM ATTACK & DEFENSE RESULTS (VARIANT B — YOLOv8x-worldv2)':^90}")
+print(f"{'FGSM ATTACK & DEFENSE RESULTS (VARIANT A — YOLOv8x-worldv2)':^90}")
 print("=" * 90)
 print(f"\nModel: {YOLO_MODEL} | Images: {NUM_IMAGES}")
 print(f"Clean Baseline:  mAP = {clean_ap:.4f},  AP50 = {clean_ap50:.4f}")
@@ -686,7 +722,7 @@ for i, dname in enumerate(all_defense_names):
 ax.axhline(y=clean_ap, color='gray', linestyle='--', linewidth=1.5, label=f"Clean ({clean_ap:.3f})")
 ax.set_xlabel("FGSM Epsilon", fontsize=12)
 ax.set_ylabel("mAP", fontsize=12)
-ax.set_title("FGSM Attack: mAP vs Epsilon (Variant B — YOLOv8x-worldv2)", fontsize=14)
+ax.set_title("FGSM Attack: mAP vs Epsilon (YOLOv8x-worldv2)", fontsize=14)
 ax.legend(fontsize=9)
 ax.grid(True, alpha=0.3)
 
@@ -699,7 +735,7 @@ for bar, cost in zip(bars, clean_costs):
     ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.001,
             f"-{cost:.3f}", ha='center', va='bottom', fontsize=9)
 ax.set_ylabel("mAP", fontsize=12)
-ax.set_title("Defense Cost on Clean Images (Variant B — YOLOv8x-worldv2)", fontsize=14)
+ax.set_title("Defense Cost on Clean Images (YOLOv8x-worldv2)", fontsize=14)
 ax.legend(fontsize=10)
 ax.grid(True, alpha=0.3, axis='y')
 
@@ -707,7 +743,7 @@ plt.tight_layout()
 plt.savefig(os.path.join(OUTPUT_DIR, "results_plot.png"), dpi=150, bbox_inches='tight')
 print(f"Plot saved to {OUTPUT_DIR}/results_plot.png")
 
-# Visual comparison
+# Visual comparison of defenses on a sample image
 sample_fname = files[0]
 sample_img = Image.open(os.path.join(IMAGE_DIR, sample_fname)).convert("RGB")
 sample_adv = fgsm_attack(sample_img, eps=0.03)
@@ -727,7 +763,7 @@ for i, dname in enumerate(std_names):
     defended = DEFENSES[dname](sample_adv)
     axes[3 + i].imshow(defended); axes[3 + i].set_title(f"+ {dname}"); axes[3 + i].axis("off")
 
-plt.suptitle("FGSM Attack and Defense Visual Comparison (Variant B — YOLOv8x-worldv2)", fontsize=14)
+plt.suptitle("FGSM Attack and Defense Visual Comparison (YOLOv8x-worldv2)", fontsize=14)
 plt.tight_layout()
 plt.savefig(os.path.join(OUTPUT_DIR, "visual_comparison.png"), dpi=150, bbox_inches='tight')
 print(f"Visual comparison saved to {OUTPUT_DIR}/visual_comparison.png")
@@ -737,7 +773,7 @@ print(f"Visual comparison saved to {OUTPUT_DIR}/visual_comparison.png")
 # ============================================================
 
 print("=" * 80)
-print(f"{'NET GAIN ANALYSIS (VARIANT B — YOLOv8x-worldv2)':^80}")
+print(f"{'NET GAIN ANALYSIS (VARIANT A — YOLOv8x-worldv2)':^80}")
 print("=" * 80)
 print("\nNet Gain = defended_mAP - max(clean+defense_mAP, attacked_mAP)")
 print("Positive = defense is helpful. Negative = defense makes things worse.\n")
@@ -755,7 +791,7 @@ for eps in EPSILONS:
             floor = max(atk_ap, clean_def_ap)
             net_gain = def_ap - floor
             verdict = "HELPFUL" if net_gain > 0 else "NOT HELPFUL"
-            print(f"    {dname:<20} defended_mAP={def_ap:.4f}  "
+            print(f"    {dname:<15} defended_mAP={def_ap:.4f}  "
                   f"floor={floor:.4f}  net_gain={net_gain:+.4f}  [{verdict}]")
     print()
 

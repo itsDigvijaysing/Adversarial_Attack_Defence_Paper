@@ -1,22 +1,20 @@
 #!/usr/bin/env python
 """
-FGSM Phase 2 — Variant B: Advanced Denoising (YOLOv8x-worldv2)
+FGSM Phase 2 — Variant C: Combined Defense Pipelines (YOLOv8x-worldv2)
 
-Defenses:
-  | Defense               | Reference                         | Notes                              |
-  |-----------------------|-----------------------------------|------------------------------------|
-  | TVM (w=0.05)          | Guo et al., ICLR 2018             | Rated "very effective"             |
-  | NLM (h=6)             | Buades 2005; Xie CVPR 2019        | Won CAAD 2018 defense competition  |
-  | SVD Spectral (90%)    | Channel-wise SVD truncation        | Removes low-energy perturbations   |
-  | Random Resize + Pad   | Xie et al., ICLR 2018             | #2/107 in NIPS 2017 defense comp   |
-
-Strongest individual defenses backed by competition results.
+Defenses (stacked transforms — Guo et al. ICLR 2018 showed these outperform individuals):
+  | Defense               | Pipeline                          | Rationale                                    |
+  |-----------------------|-----------------------------------|----------------------------------------------|
+  | JPEG → TVM → NLM      | Lossy compress → smooth → denoise | Each targets different perturbation aspects   |
+  | Gaussian Blur → TVM   | Spatial smooth → variational      | Double smoothing at different scales          |
+  | NLM → Random Resize   | Denoise → stochastic resize       | Denoising + randomness for robustness         |
+  | Full Pipeline          | JPEG → TVM → NLM → Random Resize | Kitchen sink — max defense, test mAP cost     |
 
 Usage:
   conda activate vlm_ftune
-  pip install ultralytics scikit-image opencv-python  # if not installed
+  pip install ultralytics scikit-image opencv-python
   cd /path/to/Loki_CV
-  python FGSM_Phase2_VariantB_YOLO.py
+  python FGSM_Phase2_VariantC_YOLO.py
 """
 
 # ============================================================
@@ -28,7 +26,7 @@ import json
 import sys
 
 # GPU ISOLATION -- Must happen BEFORE import torch
-NUM_GPUS = 1
+NUM_GPUS = 2
 
 import subprocess
 try:
@@ -123,8 +121,8 @@ print(f"PyTorch: {torch.__version__}, CUDA: {torch.version.cuda}")
 print("=" * 70)
 
 # ============================================================
-# 2. Configuration — Variant B: Advanced Denoising
-# =================₹===========================================
+# 2. Configuration — Variant C: Combined Pipelines
+# ============================================================
 
 # Dataset paths
 IMAGE_DIR = "./Dataset/val2017"
@@ -136,19 +134,20 @@ NUM_IMAGES = 5000
 # FGSM epsilon values
 EPSILONS = [0.003, 0.01, 0.03]
 
-# Defenses
-RUN_TVM = True
-RUN_NLM = True
-RUN_SVD = True
-RUN_RANDOM_RESIZE = True
+# All combined defenses always run
+RUN_JPEG_TVM_NLM = True
+RUN_BLUR_TVM = True
+RUN_NLM_RESIZE = True
+RUN_FULL_PIPELINE = True
 
-# Parameters
-TVM_WEIGHT = 0.05              # Guo et al., ICLR 2018
-NLM_H = 6                     # Filter strength
+# Component parameters
+JPEG_QUALITY = 75
+BLUR_SIGMA = 1.0
+TVM_WEIGHT = 0.05
+NLM_H = 6
 NLM_TEMPLATE = 7
 NLM_SEARCH = 21
-SVD_KEEP_RATIO = 0.90         # Keep top 90% singular values
-RAND_RESIZE_RANGE = (0.8, 1.0) # Xie et al., ICLR 2018
+RAND_RESIZE_RANGE = (0.8, 1.0)
 
 # YOLO settings
 YOLO_MODEL = "yolov8x-worldv2.pt"
@@ -157,13 +156,14 @@ YOLO_CONF = 0.001
 YOLO_IOU_NMS = 0.5
 
 # Output
-OUTPUT_DIR = "./results_phase2_variantB_yolo"
+OUTPUT_DIR = "./results_phase2_variantC_yolo"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-print("Variant B: Advanced Denoising (YOLOv8x-worldv2)")
+print("Variant C: Combined Pipelines (YOLOv8x-worldv2)")
 print(f"  Images: {NUM_IMAGES}, Epsilons: {EPSILONS}")
 print(f"  Model: {YOLO_MODEL} (imgsz={YOLO_IMGSZ})")
-print(f"  Defenses: TVM={RUN_TVM}, NLM={RUN_NLM}, SVD={RUN_SVD}, RandomResize={RUN_RANDOM_RESIZE}")
+print(f"  Defenses: JPEG_TVM_NLM={RUN_JPEG_TVM_NLM}, Blur_TVM={RUN_BLUR_TVM}, "
+      f"NLM_Resize={RUN_NLM_RESIZE}, FullPipeline={RUN_FULL_PIPELINE}")
 
 # ============================================================
 # 3. Load Model and Dataset
@@ -345,37 +345,31 @@ def fgsm_attack_multi_eps(pil_img, epsilons):
 print("Multi-epsilon FGSM attack ready (computes gradient once for all epsilons).")
 
 # ============================================================
-# 6. Defense Functions — Variant B: Advanced Denoising
+# 6. Defense Functions — Variant C: Combined Pipelines
 # ============================================================
 
-# Defense 1: Total Variance Minimization
-# Reference: Guo et al., ICLR 2018 — rated "very effective"
-def defend_tvm(pil_img, weight=TVM_WEIGHT):
+# ---- Component functions (used by combined pipelines) ----
+
+def _jpeg(pil_img, quality=JPEG_QUALITY):
+    buffer = BytesIO()
+    pil_img.save(buffer, format="JPEG", quality=quality)
+    buffer.seek(0)
+    return Image.open(buffer).convert("RGB")
+
+def _gaussian_blur(pil_img, sigma=BLUR_SIGMA):
+    return pil_img.filter(ImageFilter.GaussianBlur(radius=sigma))
+
+def _tvm(pil_img, weight=TVM_WEIGHT):
     arr = np.array(pil_img).astype(np.float64) / 255.0
     denoised = denoise_tv_chambolle(arr, weight=weight, channel_axis=-1)
     return Image.fromarray((np.clip(denoised, 0, 1) * 255).astype(np.uint8))
 
-# Defense 2: Non-Local Means Denoising
-# Reference: Buades et al. 2005; Won CAAD 2018 (Xie CVPR 2019)
-def defend_nlm(pil_img, h=NLM_H, template_size=NLM_TEMPLATE, search_size=NLM_SEARCH):
+def _nlm(pil_img, h=NLM_H, template_size=NLM_TEMPLATE, search_size=NLM_SEARCH):
     arr = np.array(pil_img)
     denoised = cv2.fastNlMeansDenoisingColored(arr, None, h, h, template_size, search_size)
     return Image.fromarray(denoised)
 
-# Defense 3: SVD Spectral Filter
-# Per-channel SVD, keep top K% singular values
-def defend_svd(pil_img, keep_ratio=SVD_KEEP_RATIO):
-    arr = np.array(pil_img).astype(np.float64)
-    result = np.zeros_like(arr)
-    for c in range(3):
-        U, S, Vt = np.linalg.svd(arr[:, :, c], full_matrices=False)
-        k = max(1, int(len(S) * keep_ratio))
-        result[:, :, c] = (U[:, :k] * S[:k]) @ Vt[:k, :]
-    return Image.fromarray(np.clip(result, 0, 255).astype(np.uint8))
-
-# Defense 4: Random Resize + Padding
-# Reference: Xie et al., ICLR 2018 — #2/107 NIPS 2017
-def defend_random_resize_pad(pil_img, resize_range=RAND_RESIZE_RANGE):
+def _random_resize_pad(pil_img, resize_range=RAND_RESIZE_RANGE):
     w, h = pil_img.size
     ratio = np.random.uniform(*resize_range)
     new_w, new_h = int(w * ratio), int(h * ratio)
@@ -386,16 +380,34 @@ def defend_random_resize_pad(pil_img, resize_range=RAND_RESIZE_RANGE):
     padded.paste(resized, (pad_x, pad_y))
     return padded
 
+# ---- Combined Pipelines ----
+
+# Pipeline 1: JPEG -> TVM -> NLM
+def defend_jpeg_tvm_nlm(pil_img):
+    return _nlm(_tvm(_jpeg(pil_img)))
+
+# Pipeline 2: Gaussian Blur -> TVM
+def defend_blur_tvm(pil_img):
+    return _tvm(_gaussian_blur(pil_img))
+
+# Pipeline 3: NLM -> Random Resize + Pad
+def defend_nlm_resize(pil_img):
+    return _random_resize_pad(_nlm(pil_img))
+
+# Pipeline 4: Full Pipeline (JPEG -> TVM -> NLM -> Random Resize)
+def defend_full_pipeline(pil_img):
+    return _random_resize_pad(_nlm(_tvm(_jpeg(pil_img))))
+
 # Defense registry
 DEFENSES = {}
-if RUN_TVM:
-    DEFENSES["tvm"] = defend_tvm
-if RUN_NLM:
-    DEFENSES["nlm"] = defend_nlm
-if RUN_SVD:
-    DEFENSES["svd"] = defend_svd
-if RUN_RANDOM_RESIZE:
-    DEFENSES["random_resize_pad"] = defend_random_resize_pad
+if RUN_JPEG_TVM_NLM:
+    DEFENSES["jpeg_tvm_nlm"] = defend_jpeg_tvm_nlm
+if RUN_BLUR_TVM:
+    DEFENSES["blur_tvm"] = defend_blur_tvm
+if RUN_NLM_RESIZE:
+    DEFENSES["nlm_resize"] = defend_nlm_resize
+if RUN_FULL_PIPELINE:
+    DEFENSES["full_pipeline"] = defend_full_pipeline
 
 print(f"Defenses: {list(DEFENSES.keys())}")
 
@@ -591,7 +603,7 @@ clean_ap50 = eval_stats["clean"][1]
 all_defense_names = list(DEFENSES.keys())
 
 print("=" * 90)
-print(f"{'FGSM ATTACK & DEFENSE RESULTS (VARIANT B — YOLOv8x-worldv2)':^90}")
+print(f"{'FGSM ATTACK & DEFENSE RESULTS (VARIANT C — YOLOv8x-worldv2)':^90}")
 print("=" * 90)
 print(f"\nModel: {YOLO_MODEL} | Images: {NUM_IMAGES}")
 print(f"Clean Baseline:  mAP = {clean_ap:.4f},  AP50 = {clean_ap50:.4f}")
@@ -686,7 +698,7 @@ for i, dname in enumerate(all_defense_names):
 ax.axhline(y=clean_ap, color='gray', linestyle='--', linewidth=1.5, label=f"Clean ({clean_ap:.3f})")
 ax.set_xlabel("FGSM Epsilon", fontsize=12)
 ax.set_ylabel("mAP", fontsize=12)
-ax.set_title("FGSM Attack: mAP vs Epsilon (Variant B — YOLOv8x-worldv2)", fontsize=14)
+ax.set_title("FGSM Attack: mAP vs Epsilon (Variant C — YOLOv8x-worldv2)", fontsize=14)
 ax.legend(fontsize=9)
 ax.grid(True, alpha=0.3)
 
@@ -699,7 +711,7 @@ for bar, cost in zip(bars, clean_costs):
     ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.001,
             f"-{cost:.3f}", ha='center', va='bottom', fontsize=9)
 ax.set_ylabel("mAP", fontsize=12)
-ax.set_title("Defense Cost on Clean Images (Variant B — YOLOv8x-worldv2)", fontsize=14)
+ax.set_title("Defense Cost on Clean Images (Variant C — YOLOv8x-worldv2)", fontsize=14)
 ax.legend(fontsize=10)
 ax.grid(True, alpha=0.3, axis='y')
 
@@ -727,7 +739,7 @@ for i, dname in enumerate(std_names):
     defended = DEFENSES[dname](sample_adv)
     axes[3 + i].imshow(defended); axes[3 + i].set_title(f"+ {dname}"); axes[3 + i].axis("off")
 
-plt.suptitle("FGSM Attack and Defense Visual Comparison (Variant B — YOLOv8x-worldv2)", fontsize=14)
+plt.suptitle("FGSM Attack and Defense Visual Comparison (Variant C — YOLOv8x-worldv2)", fontsize=14)
 plt.tight_layout()
 plt.savefig(os.path.join(OUTPUT_DIR, "visual_comparison.png"), dpi=150, bbox_inches='tight')
 print(f"Visual comparison saved to {OUTPUT_DIR}/visual_comparison.png")
@@ -737,7 +749,7 @@ print(f"Visual comparison saved to {OUTPUT_DIR}/visual_comparison.png")
 # ============================================================
 
 print("=" * 80)
-print(f"{'NET GAIN ANALYSIS (VARIANT B — YOLOv8x-worldv2)':^80}")
+print(f"{'NET GAIN ANALYSIS (VARIANT C — YOLOv8x-worldv2)':^80}")
 print("=" * 80)
 print("\nNet Gain = defended_mAP - max(clean+defense_mAP, attacked_mAP)")
 print("Positive = defense is helpful. Negative = defense makes things worse.\n")

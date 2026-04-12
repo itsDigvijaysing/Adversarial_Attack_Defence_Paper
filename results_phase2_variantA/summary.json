@@ -1,0 +1,99 @@
+{
+  "clean_mAP": 0.0006054042904290427,
+  "clean_AP50": 0.0008353960396039603,
+  "defense_cost": {
+    "jpeg": {
+      "mAP": 0.0006126237623762374,
+      "mAP_drop": -7.21947194719469e-06
+    },
+    "gaussian_blur": {
+      "mAP": 0.00039294554455445547,
+      "mAP_drop": 0.00021245874587458725
+    },
+    "median_filter": {
+      "mAP": 0.0004727722772277227,
+      "mAP_drop": 0.00013263201320132001
+    },
+    "bit_depth": {
+      "mAP": 0.0003991336633663366,
+      "mAP_drop": 0.0002062706270627061
+    }
+  },
+  "attack_results": {
+    "0.003": {
+      "attacked_mAP": 0.0,
+      "defenses": {
+        "jpeg": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        },
+        "gaussian_blur": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        },
+        "median_filter": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        },
+        "bit_depth": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        }
+      }
+    },
+    "0.01": {
+      "attacked_mAP": 0.0,
+      "defenses": {
+        "jpeg": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        },
+        "gaussian_blur": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        },
+        "median_filter": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        },
+        "bit_depth": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        }
+      }
+    },
+    "0.03": {
+      "attacked_mAP": 0.0,
+      "defenses": {
+        "jpeg": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        },
+        "gaussian_blur": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        },
+        "median_filter": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        },
+        "bit_depth": {
+          "mAP": 0.0,
+          "recovery": 0.0,
+          "recovery_pct": 0.0
+        }
+      }
+    }
+  }
+}

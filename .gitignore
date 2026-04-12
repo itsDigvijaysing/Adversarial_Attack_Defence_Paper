@@ -6,6 +6,3 @@ annotations/
 # Data overrides
 Dataset/
 
-# Results overrides
-results_phase2_variant*/fgsm_*.json
-results_phase2_variant*/clean*.json

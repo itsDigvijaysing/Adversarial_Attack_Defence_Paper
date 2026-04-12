@@ -1,0 +1,49 @@
+{
+  "clean_mAP": 0.36039793054236574,
+  "clean_AP50": 0.48729909397101523,
+  "defense_cost": {
+    "spectral_gate_gpu": {
+      "mAP": 0.27394004361613294,
+      "mAP_drop": 0.0864578869262328
+    },
+    "laplacian_smooth_gpu": {
+      "mAP": 0.34296821932831745,
+      "mAP_drop": 0.017429711214048293
+    },
+    "gamma_stabilize_gpu": {
+      "mAP": 0.3618836598598491,
+      "mAP_drop": -0.0014857293174833641
+    },
+    "rand_ensemble_gpu": {
+      "mAP": 0.3276269893409596,
+      "mAP_drop": 0.03277094120140617
+    }
+  },
+  "attack_results": {
+    "0.03": {
+      "attacked_mAP": 0.2656242422021707,
+      "defenses": {
+        "spectral_gate_gpu": {
+          "mAP": 0.26946512956693075,
+          "recovery": 0.0038408873647600705,
+          "recovery_pct": 4.052693771896907
+        },
+        "laplacian_smooth_gpu": {
+          "mAP": 0.26241550846821665,
+          "recovery": -0.003208733733954028,
+          "recovery_pct": -3.3856799182871433
+        },
+        "gamma_stabilize_gpu": {
+          "mAP": 0.2663191103621057,
+          "recovery": 0.0006948681599350248,
+          "recovery_pct": 0.7331867864430469
+        },
+        "rand_ensemble_gpu": {
+          "mAP": 0.2722478623028198,
+          "recovery": 0.006623620100649097,
+          "recovery_pct": 6.988880792391734
+        }
+      }
+    }
+  }
+}

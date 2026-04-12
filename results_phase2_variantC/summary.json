@@ -1,97 +1,97 @@
 {
-  "clean_mAP": 0.009838134993201969,
-  "clean_AP50": 0.012147527252725271,
+  "clean_mAP": 0.36030487913680836,
+  "clean_AP50": 0.48716006474888307,
   "defense_cost": {
     "jpeg_tvm_nlm": {
-      "mAP": 0.00805261560483947,
-      "mAP_drop": 0.0017855193883624994
+      "mAP": 0.2879655072835367,
+      "mAP_drop": 0.07233937185327166
     },
     "blur_tvm": {
-      "mAP": 0.00905483127352548,
-      "mAP_drop": 0.0007833037196764894
+      "mAP": 0.3136940261016583,
+      "mAP_drop": 0.04661085303515006
     },
     "nlm_resize": {
-      "mAP": 0.003723344209420941,
-      "mAP_drop": 0.006114790783781028
+      "mAP": 0.09568714622275386,
+      "mAP_drop": 0.2646177329140545
     },
     "full_pipeline": {
-      "mAP": 0.003365240958996441,
-      "mAP_drop": 0.006472894034205527
+      "mAP": 0.09081120334537922,
+      "mAP_drop": 0.26949367579142913
     }
   },
   "attack_results": {
     "0.003": {
-      "attacked_mAP": 0.0,
+      "attacked_mAP": 0.3044882999824252,
       "defenses": {
         "jpeg_tvm_nlm": {
-          "mAP": 0.0,
-          "recovery": 0.0,
-          "recovery_pct": 0.0
+          "mAP": 0.25942434577998386,
+          "recovery": -0.04506395420244136,
+          "recovery_pct": -80.73578654435074
         },
         "blur_tvm": {
-          "mAP": 0.0,
-          "recovery": 0.0,
-          "recovery_pct": 0.0
+          "mAP": 0.31443793749744237,
+          "recovery": 0.009949637515017151,
+          "recovery_pct": 17.825595308335604
         },
         "nlm_resize": {
-          "mAP": 0.0,
-          "recovery": 0.0,
-          "recovery_pct": 0.0
+          "mAP": 0.0885350146252038,
+          "recovery": -0.21595328535722141,
+          "recovery_pct": -386.8981020135898
         },
         "full_pipeline": {
-          "mAP": 0.0,
-          "recovery": 0.0,
-          "recovery_pct": 0.0
+          "mAP": 0.07890683761910337,
+          "recovery": -0.22558146236332183,
+          "recovery_pct": -404.1477743366998
         }
       }
     },
     "0.01": {
-      "attacked_mAP": 0.0,
+      "attacked_mAP": 0.3044882999824252,
       "defenses": {
         "jpeg_tvm_nlm": {
-          "mAP": 0.0,
-          "recovery": 0.0,
-          "recovery_pct": 0.0
+          "mAP": 0.25942434577998386,
+          "recovery": -0.04506395420244136,
+          "recovery_pct": -80.73578654435074
         },
         "blur_tvm": {
-          "mAP": 0.0,
-          "recovery": 0.0,
-          "recovery_pct": 0.0
+          "mAP": 0.31443793749744237,
+          "recovery": 0.009949637515017151,
+          "recovery_pct": 17.825595308335604
         },
         "nlm_resize": {
-          "mAP": 0.0,
-          "recovery": 0.0,
-          "recovery_pct": 0.0
+          "mAP": 0.09523274689761257,
+          "recovery": -0.20925555308481264,
+          "recovery_pct": -374.8985628553703
         },
         "full_pipeline": {
-          "mAP": 0.0,
-          "recovery": 0.0,
-          "recovery_pct": 0.0
+          "mAP": 0.08932915924835635,
+          "recovery": -0.21515914073406886,
+          "recovery_pct": -385.4753264956634
         }
       }
     },
     "0.03": {
-      "attacked_mAP": 0.0,
+      "attacked_mAP": 0.2745813091325324,
       "defenses": {
         "jpeg_tvm_nlm": {
-          "mAP": 0.0,
-          "recovery": 0.0,
-          "recovery_pct": 0.0
+          "mAP": 0.26152224931637724,
+          "recovery": -0.013059059816155183,
+          "recovery_pct": -15.233919697352535
         },
         "blur_tvm": {
-          "mAP": 0.0,
-          "recovery": 0.0,
-          "recovery_pct": 0.0
+          "mAP": 0.3128725997672283,
+          "recovery": 0.038291290634695885,
+          "recovery_pct": 44.66833407986379
         },
         "nlm_resize": {
-          "mAP": 0.0,
-          "recovery": 0.0,
-          "recovery_pct": 0.0
+          "mAP": 0.08196921233530685,
+          "recovery": -0.19261209679722557,
+          "recovery_pct": -224.68977527139614
         },
         "full_pipeline": {
-          "mAP": 0.0,
-          "recovery": 0.0,
-          "recovery_pct": 0.0
+          "mAP": 0.09268351854972091,
+          "recovery": -0.18189779058281152,
+          "recovery_pct": -212.19110516948646
         }
       }
     }

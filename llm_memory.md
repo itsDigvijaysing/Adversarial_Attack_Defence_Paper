@@ -1,8 +1,8 @@
 # LLM Memory -- Florence-2 Adversarial Robustness Project
 
-## Project State (updated 2026-04-11)
+## Project State (updated 2026-04-12)
 - Phase 1 DONE: FGSM + PGD on Florence-2-Base, COCO val2017. Paper submitted to APSCON IEEE.
-- Phase 2 IN PROGRESS: 3 variant notebooks created, READY TO RUN after critical eval-loop bug fix.
+- Phase 2 IN PROGRESS: Variants A & B DONE (1000 images), Variant C DONE (1000 images), Variant D READY TO RUN (5000 images, GPU-accelerated).
 - Old files in `OLD/` directory. Do NOT edit.
 
 ## CRITICAL BUG FOUND & FIXED (2026-04-11)
@@ -39,8 +39,9 @@ The eval loop now has 3 sections per image:
 - **FGSM_Phase2_VariantA.ipynb** -- Classical Squeezing: JPEG(q=75), Gaussian Blur(s=1.0), Median Filter(3x3), Bit Depth(4-bit)
 - **FGSM_Phase2_VariantB.ipynb** -- Advanced Denoising: TVM(w=0.05), NLM(h=6), SVD Spectral(90%), Random Resize+Pad
 - **FGSM_Phase2_VariantC.ipynb** -- Combined Pipelines: JPEG->TVM->NLM, Blur->TVM, NLM->Resize, Full Pipeline(JPEG->TVM->NLM->Resize)
+- **FGSM_Phase2_VariantD.ipynb** -- Winner Combos (GPU-accelerated): JPEG->TVM, JPEG->Median->TVM, Median->TVM, JPEG->TVM->SVD
 - **phase2_fgsm_variant2.ipynb** -- Original variant2, has TVM+NLM+JPEG+RandomResize+Combined (superset)
-- Output dirs: `results_phase2_variantA/`, `results_phase2_variantB/`, `results_phase2_variantC/`
+- Output dirs: `results_phase2_variantA/`, `results_phase2_variantB/`, `results_phase2_variantC/`, `results_phase2_variantD/`
 
 ### Other files:
 - phase2_fgsm_variant1.ipynb -- FGSM + 5 defenses (JPEG, blur, median, DiffPure, SVD) -- older
@@ -76,15 +77,17 @@ All 3 variants have identical structure, only cells 0 (title), 6 (config), 13-14
 - x_adv = x + eps * sign(grad), clamped to [-2.5, 2.5], denormalized to PIL
 - Epsilons: 0.003, 0.01, 0.03
 - Dataset: COCO val2017, `./val2017` + `./annotations/instances_val2017.json`
-- NUM_IMAGES: 100 per variant (quick validation), scale to 500 after verifying
+- NUM_IMAGES: 1000 for A/B/C (screening), 5000 for D (paper-ready)
 - Eval: pycocotools COCOeval, mAP@[0.5:0.95]
 - Inference: prompt=`<OD>`, beams=5, max_tokens=512, repetition_penalty=1.8, length_penalty=1.0
 - Scores: heuristic `0.6 + 0.2*area_ratio + 0.15*(1-center_dist)` range [0.60, 0.98]
 - Labels: `FLORENCE_TO_COCO` dict (~70 mappings) + `_map_label()` with case-insensitive fallback
 - NMS: class-aware, IoU threshold=0.5
-- GPU: `NUM_GPUS` in cell 2, BEFORE `import torch`. Uses nvidia-smi subprocess to pick GPUs by free memory.
+- GPU: `NUM_GPUS` + `GPU_POOL` in cell 2, BEFORE `import torch`. Uses nvidia-smi to pick GPUs by free memory from specified pool.
+- Variant D uses GPU-accelerated defenses: TVM (Chambolle in PyTorch), SVD (torch.linalg.svd), Median (torch.unfold). ~50-100x faster than CPU skimage.
 - Env: conda `vlm_ftune`, PyTorch 2.6.0+cu118, Transformers 4.51.0
 - Net Gain = defended_mAP - max(clean+defense_mAP, attacked_mAP). Positive = defense helps.
+- **IMPORTANT: Net Gain Interpretation** -- When reading results, focus on RECOVERY from attacked mAP, not just comparison to clean baseline. Key metrics: Recovery = defended_mAP - attacked_mAP; Recovery% = recovery / (clean_mAP - attacked_mAP). A defense is good if it pulls mAP back UP from the attacked floor.
 
 ## Phase 2 Defense Distribution (12 defenses across 3 variants)
 
@@ -109,9 +112,54 @@ Guo et al. ICLR 2018 showed stacked transforms outperform individual.
 3. NLM -> Random Resize (denoise + stochastic)
 4. Full Pipeline: JPEG -> TVM -> NLM -> Random Resize (maximum defense)
 
+### Variant D -- Winner Combination Pipelines (created 2026-04-12, GPU-accelerated)
+Based on Variant A/B screening results + Variant C confirmation. Only proven winners combined.
+- **NUM_IMAGES = 5000** (paper-ready scale, full COCO val2017)
+- **EPSILONS = [0.03]** only (strongest attack; weaker epsilons showed no recovery difference in A/B)
+- **GPU-accelerated defenses**: TVM (Chambolle in PyTorch), SVD (torch.linalg.svd), Median (torch.unfold). JPEG stays CPU.
+- **GPU_POOL**: configurable list of physical GPUs to choose from
+- **Multi-GPU parallel**: model loaded on ALL visible GPUs (e.g. cuda:0 + cuda:1), each GPU processes a separate stream of source images via ThreadPoolExecutor (n_gpus workers). Files split round-robin across GPUs.
+- **Per-image flow** (no batching, no chunking): one source image at a time per GPU. Each thread does clean inference + clean+defenses + FGSM + defended FGSM, fully on its own GPU. GPU ops release the GIL so two threads truly run in parallel.
+- **Why no batching**: `model.generate(num_beams=5)` with batch=10+ creates 50+ active beam sequences and causes memory thrashing instead of speedup. Beam search is per-step sequential, so batching gives little wall-clock benefit but huge VRAM pressure (20GB allocated, 0% util observed). Per-image dual-GPU is the empirically faster choice.
+- OUTPUT_DIR = `./results_phase2_variantD`
+1. JPEG -> TVM (compress + smooth)
+2. JPEG -> Median -> TVM (compress + local smooth + global smooth)
+3. Median -> TVM (local + global smooth, no compression)
+4. JPEG -> TVM -> SVD (compress + smooth + spectral)
+
 ### DROPPED defenses (no OD paper backing):
 - ~~DiffPure~~ -- Nie et al. ICML 2022: classification only (CIFAR-10, ImageNet), never OD
 - ~~SmoothVLM~~ -- Sun et al. 2024: VLM text generation/safety only, never OD
+
+## Phase 2 Screening Results (Variants A & B, 1000 images, 2026-04-12)
+
+### Winners (defenses that RECOVER mAP after FGSM attack at eps=0.03):
+| Defense | Variant | Recovery | StrictGain | Verdict |
+|---------|---------|----------|------------|---------|
+| TVM (w=0.05) | B | 14.7% | Positive | RECOVERS (clear #1) |
+| JPEG (q=75) | A | Partial | Marginal | Partial recovery |
+| Median Filter (3x3) | A | Partial | Marginal | Partial recovery |
+| SVD (90%) | B | 3.0% | Negative (high clean cost) | Conditional |
+
+### Losers (negative or negligible strict gain):
+- Gaussian Blur (sigma=1.0) -- marginal effect
+- Bit Depth (4-bit) -- negative strict gain
+- NLM (h=6) -- negative recovery (SURPRISE: won CAAD 2018 but failed here)
+- Random Resize+Pad -- worst performer, very negative
+
+### Key insight:
+TVM dominance aligns with Guo et al. ICLR 2018 ranking. NLM failure is surprising -- may be because NLM was validated on classification (feature-level denoising), not on VLM text generation. JPEG performing better than expected on VLMs.
+
+## Phase 2 Variant C Results (1000 images, completed 2026-04-12)
+
+| Pipeline | eps=0.03 defended mAP | Net Gain | Verdict |
+|----------|----------------------|----------|---------|
+| blur_tvm | 0.3129 | -0.0008 | Near-neutral — TVM carrying, blur adds nothing |
+| jpeg_tvm_nlm | 0.2615 | -0.0264 | NOT HELPFUL — NLM drags it down |
+| nlm_resize | 0.0820 | -0.1926 | CATASTROPHIC — both are losers |
+| full_pipeline (JPEG->TVM->NLM->Resize) | 0.0927 | -0.1819 | CATASTROPHIC — NLM + Resize destroy everything |
+
+**Key insight:** Every pipeline containing NLM or Random Resize fails. blur_tvm was best only because TVM carried it (blur is a loser from A/B). Confirms winner/loser classification and validates Variant D's winner-only design.
 
 ## Research References (Attacks)
 - **FGSM**: Goodfellow et al. ICLR 2015, "Explaining and Harnessing Adversarial Examples"
@@ -138,12 +186,15 @@ Guo et al. ICLR 2018 showed stacked transforms outperform individual.
 - PGD defended mAP = 0.194 (21.4% recovery of 0.131 drop)
 - NOTE: Phase 1 had methodological bugs (preemptive defense, biased scores, prompt ensemble mixing)
 
-## Next Steps
-1. **RE-RUN all 3 variants** with fixed eval loop (FGSM attack now actually executes)
-2. Compare results across A/B/C to find best defense(s)
-3. Scale winning defense(s) to 500 images
-4. PGD attack notebook (same defense set, iterative attack)
-5. Cross-task transfer experiments (future)
+## Next Steps (updated 2026-04-12)
+1. ~~RE-RUN all 3 variants~~ DONE -- Variants A & B completed (1000 images)
+2. ~~Compare results across A/B to find best defense(s)~~ DONE -- TVM wins, see results above
+3. ~~Wait for Variant C~~ DONE -- confirms NLM/Resize are losers, TVM carries blur_tvm
+4. **RUN Variant D** -- GPU-accelerated, 5000 images, eps=0.03 only, winner combos. GPU_POOL=[2,3] to avoid busy GPUs.
+5. Compare Variant D results -- find best pipeline ordering
+6. PGD attack notebook (same defense set, iterative attack)
+7. Cross-model comparison with YOLOv8x-worldv2 (future)
+8. Cross-task transfer experiments (future)
 
 ## Future Defense Ideas (if time allows)
 - **MirrorCheck** (Fares et al. ICLR 2025) -- cross-modal consistency, detection-specific

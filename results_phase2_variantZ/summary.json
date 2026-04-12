@@ -1,0 +1,173 @@
+{
+  "clean_mAP": 0.3604297642810769,
+  "clean_AP50": 0.4867928745045048,
+  "solo_defenses": {
+    "jpeg": {
+      "clean_mAP": 0.35154117438117044,
+      "clean_cost": 0.008888589899906485
+    },
+    "median": {
+      "clean_mAP": 0.3505346445445036,
+      "clean_cost": 0.00989511973657331
+    },
+    "tvm": {
+      "clean_mAP": 0.2854023750962279,
+      "clean_cost": 0.07502738918484902
+    },
+    "gaussian": {
+      "clean_mAP": 0.29176012208595914,
+      "clean_cost": 0.06866964219511779
+    },
+    "svd": {
+      "clean_mAP": 0.36183051551224066,
+      "clean_cost": -0.0014007512311637327
+    },
+    "blur_tvm": {
+      "clean_mAP": 0.2649276530829445,
+      "clean_cost": 0.0955021111981324
+    }
+  },
+  "ensembles": {
+    "ens_jpeg_median_tvm": {
+      "members": [
+        "jpeg",
+        "median",
+        "tvm"
+      ],
+      "clean_mAP": 0.35632850960283824,
+      "clean_cost": 0.004101254678238686
+    },
+    "ens_jpeg_tvm_svd": {
+      "members": [
+        "jpeg",
+        "tvm",
+        "svd"
+      ],
+      "clean_mAP": 0.35678217227861675,
+      "clean_cost": 0.003647592002460176
+    },
+    "ens_jpeg_median_gaussian": {
+      "members": [
+        "jpeg",
+        "median",
+        "gaussian"
+      ],
+      "clean_mAP": 0.3523666341270139,
+      "clean_cost": 0.008063130154063014
+    },
+    "ens_4way": {
+      "members": [
+        "jpeg",
+        "median",
+        "tvm",
+        "gaussian"
+      ],
+      "clean_mAP": 0.35004929638621146,
+      "clean_cost": 0.010380467894865464
+    },
+    "ens_blur_tvm_combo": {
+      "members": [
+        "jpeg",
+        "blur_tvm",
+        "median"
+      ],
+      "clean_mAP": 0.35230355760967885,
+      "clean_cost": 0.008126206671398073
+    }
+  },
+  "solo_attack_results": {
+    "0.03": {
+      "attacked_mAP": 0.27329544087245583,
+      "defenses": {
+        "jpeg": {
+          "mAP": 0.30808758586765456,
+          "recovery": 0.034792144995198726,
+          "recovery_pct": 39.92932249217004
+        },
+        "median": {
+          "mAP": 0.3160137442071523,
+          "recovery": 0.04271830333469645,
+          "recovery_pct": 49.02580483051056
+        },
+        "tvm": {
+          "mAP": 0.2624713726423893,
+          "recovery": -0.010824068230066541,
+          "recovery_pct": -12.422278393448345
+        },
+        "gaussian": {
+          "mAP": 0.2838538682137713,
+          "recovery": 0.010558427341315457,
+          "recovery_pct": 12.11741473196635
+        },
+        "svd": {
+          "mAP": 0.2748110794437961,
+          "recovery": 0.0015156385713402942,
+          "recovery_pct": 1.7394277157953308
+        },
+        "blur_tvm": {
+          "mAP": 0.2747991927796732,
+          "recovery": 0.0015037519072173544,
+          "recovery_pct": 1.7257859456432902
+        }
+      }
+    }
+  },
+  "ensemble_attack_results": {
+    "0.03": {
+      "attacked_mAP": 0.27329544087245583,
+      "ensembles": {
+        "ens_jpeg_median_tvm": {
+          "members": [
+            "jpeg",
+            "median",
+            "tvm"
+          ],
+          "mAP": 0.3205150405117623,
+          "recovery": 0.04721959963930644,
+          "recovery_pct": 54.19173270889772
+        },
+        "ens_jpeg_tvm_svd": {
+          "members": [
+            "jpeg",
+            "tvm",
+            "svd"
+          ],
+          "mAP": 0.31160570694617534,
+          "recovery": 0.03831026607371951,
+          "recovery_pct": 43.96690600793612
+        },
+        "ens_jpeg_median_gaussian": {
+          "members": [
+            "jpeg",
+            "median",
+            "gaussian"
+          ],
+          "mAP": 0.320965490560399,
+          "recovery": 0.047670049687943195,
+          "recovery_pct": 54.708693225736006
+        },
+        "ens_4way": {
+          "members": [
+            "jpeg",
+            "median",
+            "tvm",
+            "gaussian"
+          ],
+          "mAP": 0.3195436370117078,
+          "recovery": 0.04624819613925196,
+          "recovery_pct": 53.076898207344264
+        },
+        "ens_blur_tvm_combo": {
+          "members": [
+            "jpeg",
+            "blur_tvm",
+            "median"
+          ],
+          "mAP": 0.3262688458261944,
+          "recovery": 0.05297340495373859,
+          "recovery_pct": 60.7951067747631
+        }
+      }
+    }
+  }
+}

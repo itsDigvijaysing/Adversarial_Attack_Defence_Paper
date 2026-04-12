@@ -1,4 +1,4 @@
 coco_val2017*
 val2017/
-annotations/*.pt
+annotations/
 *.pt

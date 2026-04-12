@@ -1,0 +1,67 @@
+{
+  "clean_mAP": 0.3587731150567334,
+  "clean_AP50": 0.4862335195159509,
+  "defense_cost": {
+    "jpeg_median_tvm_cutout": {
+      "mAP": 0.19346249974673463,
+      "mAP_drop": 0.1653106153099988
+    },
+    "jpeg_median_cutout": {
+      "mAP": 0.229379240208142,
+      "mAP_drop": 0.12939387484859144
+    },
+    "jpeg_tvm_cutout": {
+      "mAP": 0.233356345432267,
+      "mAP_drop": 0.12541676962446643
+    },
+    "median_tvm_cutout": {
+      "mAP": 0.17832216034016218,
+      "mAP_drop": 0.18045095471657124
+    },
+    "jpeg_median": {
+      "mAP": 0.3372908702331112,
+      "mAP_drop": 0.02148224482362221
+    },
+    "tvm_cutout": {
+      "mAP": 0.225216474276009,
+      "mAP_drop": 0.13355664078072443
+    }
+  },
+  "attack_results": {
+    "0.03": {
+      "attacked_mAP": 0.2822041632150625,
+      "defenses": {
+        "jpeg_median_tvm_cutout": {
+          "mAP": 0.19912381632844098,
+          "recovery": -0.0830803468866215,
+          "recovery_pct": -108.50396262236264
+        },
+        "jpeg_median_cutout": {
+          "mAP": 0.22650242860542563,
+          "recovery": -0.055701734609636844,
+          "recovery_pct": -72.74715569414705
+        },
+        "jpeg_tvm_cutout": {
+          "mAP": 0.21912601635325257,
+          "recovery": -0.0630781468618099,
+          "recovery_pct": -82.38084150902667
+        },
+        "median_tvm_cutout": {
+          "mAP": 0.18697735505941,
+          "recovery": -0.09522680815565249,
+          "recovery_pct": -124.36739156696595
+        },
+        "jpeg_median": {
+          "mAP": 0.31491964460935185,
+          "recovery": 0.03271548139428937,
+          "recovery_pct": 42.72682413354481
+        },
+        "tvm_cutout": {
+          "mAP": 0.21368814502987316,
+          "recovery": -0.06851601818518932,
+          "recovery_pct": -89.48276884717782
+        }
+      }
+    }
+  }
+}

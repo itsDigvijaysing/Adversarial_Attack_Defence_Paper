@@ -1,0 +1,25 @@
+{
+  "images": 500,
+  "eps": 0.03,
+  "attacked_similarity_avg": 0.30574930392759647,
+  "ranked_defenses": [
+    {
+      "rank": 1,
+      "name": "ens_jpeg_median_tvm",
+      "defended_similarity_avg": 0.5064334646683636,
+      "recovery_avg": 0.2006841607407667
+    },
+    {
+      "rank": 2,
+      "name": "ens_blur_tvm_combo",
+      "defended_similarity_avg": 0.47713697857881643,
+      "recovery_avg": 0.1713876746512196
+    },
+    {
+      "rank": 3,
+      "name": "ens_jpeg_median_gaussian",
+      "defended_similarity_avg": 0.47056406370361226,
+      "recovery_avg": 0.16481475977601553
+    }
+  ]
+}

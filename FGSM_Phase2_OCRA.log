@@ -1,0 +1,64 @@
+[01:54:41] Starting FGSM OCR recovery run
+[01:54:41] Conda env: vlm_ftune
+[01:54:41] Device: cuda:0, dtype: torch.float16
+[01:54:41] Image dir: dataset/val2017
+[01:54:41] Images: 500, eps: 0.03
+[01:54:41] Loading Florence model: microsoft/Florence-2-base
+[01:55:46] Progress 10/500 | attacked_sim_avg=0.4554
+[01:56:00] Progress 20/500 | attacked_sim_avg=0.4044
+[01:56:14] Progress 30/500 | attacked_sim_avg=0.3497
+[01:56:27] Progress 40/500 | attacked_sim_avg=0.3940
+[01:56:40] Progress 50/500 | attacked_sim_avg=0.3949
+[01:56:52] Progress 60/500 | attacked_sim_avg=0.3746
+[01:57:05] Progress 70/500 | attacked_sim_avg=0.3802
+[01:57:18] Progress 80/500 | attacked_sim_avg=0.3669
+[01:57:38] Progress 90/500 | attacked_sim_avg=0.3560
+[01:57:52] Progress 100/500 | attacked_sim_avg=0.3443
+[01:58:05] Progress 110/500 | attacked_sim_avg=0.3249
+[01:58:20] Progress 120/500 | attacked_sim_avg=0.3267
+[01:58:34] Progress 130/500 | attacked_sim_avg=0.3265
+[01:58:46] Progress 140/500 | attacked_sim_avg=0.3242
+[01:59:00] Progress 150/500 | attacked_sim_avg=0.3126
+[01:59:14] Progress 160/500 | attacked_sim_avg=0.3091
+[01:59:28] Progress 170/500 | attacked_sim_avg=0.3118
+[01:59:44] Progress 180/500 | attacked_sim_avg=0.3216
+[01:59:57] Progress 190/500 | attacked_sim_avg=0.3172
+[02:00:11] Progress 200/500 | attacked_sim_avg=0.3086
+[02:00:24] Progress 210/500 | attacked_sim_avg=0.3050
+[02:00:40] Progress 220/500 | attacked_sim_avg=0.3010
+[02:00:55] Progress 230/500 | attacked_sim_avg=0.3012
+[02:01:09] Progress 240/500 | attacked_sim_avg=0.2987
+[02:01:23] Progress 250/500 | attacked_sim_avg=0.2991
+[02:01:37] Progress 260/500 | attacked_sim_avg=0.2967
+[02:01:50] Progress 270/500 | attacked_sim_avg=0.2972
+[02:02:05] Progress 280/500 | attacked_sim_avg=0.2958
+[02:02:18] Progress 290/500 | attacked_sim_avg=0.3049
+[02:02:32] Progress 300/500 | attacked_sim_avg=0.3029
+[02:02:48] Progress 310/500 | attacked_sim_avg=0.3081
+[02:03:02] Progress 320/500 | attacked_sim_avg=0.3123
+[02:03:17] Progress 330/500 | attacked_sim_avg=0.3148
+[02:03:31] Progress 340/500 | attacked_sim_avg=0.3158
+[02:03:45] Progress 350/500 | attacked_sim_avg=0.3145
+[02:04:02] Progress 360/500 | attacked_sim_avg=0.3148
+[02:04:19] Progress 370/500 | attacked_sim_avg=0.3117
+[02:04:33] Progress 380/500 | attacked_sim_avg=0.3168
+[02:04:46] Progress 390/500 | attacked_sim_avg=0.3203
+[02:04:59] Progress 400/500 | attacked_sim_avg=0.3168
+[02:05:12] Progress 410/500 | attacked_sim_avg=0.3195
+[02:05:27] Progress 420/500 | attacked_sim_avg=0.3141
+[02:05:39] Progress 430/500 | attacked_sim_avg=0.3097
+[02:06:01] Progress 440/500 | attacked_sim_avg=0.3078
+[02:06:16] Progress 450/500 | attacked_sim_avg=0.3049
+[02:06:29] Progress 460/500 | attacked_sim_avg=0.3048
+[02:06:43] Progress 470/500 | attacked_sim_avg=0.3055
+[02:06:58] Progress 480/500 | attacked_sim_avg=0.3084
+[02:07:11] Progress 490/500 | attacked_sim_avg=0.3073
+[02:07:24] Progress 500/500 | attacked_sim_avg=0.3057
+[02:07:24] ==== Final OCR Recovery Summary ====
+[02:07:24] Attacked OCR similarity avg: 0.3057
+[02:07:24] 1. ens_jpeg_median_tvm: defended_sim_avg=0.5064, recovery_avg=+0.2007
+[02:07:24] 2. ens_blur_tvm_combo: defended_sim_avg=0.4771, recovery_avg=+0.1714
+[02:07:24] 3. ens_jpeg_median_gaussian: defended_sim_avg=0.4706, recovery_avg=+0.1648
+[02:07:24] TOP3 ens_jpeg_median_tvm:sim=0.5064,rec=+0.2007 | ens_blur_tvm_combo:sim=0.4771,rec=+0.1714 | ens_jpeg_median_gaussian:sim=0.4706,rec=+0.1648
+[02:07:24] Saved summary JSON: FGSM_Phase2_OCRA.json
+[02:07:24] Saved concise log: FGSM_Phase2_OCRA.log

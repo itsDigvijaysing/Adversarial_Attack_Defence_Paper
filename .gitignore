@@ -2,6 +2,12 @@ coco_val2017*
 val2017/
 annotations/
 *.pt
+__pycache__/
+*.pyc
+
+# Generated experiment outputs (do not version large runtime artifacts)
+results_phase3_florence_fgsm/
+results_phase3_yolo_fgsm/
 
 # Data overrides
 Dataset/

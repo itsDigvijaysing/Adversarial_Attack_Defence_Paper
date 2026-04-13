@@ -4,12 +4,7 @@ annotations/
 *.pt
 __pycache__/
 *.pyc
-
-# Generated experiment outputs (do not version large runtime artifacts)
-results_phase3_florence_fgsm/detections.pkl
-results_phase3_florence_fgsm/eval_stats.pkl
-results_phase3_yolo_fgsm/detections.pkl
-results_phase3_yolo_fgsm/eval_stats.pkl
+*.pkl
 
 # Data overrides
 Dataset/

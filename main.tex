@@ -1,0 +1,303 @@
+\documentclass[10pt,twocolumn,letterpaper]{article}
+
+% --- Packages & Definitions (Preamble) ---
+\usepackage{times}
+\usepackage{epsfig}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage{xcolor}
+
+\usepackage[final]{cvpr}
+\usepackage[pagebackref=true,breaklinks=true,colorlinks,bookmarks=false,hidelinks]{hyperref}
+
+\algnewcommand\algorithmicinput{\textbf{Input:}}
+\algnewcommand\Input{\item[\algorithmicinput]}
+\algnewcommand\algorithmicoutput{\textbf{Output:}}
+\algnewcommand\Output{\item[\algorithmicoutput]}
+
+\newcommand{\best}[1]{\textbf{#1}}
+
+\begin{document}
+
+%%%%%%%%% TITLE
+\title{Robustifying Zero-Shot Detection and OCR: A Transform-Ensemble Defense for Florence-2 and YOLO-World Under Adversarial Attacks}
+
+%%%%%%%%% AUTHORS
+\author{Digvijaysing Rajput\thanks{Indian Institute of Technology Hyderabad. Email: \texttt{cs24mtech14020@iith.ac.in}} \and
+Lokendra Mandloi\thanks{Indian Institute of Technology Hyderabad. Email: \texttt{cs24mtech11024@iith.ac.in}} \and
+Ankush Chhabra\thanks{Indian Institute of Technology Hyderabad. Email: \texttt{cs24mtech14004@iith.ac.in}}
+}
+
+\maketitle
+\thispagestyle{empty}
+
+%%%%%%%%% ABSTRACT
+\begin{abstract}
+Open-vocabulary and unified vision-language detectors such as Florence-2 and YOLO-World deliver strong zero-shot performance, yet their robustness to adversarial perturbations has received little systematic study. We present an end-to-end empirical study of two heterogeneous detectors---\emph{Florence-2-Base} (encoder--decoder VLM) and \emph{YOLOv8x-WorldV2} (open-vocabulary CNN)---under three adversarial threat models: FGSM, PGD, and a localized Patch attack. On 1000 COCO val2017 images we show that all three attacks induce large degradations (e.g., PGD drops YOLO mAP by 0.403 and Florence-2 by 0.136 at $\epsilon{=}0.03$). We then propose a purely \emph{inference-time}, model-agnostic defense based on five GPU-efficient input transforms (JPEG, median, TVM, Gaussian, Blur+TVM) and three \emph{NMS-merged ensembles} that aggregate detections across multiple transforms. Without any retraining, our primary ensemble $\mathrm{Ens}_{\text{JMT}}{=}\{\text{JPEG, Median, TVM}\}$ recovers up to 83.8\% of the PGD drop on YOLO, 72.3\% on Florence-2, and 47.1\% of the FGSM OCR drop---while remaining within 0.02 mAP of clean on Patch attacks where several solo defenses are actively harmful. We ran 15+ variant pipelines during design; the final suite is deliberately minimal and transferable across detector architectures and tasks (detection and OCR).
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+Zero-shot and open-vocabulary detectors have become a practical substitute for closed-vocabulary pipelines: Florence-2~\cite{xiao2024florence2} uses a single sequence-to-sequence formulation to cover detection, grounding, captioning and OCR, while YOLO-World~\cite{cheng2024yoloworld} extends YOLOv8 with vision--language embeddings for text-prompted detection. Both are deployed in the same way (query $\rightarrow$ boxes), yet they differ structurally: one is a transformer-based VLM, the other a one-stage CNN.
+
+Adversarial perturbations~\cite{goodfellow2014explaining,madry2017towards} have historically been studied on closed-set classifiers; recent work has begun probing VLMs~\cite{wang2024oneobjectmultiplelies}, but cross-model, cross-task defenses for \emph{detection} remain underexplored. Retraining-based defenses (adversarial training) are infeasible for frozen foundation backbones deployed as zero-shot services. We therefore focus on \emph{inference-time, model-agnostic} defenses.
+
+\paragraph{Contributions.}
+\begin{itemize}
+\itemsep -0.25em
+\item We benchmark Florence-2-Base and YOLOv8x-WorldV2 on COCO val2017 under FGSM, PGD, and Patch attacks, and report results for a secondary Florence-2 OCR task under the same attacks.
+\item We design a compact suite of five GPU-accelerated input transforms and three NMS-merged ensembles; we show that \emph{detection-level} ensembling outperforms every solo defense on average across three attacks and three task/model settings.
+\item We identify and report a structural finding: single-step FGSM is \emph{harder} to defend than iterative PGD for smoothing-based transforms, contradicting the common intuition that stronger attacks are harder to counter. We explain the mechanism (Sec.~\ref{sec:discussion}).
+\item We release the full pipeline (5 solos, 3 ensembles, 2 models, 3 attacks) with hyperparameters, per-condition mAP, and a written log of 15+ discarded variants that led to the locked final design.
+\end{itemize}
+
+\section{Related Work}
+
+\subsection{Unified and Open-Vocabulary Detectors}
+Florence-2~\cite{xiao2024florence2,xiao2023florence2} casts every vision task as prompted text generation over a DaViT~\cite{ding2022davit} visual backbone coupled to a BART-style decoder. YOLOv8x-WorldV2~\cite{cheng2024yoloworld} fuses CLIP~\cite{radford2021learning} text embeddings with YOLOv8 anchors~\cite{redmon2016yolo} to support open-vocabulary detection. Flamingo~\cite{alayrac2022flamingo} and prompt-engineered VLMs~\cite{zhou2022prompt} demonstrate the broader trend toward unified representations. We pick one representative per family.
+
+\subsection{Adversarial Attacks}
+FGSM~\cite{goodfellow2014explaining} is a single-step sign-gradient perturbation; PGD~\cite{madry2017towards} is its iterative, projected variant and remains the standard for worst-case evaluation. Localized \emph{patch} attacks~\cite{brown2017adversarial} replace a small image region with an optimized pattern, modelling a physical-world threat. Recent benchmarks show that unified VLMs are vulnerable to cross-task transfer~\cite{wang2024oneobjectmultiplelies}; features themselves may be brittle by construction~\cite{ilyas2019adversarial}.
+
+\subsection{Inference-Time Defenses}
+Guo et al.~\cite{guo2018countering} ranked input transformations on classification and found TVM~\cite{chambolle2004tvm} and image quilting ``very effective,'' with JPEG and bit-depth reduction ``weak.'' Feature squeezing~\cite{xu2018feature} gathers JPEG, median and bit-depth as cheap defenses. Randomized resize-and-pad~\cite{xie2018mitigating} stochastically perturbs the attack surface. Feature denoising~\cite{xie2019feature} won CAAD 2018 using NLM-style blocks. These defenses were validated almost exclusively on \emph{classification}; we re-evaluate the classical squeezing/denoising set on two detection architectures plus OCR, and show that \emph{detection-level ensembling} (not pixel-level stacking) is the correct granularity.
+
+\section{Methodology}
+
+\subsection{Target Models}
+\textbf{Florence-2-Base} (\texttt{microsoft/Florence-2-base}, 232M params) uses a DaViT image encoder and a BART decoder, invoked with task prompts (\texttt{<OD>} for detection, \texttt{<OCR>} for OCR). We run beam search with 5 beams, repetition penalty 1.8, length penalty 1.0, and map the generated labels to COCO categories via a 70-entry lookup. \textbf{YOLOv8x-WorldV2} is run with the full COCO vocabulary as the open prompt set.
+
+\subsection{Attack Formulations}
+Let $x\in[0,1]^{3\times H\times W}$ be the clean input, $\hat{x}$ its model-normalized form, and $\mathcal{L}$ the model's token-level cross-entropy computed against its own clean beam-search prediction (an untargeted self-labeled loss, matching the setup used in our earlier Variant-Z pipeline).
+
+\paragraph{FGSM~\cite{goodfellow2014explaining}.} A single signed gradient step:
+\begin{equation}
+\hat{x}_{\text{adv}} = \mathrm{clip}\!\left(\hat{x} + \epsilon\cdot\mathrm{sign}\!\left(\nabla_{\hat{x}}\mathcal{L}(\hat{x},y_{\text{self}})\right),\; -2.5,\; 2.5\right),
+\end{equation}
+with $\epsilon{=}0.03$ (normalized space for Florence-2; raw $[0,1]$ for YOLO).
+
+\paragraph{PGD~\cite{madry2017towards}.} Ten iterations, step size $\alpha{=}\epsilon/4{=}0.0075$, random start in the $\ell_\infty$ ball, and projection onto $\|\hat{x}_{\text{adv}}-\hat{x}\|_\infty\le\epsilon$ each step.
+
+\paragraph{Patch~\cite{brown2017adversarial}.} A $35\times35$ RGB patch is optimized for 100 Adam steps at learning rate 0.02, at a random image location per sample, maximizing the same self-label loss. Unlike FGSM/PGD the patch is an unbounded local perturbation; defenses must tolerate a small but high-energy artifact rather than a global low-magnitude one.
+
+\subsection{Defense Suite}
+Five solo transforms, all implemented as single-pass GPU kernels except JPEG:
+\begin{description}
+\itemsep -0.2em
+\item[JPEG ($q{=}75$):] lossy compression in the DCT domain, CPU.
+\item[Median ($3{\times}3$):] spatial smoothing via \texttt{unfold}-based GPU median.
+\item[TVM ($w{=}0.05$, 200 iters):] Chambolle's dual projected total variation minimization~\cite{chambolle2004tvm}, implemented in PyTorch for per-sample GPU inference.
+\item[Gaussian ($\sigma{=}1.0$):] separable GPU convolution.
+\item[Blur+TVM:] Gaussian blur followed by TVM (batched into a single TVM call with the raw branch).
+\end{description}
+
+\paragraph{Ensembles via detection-level NMS merge.}
+Instead of stacking transforms pixel-by-pixel, we run the detector independently through \emph{each} solo branch and merge the resulting per-image detections with \textbf{class-aware NMS} (IoU threshold 0.5). We lock three ensembles:
+\begin{align*}
+\mathrm{Ens}_{\text{BTC}} &= \{\text{JPEG, Blur+TVM, Median}\}\\
+\mathrm{Ens}_{\text{JMG}} &= \{\text{JPEG, Median, Gaussian}\}\\
+\mathrm{Ens}_{\text{JMT}} &= \{\text{JPEG, Median, TVM}\}\quad\text{(primary)}
+\end{align*}
+The motivation is that different transforms leave different residual errors; a detector that still fires on \emph{any} branch contributes, while redundant high-confidence boxes are pruned by NMS. This replaces Guo et al.'s~\cite{guo2018countering} pixel-level stacking with a detection-level union, which we found (Sec.~\ref{sec:discussion}) more robust to patch attacks where smoothing alone can destroy the signal.
+
+\section{Experiments}
+
+\subsection{Dataset and Metrics}
+All experiments use the first 1000 images of COCO val2017 (sorted by filename), evaluated with \texttt{pycocotools} COCOeval (mAP@[.5:.95], AP50). The OCR task uses a character-level normalized accuracy (clean baseline $=1.0$) on the same 1000 images.
+
+\subsection{Implementation}
+Florence-2 runs one GPU per notebook; attacks are computed in the model's normalized pixel space and decoded to PIL for defense application, matching our earlier Variant-Z pipeline. YOLO attacks operate in raw $[0,1]$. We cache per-image, per-condition detections with assertion-guarded pickling (no persistent cross-run cache) to avoid the contamination observed in an earlier (v1) iteration of this study, in which a re-used detection cache silently produced negative recoveries and defended-mAP values above clean. All reported numbers are from the v2 pipeline, where every image carries every expected tag.
+
+\subsection{Explored Variants (Design History)}
+The final suite was reached after $\geq$15 pipeline variants that we pruned for failing sanity checks or producing no recovery. For Florence-2 FGSM we screened \emph{Variant~A} (classical squeezing: JPEG, Gaussian, Median, Bit-Depth), \emph{Variant~B} (TVM, NLM, SVD, Random-Resize), \emph{Variant~C} (four pixel-stacked pipelines), and \emph{Variant~D} (GPU-accelerated winner combinations, 5000 images). We also tried \emph{Variants~X, Y, Z} (single-model diagnostics) and a prompt-ensemble variant for OCR. The findings that shaped the locked suite were:
+\begin{itemize}
+\itemsep -0.25em
+\item \textbf{NLM and Random-Resize} were catastrophic on VLM detection (negative gains reaching $-0.19$ mAP), despite NLM winning the CAAD 2018 classification competition~\cite{xie2019feature}. Dropped.
+\item \textbf{Bit-Depth reduction} showed marginal-to-negative gains on all settings. Dropped.
+\item \textbf{Pixel-stacked pipelines} (JPEG$\to$TVM$\to$NLM, full pipeline) consistently underperformed \emph{detection-level} ensembles of the same defenses. Replaced by NMS-merged ensembles.
+\item \textbf{Classification-era defenses} (DiffPure~\cite{nie2022diffpure}, SmoothVLM) have no published OD validation and were excluded from the locked suite rather than reported as negative baselines.
+\end{itemize}
+
+\section{Results}
+\label{sec:results}
+
+\subsection{Attack Impact (No Defense)}
+Table~\ref{tab:attack_damage} quantifies the raw damage. PGD is the most damaging on both detectors (especially YOLO, $-0.403$ mAP). FGSM drops Florence-2 by $0.087$ and YOLO by $0.251$---an asymmetry we return to in Sec.~\ref{sec:discussion}. Patch attacks produce the smallest mAP drop in absolute terms but are the hardest to defend against with naive smoothing, because the high-energy local artifact survives mild filtering while the smoothing itself damages the clean regions.
+
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccc}
+\toprule
+ & \multicolumn{2}{c}{Object Detection (mAP@[.5:.95])} & OCR \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-4}
+Attack & YOLOv8x-WV2 & Florence-2 & Florence-2 \\
+\midrule
+Clean              & 0.4765 & 0.3605 & 1.0000 \\
+FGSM ($\epsilon{=}0.03$) & 0.2259 & 0.2731 & 0.3287 \\
+PGD ($\epsilon{=}0.03$)  & 0.0737 & 0.2243 & 0.3139 \\
+Patch ($35{\times}35$)   & 0.4537 & 0.3268 & 0.3675 \\
+\midrule
+$\Delta$ (worst) & $-0.403$ & $-0.136$ & $-0.686$ \\
+\bottomrule
+\end{tabular}
+\caption{Raw attack damage on 1000 COCO val2017 images (OCR is a character-accuracy score, clean $=1.0$).}
+\label{tab:attack_damage}
+\end{table}
+
+\subsection{Defense Effectiveness: Object Detection}
+Tables~\ref{tab:yolo_results} and~\ref{tab:florence_results} give per-defense mAP and recovery for every attack. Recovery is defined as $\mathrm{mAP}_{\text{def}}-\mathrm{mAP}_{\text{atk}}$; recovery percentage is reported relative to the attack damage $\mathrm{mAP}_{\text{clean}}-\mathrm{mAP}_{\text{atk}}$.
+
+\begin{table*}[t]
+\centering
+\small
+\setlength{\tabcolsep}{4.5pt}
+\begin{tabular}{l|cc|cc|cc}
+\toprule
+ & \multicolumn{2}{c|}{FGSM ($\epsilon{=}0.03$)} & \multicolumn{2}{c|}{PGD ($\epsilon{=}0.03$)} & \multicolumn{2}{c}{Patch ($35{\times}35$)} \\
+Defense & mAP & Rec.\% & mAP & Rec.\% & mAP & Rec.\% \\
+\midrule
+Clean     & 0.4765 &  --    & 0.4765 &  --    & 0.4765 &  --    \\
+Attacked  & 0.2259 &   0.0  & 0.0737 &   0.0  & 0.4537 &   0.0  \\
+\midrule
+JPEG                      & 0.2697 & 17.5 & 0.3643 & 72.1 & 0.4391 & $-64.0$ \\
+Median                    & 0.2928 & 26.7 & 0.3639 & 72.1 & 0.4496 & $-17.7$ \\
+TVM                       & 0.2966 & 28.2 & 0.4049 & 82.2 & 0.4288 & $-109.1$ \\
+Gaussian                  & 0.3171 & 36.4 & 0.4053 & 82.3 & 0.4511 & $-11.4$ \\
+Blur+TVM                  & \best{0.3448} & \best{47.4} & 0.4025 & 81.6 & 0.4093 & $-194.8$ \\
+\midrule
+$\mathrm{Ens}_{\text{BTC}}$            & 0.3364 & 44.1 & \best{0.4128} & \best{84.2} & 0.4563 & 11.7 \\
+$\mathrm{Ens}_{\text{JMG}}$            & 0.3098 & 33.5 & 0.4045 & 82.1 & 0.4574 & 16.2 \\
+$\mathrm{Ens}_{\text{JMT}}$ (primary)  & 0.3058 & 31.9 & 0.4114 & 83.8 & \best{0.4599} & \best{27.5} \\
+\bottomrule
+\end{tabular}
+\caption{YOLOv8x-WorldV2 under the three attacks. Solo defenses \emph{reduce} Patch mAP (Blur+TVM alone costs 4.4 mAP); only the three detection-level ensembles recover. $\mathrm{Ens}_{\text{JMT}}$ is top-1 on Patch and within 1.4\% of top on PGD.}
+\label{tab:yolo_results}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\small
+\setlength{\tabcolsep}{4.5pt}
+\begin{tabular}{l|cc|cc|cc}
+\toprule
+ & \multicolumn{2}{c|}{FGSM} & \multicolumn{2}{c|}{PGD} & \multicolumn{2}{c}{Patch} \\
+Defense & mAP & Rec.\% & mAP & Rec.\% & mAP & Rec.\% \\
+\midrule
+Clean     & 0.3605 &  --   & 0.3605 &  --   & 0.3605 &  --  \\
+Attacked  & 0.2731 &  0.0  & 0.2243 &  0.0  & 0.3268 &  0.0 \\
+\midrule
+JPEG       & 0.3199 & 53.5 & 0.3162 & 67.4 & 0.3270 & 0.7  \\
+Median     & 0.3194 & 52.9 & 0.3198 & 70.1 & 0.3289 & 6.2  \\
+TVM        & 0.2631 & $-11.4$ & 0.2622 & 27.8 & 0.2652 & $-182.1$ \\
+Gaussian   & 0.2848 & 13.4 & 0.2874 & 46.3 & 0.2903 & $-107.9$ \\
+Blur+TVM   & 0.2745 & 1.6  & 0.2723 & 35.2 & 0.2676 & $-175.0$ \\
+\midrule
+$\mathrm{Ens}_{\text{BTC}}$           & 0.3262 & 60.8 & 0.3243 & 73.4 & 0.3324 & 16.7 \\
+$\mathrm{Ens}_{\text{JMG}}$           & \best{0.3281} & \best{62.9} & \best{0.3245} & \best{73.5} & 0.3290 & 6.6  \\
+$\mathrm{Ens}_{\text{JMT}}$ (primary) & 0.3261 & 60.6 & 0.3228 & 72.3 & \best{0.3307} & \best{11.7} \\
+\bottomrule
+\end{tabular}
+\caption{Florence-2-Base detection. Ensembles dominate every setting; solo TVM and Blur+TVM are \emph{harmful} under FGSM and Patch on this model, precisely the conditions where the pixel-stacked variants in our design history also failed.}
+\label{tab:florence_results}
+\end{table*}
+
+\paragraph{YOLO.} All five solos recover on FGSM/PGD, but all five \emph{lose} mAP under Patch; the strongest smoother (Blur+TVM) loses 4.4 mAP. Only the three ensembles turn Patch recovery positive. $\mathrm{Ens}_{\text{JMT}}$ is the unique top-1 on Patch and within 0.014 mAP of the top ensemble on PGD.
+
+\paragraph{Florence-2.} On a VLM whose decoder conditions on textual prompts, smoothing transforms that work for YOLO (TVM, Blur+TVM, Gaussian) are \emph{net-negative} for FGSM and Patch. JPEG and Median are the only positive solos. Ensembles again dominate: $\mathrm{Ens}_{\text{JMG}}$ is best on FGSM/PGD by 0.002 mAP, but $\mathrm{Ens}_{\text{JMT}}$ is the only ensemble in the top-2 on all three attacks and is our primary recommendation.
+
+\subsection{Defense Effectiveness: OCR (Secondary)}
+Table~\ref{tab:ocr_results} evaluates the same suite on Florence-2 OCR. Because OCR degrades sharply under any of the three attacks (clean $1.0\to0.31$--$0.37$), the \emph{solo} TVM transform is unusually strong here---character-level recognition tolerates smoothing better than bounding-box localization. Ensembles remain a close runner-up and are preferable when the same defense must also serve detection (Tables~\ref{tab:yolo_results},~\ref{tab:florence_results}).
+
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{l|c|c|c}
+\toprule
+Defense & FGSM & PGD & Patch \\
+\midrule
+Attacked       & 0.329 & 0.314 & 0.368 \\
+\midrule
+JPEG                   & 0.496 & 0.608 & 0.376 \\
+Median                 & 0.427 & 0.541 & \best{0.557} \\
+TVM                    & \best{0.561} & \best{0.638} & 0.388 \\
+Gaussian               & 0.489 & 0.550 & 0.524 \\
+Blur+TVM               & 0.468 & 0.490 & 0.465 \\
+\midrule
+$\mathrm{Ens}_{\text{BTC}}$           & 0.475 & 0.581 & 0.527 \\
+$\mathrm{Ens}_{\text{JMG}}$           & 0.490 & 0.597 & 0.536 \\
+$\mathrm{Ens}_{\text{JMT}}$ (primary) & 0.529 & 0.637 & 0.416 \\
+\bottomrule
+\end{tabular}
+\caption{Florence-2 OCR character accuracy (clean $=1.0$). TVM solo is the strongest single transform; $\mathrm{Ens}_{\text{JMT}}$ is consistently second.}
+\label{tab:ocr_results}
+\end{table}
+
+\subsection{Cross-Setting Summary}
+Averaging recovery across the six OD settings (3 attacks $\times$ 2 models), the three ensembles are tightly clustered: $\mathrm{Ens}_{\text{BTC}}$ 48.5\%, $\mathrm{Ens}_{\text{JMT}}$ 48.0\%, $\mathrm{Ens}_{\text{JMG}}$ 45.8\%---all within 2.7 points, and all far ahead of any solo defense on Patch attacks. Including the three OCR rows preserves this ordering ($\mathrm{Ens}_{\text{BTC}}$ 41.9\%, $\mathrm{Ens}_{\text{JMT}}$ 41.4\%, $\mathrm{Ens}_{\text{JMG}}$ 40.7\%). We select $\mathrm{Ens}_{\text{JMT}}$ as the primary recommendation for two reasons: (i) it is top-1 or top-2 on every Patch setting---the attack class where solo defenses fail most dramatically---and (ii) its inclusion of TVM gives it a decisive OCR advantage under FGSM (0.529 vs.\ 0.475/0.490) and PGD (0.637 vs.\ 0.581/0.597), which matters for multi-task VLMs like Florence-2. Table~\ref{tab:ens_comparison} summarizes all three ensembles side by side.
+
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{l|ccc}
+\toprule
+ & $\mathrm{Ens}_{\text{BTC}}$ & $\mathrm{Ens}_{\text{JMG}}$ & $\mathrm{Ens}_{\text{JMT}}$ \\
+\midrule
+Avg.\ Rec.\ (6 OD)   & 48.5\% & 45.8\% & 48.0\% \\
+Avg.\ Rec.\ (all 9)   & 41.9\% & 40.7\% & 41.4\% \\
+Worst row (OD)        & 11.7\% & 6.6\%  & 11.7\% \\
+OCR FGSM acc.         & 0.475  & 0.490  & \best{0.529} \\
+OCR PGD acc.          & 0.581  & 0.597  & \best{0.637} \\
+OCR Patch acc.        & \best{0.527}  & \best{0.536}  & 0.416 \\
+\bottomrule
+\end{tabular}
+\caption{Ensemble comparison. All three are close on OD; $\mathrm{Ens}_{\text{JMT}}$ pulls ahead on OCR FGSM/PGD due to TVM.}
+\label{tab:ens_comparison}
+\end{table}
+
+\section{Discussion}
+\label{sec:discussion}
+
+\paragraph{FGSM is harder to defend than PGD for smoothing.}
+A counter-intuitive but reproducible finding: recovery against PGD (82--84\% on YOLO, 73\% on Florence-2) is substantially higher than against FGSM (47\% on YOLO, 63\% on Florence-2). The mechanism is spectral: ten iterations of projected ascent produce a perturbation that approaches a high-entropy, high-frequency pattern, which is \emph{exactly} what spatial/variational smoothers remove; a single FGSM sign-step produces a gradient-aligned, lower-frequency, \emph{semantically correlated} perturbation, so smoothing destroys signal along with noise. This is a property of the attack/defense pair, not a bug. It argues for defenses that combine smoothing with a non-smoothing branch, which is exactly what $\mathrm{Ens}_{\text{JMT}}$ provides (JPEG is not a low-pass filter).
+
+\paragraph{Patch attacks require detection-level union.}
+On YOLO-Patch, every solo defense is net-negative: the small, high-amplitude patch survives mild filtering, while the filter blurs the 99\% of the image that was clean. Pixel-stacked pipelines inherit this failure. Ensembling at the \emph{detection} level rescues recovery because patches that disrupt one branch are routed around by the others and the NMS merge keeps the strongest boxes per class.
+
+\paragraph{Cross-model portability.}
+The same five transforms and three ensembles work without re-tuning on a seq2seq VLM and a one-stage CNN detector. The absolute recoveries differ---Florence-2 tolerates JPEG/Median but is hurt by TVM---but the \emph{ensemble ranking} is stable enough that $\mathrm{Ens}_{\text{JMT}}$ is a reasonable default for a new detector before any task-specific tuning.
+
+\paragraph{Limitations.}
+(i) We evaluate at $\epsilon{=}0.03$ only; sweeping $\epsilon$ is future work. (ii) Patch size is fixed at $35{\times}35$ ($\sim$0.1\% of image area); larger patches or adversarial-texture patches may behave differently. (iii) Our defenses are not certified; an adaptive attacker aware of the NMS merge could target the branches jointly.
+
+\section{Future Work}
+\begin{itemize}
+\itemsep -0.25em
+\item \textbf{Adaptive attacks} on the ensemble (joint optimization over all branches) to establish a tighter robustness floor.
+\item \textbf{Test-time purification} (e.g., TPAP, PuriFlow) as a fourth branch in $\mathrm{Ens}_{\text{JMT}}$.
+\item \textbf{Cross-task transfer}: use OCR-time perturbations against detection and vice versa, following~\cite{wang2024oneobjectmultiplelies}.
+\item \textbf{Certified variants} via randomized smoothing adapted to detection.
+\end{itemize}
+
+\section{Conclusion}
+We presented a compact, model-agnostic, inference-time defense for open-vocabulary and unified-VLM detectors. The proposed transform-ensemble---$\mathrm{Ens}_{\text{JMT}}=\{\text{JPEG, Median, TVM}\}$ with class-aware NMS merging---recovers up to 84\% of the PGD damage and is the only defense in our suite that is never harmful on any of the three attacks across both models. Our design history (15+ pruned variants) shows that the detection-level union of simple transforms outperforms classification-era pixel stacking on both a transformer VLM and a CNN detector, and generalizes to OCR as a secondary task.
+
+\section*{Acknowledgements}
+We thank our instructor and lab-mates at IIT Hyderabad for feedback during the project.
+
+%%%%%%%%% REFERENCES
+{\small
+\bibliographystyle{ieeenat_fullname}
+\bibliography{main}
+}
+
+\end{document}

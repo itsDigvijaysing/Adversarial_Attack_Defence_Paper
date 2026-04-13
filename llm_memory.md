@@ -201,3 +201,39 @@ TVM dominance aligns with Guo et al. ICLR 2018 ranking. NLM failure is surprisin
 - **PuriFlow** (ICCV 2025) -- SR + diffusion, outperforms DiffPure
 - **Adversarial Training** (Madry 2018, MMCoA 2024) -- gold standard but needs fine-tuning
 - **TPAP** (CVPR 2025) -- test-time pixel purification via FGSM overfitting
+
+
+
+
+## Project
+- Paper: APSCON IEEE. Models: Florence-2-base (microsoft/Florence-2-base, refs/pr/26, beam=5) + YOLOv8x-worldv2. Data: COCO val2017, mAP@[.5:.95] via pycocotools.
+- Pipeline: 3 attacks × 2 models × {clean, 5 solo defenses, 3 ensembles}.
+
+## Phase 3 v2 Config (authoritative — v1 contaminated, do not cite)
+- 1000 imgs (`sorted(os.listdir)[:1000]`), 1 GPU per notebook, NO checkpoint.
+- In-memory `all_buckets={}` dict, single final `pickle.dump`. Hard asserts: `len==NUM_IMAGES` + every img carries every expected tag.
+- Output dirs: `results_phase3_{yolo,florence}_{fgsm,pgd,patch}_v2/`.
+- FGSM: eps=0.03, 1 step. PGD: eps=0.03, 10 iters, alpha=eps/4, rand start. Patch: 35×35 center, 100 Adam steps, lr=0.02.
+- Florence attacks in normalized pixel space (matches Variant Z). YOLO in raw [0,1].
+- Defenses: 5 solos [jpeg, median, tvm, gaussian, blur_tvm] + 3 ensembles [ens_blur_tvm_combo, ens_jpeg_median_gaussian, ens_jpeg_median_tvm]. Class-aware NMS merging.
+- YOLO needs `model.model.model[-1].shape=None` reset between inferences (tensor cache bug).
+
+## Confirmed YOLO v2 Results (sanity-passed, no defense > clean)
+- FGSM: clean=0.4765, atk=0.2259, best blur_tvm→0.3450 (+47.5%). All 8 recover.
+- PGD iters=10: clean=0.4972, atk=0.1425, best ens_jpeg_median_tvm→0.4801 (+95.2%). All 8 recover.
+- PGD more iters: clean=0.4765, atk=0.0614, best ens_jpeg_median_tvm→0.4263 (+87.9%). All 8 recover.
+
+## Pending
+- 3 Florence v2 notebooks (FGSM/PGD/Patch) — slow, parallel GPUs.
+
+## Key Lessons
+- **v1 contamination root cause**: `DetectionCheckpoint` + `if ckpt.has(img_id): return` over single `detections.pkl` silently reused stale entries across runs → FGSM negative recovery, PGD ensembles > clean, `num_images` misreport. Fix = skip cache entirely (v2). Suspicious patterns: negative recovery on weak attacks, recovered mAP > clean, num_images mismatch.
+- **FGSM vs PGD recovery asymmetry is expected physics, not a bug**: iterative PGD → high-freq noise smoothing defenses wipe (80–95%); single-step FGSM → aligns with semantic gradients so smoothing damages signal (40–60%). Frame in paper as "defense scales with attack sophistication." To close gap: reduce PGD iters to 3–5, don't increase.
+- **Diagnose by diffing against working baseline first**: wrongly blamed Florence FGSM normalized-space eps; Variant Z used identical code and worked. Real bug was cache contamination. Before theorizing algorithm fixes, grep last working version.
+- **Net gain interpretation**: compare recovery vs attacked mAP, not clean baseline.
+- **Beam search**: do not batch `generate(num_beams=5)`; use per-image dual-GPU threading.
+
+## Dev Discipline
+- Limited token budget — minimize tool calls, hypothesize before exploring, answer from existing context.
+- Don't "fix" algorithms from single-notebook symptoms when a working reference exists.
+- Cite only v2 numbers in paper; v1 `results_phase3_*/` (no `_v2`) are contaminated.

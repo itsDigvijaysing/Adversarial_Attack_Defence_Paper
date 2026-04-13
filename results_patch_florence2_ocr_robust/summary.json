@@ -1,0 +1,104 @@
+{
+  "model": "microsoft/Florence-2-base",
+  "task": "OCR",
+  "attack": "patch_ps35_i100",
+  "patch_size": 35,
+  "patch_iters": 100,
+  "patch_lr": 0.02,
+  "patch_random_location": true,
+  "images": 1000,
+  "clean_baseline": 1.0,
+  "attacked": 0.3675194869008395,
+  "attack_damage": 0.6324805130991604,
+  "ranked_defenses": [
+    {
+      "name": "median",
+      "kind": "solo",
+      "attacked": 0.3675194869008395,
+      "recovered": 0.5566051459178103,
+      "delta": 0.18908565901697108,
+      "recovery_pct": 29.89588692471324,
+      "verdict": "RECOVERS"
+    },
+    {
+      "name": "ens_jpeg_median_gaussian",
+      "kind": "ENSEMBLE",
+      "attacked": 0.3675194869008395,
+      "recovered": 0.5363410160607862,
+      "delta": 0.1688215291599466,
+      "recovery_pct": 26.691973217122456,
+      "verdict": "RECOVERS"
+    },
+    {
+      "name": "ens_blur_tvm_combo",
+      "kind": "ENSEMBLE",
+      "attacked": 0.3675194869008395,
+      "recovered": 0.5273734595255775,
+      "delta": 0.15985397262473824,
+      "recovery_pct": 25.274134034810384,
+      "verdict": "RECOVERS"
+    },
+    {
+      "name": "gaussian",
+      "kind": "solo",
+      "attacked": 0.3675194869008395,
+      "recovered": 0.524006284704829,
+      "delta": 0.15648679780398958,
+      "recovery_pct": 24.741757977206728,
+      "verdict": "RECOVERS"
+    },
+    {
+      "name": "blur_tvm",
+      "kind": "solo",
+      "attacked": 0.3675194869008395,
+      "recovered": 0.465492410624389,
+      "delta": 0.09797292372354947,
+      "recovery_pct": 15.490267556779138,
+      "verdict": "RECOVERS"
+    },
+    {
+      "name": "ens_jpeg_median_tvm",
+      "kind": "ENSEMBLE",
+      "attacked": 0.3675194869008395,
+      "recovered": 0.4159651553904602,
+      "delta": 0.04844566848962073,
+      "recovery_pct": 7.659630215678345,
+      "verdict": "RECOVERS"
+    },
+    {
+      "name": "tvm",
+      "kind": "solo",
+      "attacked": 0.3675194869008395,
+      "recovered": 0.3883142270837723,
+      "delta": 0.020794740182933053,
+      "recovery_pct": 3.2878072529126046,
+      "verdict": "RECOVERS"
+    },
+    {
+      "name": "jpeg",
+      "kind": "solo",
+      "attacked": 0.3675194869008395,
+      "recovered": 0.3764840097007315,
+      "delta": 0.008964522799891999,
+      "recovery_pct": 1.4173595255869234,
+      "verdict": "RECOVERS"
+    }
+  ],
+  "failed_images": 0,
+  "config": {
+    "image_dir": "dataset/val2017",
+    "num_images_requested": 1000,
+    "jpeg_quality": 75,
+    "gaussian_sigma": 1.0,
+    "tvm_weight": 0.05,
+    "median_kernel": 3,
+    "patch_size": 35,
+    "patch_iters": 100,
+    "patch_lr": 0.02,
+    "patch_random_location": true,
+    "max_new_tokens": 256,
+    "num_beams": 5,
+    "repetition_penalty": 1.8,
+    "length_penalty": 1.0
+  }
+}

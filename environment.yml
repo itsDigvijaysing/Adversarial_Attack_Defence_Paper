@@ -27,6 +27,9 @@ dependencies:
       - opencv-python==4.13.0.92
       - scikit-image==0.24.0
       - diffusers==0.36.0
+      # Optional: enables the real BM3D survey-defense row (else it is dropped
+      # with a warning — never reported as a mislabeled Gaussian fallback).
+      - bm3d==4.0.3
       # Visualization & utilities
       - matplotlib==3.9.4
       - tqdm==4.67.1

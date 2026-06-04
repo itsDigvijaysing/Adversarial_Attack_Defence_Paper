@@ -12,12 +12,24 @@ Primary report: `CS24MTECH14020_CVPR_Project_Report.pdf`
 
 ## Current Status (Important)
 
-- The current authoritative pipeline is **Phase 3 v2**.
-- Use `*_v2` notebooks/results for reporting numbers.
-- Older Phase 3 outputs without `_v2` are historical and may include contamination from checkpoint reuse.
-- Based on current project notes + report alignment:
-  - YOLO v2 runs are complete and consistent.
-  - Florence v2 detection/OCR runs are the active track.
+- **Phase 3 v2 at N=1000 is complete for all 9 tracks** (3 attacks × {YOLO-det, Florence-det,
+  Florence-OCR}). Use the `*_v2` notebooks/`*_Robust.py` scripts and their `summary.json` for the
+  locked paper numbers.
+- **Survey-scope N=5000 scripts are ready** (`run_survey_*.py`) — the comprehensive defense survey
+  (Tier 1 paper set + Tier 2 completeness/negatives + Tier 3 novel 2025–2026 methods).
+- Older Phase 3 outputs without `_v2` are historical and may include contamination from checkpoint
+  reuse — do **not** cite them. The survey scripts use a config-keyed `SurveyCheckpoint` that cannot
+  reproduce that contamination.
+
+## Team
+
+| Member | Track | Script |
+|---|---|---|
+| Ankush | Florence-2 OCR | `run_survey_florence_ocr.py` |
+| Digvijay | YOLOv8x-worldv2 detection | `run_survey_yolo.py` |
+| Lokendra | Florence-2 detection | `run_survey_florence_detection.py` |
+
+Each member runs independently on an RTX GPU (`conda activate vlm_ftune`).
 
 ## Repository Guide: Important vs Extra
 
@@ -143,6 +155,49 @@ python Patch_Florence2_OCR_Robust.py \
   --output-dir results_patch_florence2_ocr_robust
 ```
 
+## Survey Scripts (N=5000, comprehensive defense survey)
+
+Three consolidated CLI scripts run **all three attacks in one session** and sweep the full survey
+defense bank (Tier 1 paper set + svd, Tier 2 completeness/negatives, Tier 3 novel via `--novel`).
+All import `phase3_common.py`; checkpoints are config-keyed and resumable (and gitignored).
+
+```bash
+conda activate vlm_ftune
+
+# YOLOv8x-worldv2 detection (Digvijay)
+python run_survey_yolo.py \
+  --image-dir ./val2017 --ann-file ./annotations/instances_val2017.json \
+  --gpu 0 --num-images 5000 --tier survey --attacks fgsm pgd patch
+
+# Florence-2 detection (Lokendra) — note the ./Dataset/ layout these scripts expect
+python run_survey_florence_detection.py \
+  --image-dir ./Dataset/val2017 --ann-file ./Dataset/annotations/instances_val2017.json \
+  --gpu 0 --num-images 5000 --tier survey --attacks fgsm pgd patch
+
+# Florence-2 OCR (Ankush)
+python run_survey_florence_ocr.py \
+  --image-dir ./val2017 --gpu 0 --num-images 5000 --tier survey --attacks fgsm pgd patch
+```
+
+Flags shared by all three: `--tier {tier1,survey}`, `--attacks {fgsm,pgd,patch}...`,
+`--checkpoint-every N`, `--no-checkpoint`, `--novel` (attempt Tier-3 methods, skip gracefully if
+their deps are missing). Each writes one `summary_{attack}.json` per attack into
+`results_survey_{yolo,florence_detection,florence_ocr}/`.
+
+> **OCR metric note:** the OCR track reports **self-consistency** — char-level `SequenceMatcher`
+> similarity of the defended OCR text vs the model's *own clean* OCR output (COCO has no OCR ground
+> truth). It is prediction-stability recovery, **not** OCR accuracy.
+
+## Repository Size and Git Tracking
+
+COCO per-condition eval JSONs are large and regenerable from `detections.pkl`; only the derived
+`summary*.json` and `run.log` are version-controlled. `.gitignore` ignores `results_*/*.json` with a
+`!results_*/summary*.json` exception (the `summary*` glob keeps per-attack survey outputs such as
+`summary_fgsm.json`), plus survey checkpoints and all `*.pkl`. The 414 previously-tracked dump JSONs
+have been untracked (`git rm --cached`; files remain on disk). For a future public release, large
+blobs can be purged from history with **BFG Repo Cleaner** (deferred; all team members must re-clone
+afterward — see `memory.md`).
+
 ## Result Artifacts and Versioning Notes
 
 - `.pkl` outputs are large runtime artifacts and are typically not tracked.
@@ -151,11 +206,23 @@ python Patch_Florence2_OCR_Robust.py \
   - `CS24MTECH14020_CVPR_Project_Report.pdf`
   - `memory.md`
 
-## Confirmed YOLO v2 Snapshot (from project notes)
+## Confirmed v2 Snapshot (N=1000, read from committed `summary.json`)
 
-- FGSM (eps=0.03): clean 0.4765 -> attacked 0.2259, best defended 0.3450
-- PGD (eps=0.03, 10 iters): clean 0.4972 -> attacked 0.1425, best defended 0.4801
-- Stronger PGD setting: clean 0.4765 -> attacked 0.0614, best defended 0.4263
+Detection = COCO mAP@[.5:.95]; OCR = self-consistency similarity.
+
+| Track | clean | attacked | best defense | defended |
+|---|---|---|---|---|
+| YOLO · FGSM | 0.4765 | 0.2259 | blur_tvm | 0.3448 (+47.4%) |
+| YOLO · PGD (10 iters) | 0.4765 | 0.0737 | ens_blur_tvm_combo | 0.4128 (+84.2%) |
+| YOLO · Patch | 0.4765 | 0.4537 | ens_jpeg_median_tvm | 0.4599 (+27.5%) |
+| Florence · FGSM | 0.3605 | 0.2731 | ens_jpeg_median_gaussian | 0.3281 (+62.9%) |
+| Florence · PGD | 0.3605 | 0.2243 | ens_jpeg_median_gaussian | 0.3245 (+73.5%) |
+| Florence · Patch | 0.3605 | 0.3268 | ens_blur_tvm_combo | 0.3324 (+16.7%) |
+
+> **Correction:** earlier notes quoted YOLO PGD as `clean 0.4972 → 0.1425 → 0.4801` and a
+> "stronger PGD" `0.4765 → 0.0614 → 0.4263`. Those match **no committed v2 result** (they trace to a
+> 100-image scratch run) — the reproducible v2 PGD numbers are the table above. Cite only committed
+> `summary.json` values.
 
 Interpretation rule used in this repo:
 - Prioritize **recovery from attacked mAP** over naive comparison to clean baseline.

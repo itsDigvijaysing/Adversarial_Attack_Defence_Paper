@@ -9,3 +9,29 @@ __pycache__/
 # Data overrides
 Dataset/
 
+# ----------------------------------------------------------------------
+# COCO per-condition eval dump JSONs (regenerable from detections.pkl).
+# Only the derived summaries and run logs are kept under version control.
+# NOTE: the negation uses summary*.json (not summary.json) so per-attack
+# survey outputs like summary_fgsm.json are ALSO retained.
+# ----------------------------------------------------------------------
+results_*/*.json
+!results_*/summary*.json
+!results_*/run.log
+archive/Logs_Extra/**/*.json
+!archive/Logs_Extra/**/summary*.json
+!archive/Logs_Extra/**/run.log
+
+# Future full-dataset results (N=5000 survey)
+results_*_full/*.json
+!results_*_full/summary*.json
+
+# Survey resumable checkpoints / state (kept local, never committed).
+# Relative patterns so they match anywhere under the repo root.
+results_survey_*/checkpoint_*.pkl
+results_survey_*/state_*.json
+results_survey_*/*.tmp
+
+# BFG-generated backup branches (if BFG repo cleaner is run later)
+*.bfg-report/
+

@@ -8,7 +8,7 @@ Attacks: FGSM, PGD, Patch
 
 Defenses: solo transforms + detection-level transform ensembles merged by class-aware NMS.
 
-Primary report: `CS24MTECH14020_CVPR_Project_Report.pdf`
+Primary report: `docs/CS24MTECH14020_CVPR_Project_Report.pdf`
 
 ## Current Status (Important)
 
@@ -31,58 +31,42 @@ Primary report: `CS24MTECH14020_CVPR_Project_Report.pdf`
 
 Each member runs independently on an RTX GPU (`conda activate vlm_ftune`).
 
-## Repository Guide: Important vs Extra
+## Repository Structure
 
-You asked for clarity on this, so here is the practical split.
+The **root** holds only the current, important things (active code + current outputs + configs);
+everything historical or reference-only lives in a subfolder.
 
-### A) Important current files (root-level)
+```
+.
+├── phase3_common.py                     # shared core (defenses, ensembles, eval, checkpoint)
+├── run_survey_yolo.py                   # survey N=5000 — YOLO detection      (Digvijay)
+├── run_survey_florence_detection.py     # survey N=5000 — Florence detection  (Lokendra)
+├── run_survey_florence_ocr.py           # survey N=5000 — Florence OCR         (Ankush)
+├── {FGSM,PGD,Patch}_Phase3_Florence_v2.{py,ipynb}   # locked v2 (paper, N=1000) — DO NOT MODIFY
+├── {FGSM,PGD,Patch}_Phase3_YOLO_v2.ipynb            # locked v2 (paper, N=1000) — DO NOT MODIFY
+├── {FGSM,PGD,Patch}_Florence2_OCR_Robust.py         # locked v2 OCR             — DO NOT MODIFY
+├── results_phase3_{yolo,florence}_{fgsm,pgd,patch}_v2/   # current v2 outputs (summary.json tracked)
+├── results_{fgsm,pgd,patch}_florence2_ocr_robust/       # current OCR outputs
+├── README.md · CLAUDE.md · memory.md · memory_phase2_archive.md · environment.yml · .gitignore
+├── docs/         # CS24MTECH14020_CVPR_Project_Report.pdf, Presentation.pdf, GPU, tmux.txt
+├── figures/      # Final_Results_Images/, Result_Images/
+└── archive/      # read-only history: Scripts_Extra/, Logs_Extra/, Very_OLD/
+```
 
-Core docs:
-- `CS24MTECH14020_CVPR_Project_Report.pdf` (main paper/report)
-- `Presentation.pdf`
-- `memory.md` (project state + experiment notes)
-- `README.md`
+### Who runs what
 
-Core code/shared utilities:
-- `phase3_common.py`
+| Member | Track | Entry point | Current output dir |
+|---|---|---|---|
+| **Ankush** | Florence-2 OCR | `run_survey_florence_ocr.py` | `results_survey_florence_ocr/` |
+| **Digvijay** | YOLOv8x-worldv2 detection | `run_survey_yolo.py` | `results_survey_yolo/` |
+| **Lokendra** | Florence-2 detection | `run_survey_florence_detection.py` | `results_survey_florence_detection/` |
 
-Active Phase 3 v2 notebooks (detection):
-- `FGSM_Phase3_Florence_v2.ipynb`
-- `PGD_Phase3_Florence_v2.ipynb`
-- `Patch_Phase3_Florence_v2.ipynb`
-- `FGSM_Phase3_YOLO_v2.ipynb`
-- `PGD_Phase3_YOLO_v2.ipynb`
-- `Patch_Phase3_YOLO_v2.ipynb`
+The locked **v2** notebooks/scripts produced the N=1000 paper numbers (see the snapshot below) and
+are not to be modified. The three `run_survey_*.py` scripts are the active N=5000 survey path.
+`archive/` is kept for traceability only — no active code reads from it.
 
-Active OCR robustness scripts (Florence):
-- `FGSM_Florence2_OCR_Robust.py`
-- `PGD_Florence2_OCR_Robust.py`
-- `Patch_Florence2_OCR_Robust.py`
-
-Primary result folders (v2):
-- `results_phase3_florence_fgsm_v2/`
-- `results_phase3_florence_pgd_v2/`
-- `results_phase3_florence_patch_v2/`
-- `results_phase3_yolo_fgsm_v2/`
-- `results_phase3_yolo_pgd_v2/`
-- `results_phase3_yolo_patch_v2/`
-- `results_fgsm_florence2_ocr_robust/`
-- `results_pgd_florence2_ocr_robust/`
-- `results_patch_florence2_ocr_robust/`
-
-Data/model assets used by runs:
-- `val2017/`
-- `annotations/`
-- `yolov8x-worldv2.pt`
-- `environment.yml`
-
-### B) Extra/archival content (not primary entry points)
-
-- `Scripts_Extra/` (older/variant scripts and notebooks)
-- `Logs_Extra/` (saved logs and historical result snapshots)
-- `Very_OLD/` and other archival folders
-
-Keep these for traceability, but treat root-level v2 notebooks/scripts as the main execution path.
+Data/model assets used by runs (gitignored, fetched separately): `val2017/`,
+`annotations/instances_val2017.json`, `yolov8x-worldv2.pt` (auto-downloaded by ultralytics).
 
 ## Environment Setup
 
@@ -203,7 +187,7 @@ afterward — see `memory.md`).
 - `.pkl` outputs are large runtime artifacts and are typically not tracked.
 - JSON summaries and comparison outputs are the primary files for analysis/reporting.
 - For writing the paper/report, use v2 outputs and cross-check with:
-  - `CS24MTECH14020_CVPR_Project_Report.pdf`
+  - `docs/CS24MTECH14020_CVPR_Project_Report.pdf`
   - `memory.md`
 
 ## Confirmed v2 Snapshot (N=1000, read from committed `summary.json`)
@@ -230,6 +214,6 @@ Interpretation rule used in this repo:
 ## Citation
 
 If you use this repository, cite the project report in:
-- `CS24MTECH14020_CVPR_Project_Report.pdf`
+- `docs/CS24MTECH14020_CVPR_Project_Report.pdf`
 
 And keep the model/data citations used in the report (Florence-2, YOLO-World, COCO, FGSM, PGD, Patch attack references).

@@ -149,6 +149,10 @@ def parse_args():
                    help="Add the novel SIGN-approximation defense row ('sign_approx').")
     p.add_argument("--nms-iou", type=float, default=0.5,
                    help="IoU threshold for inference NMS and ensemble merging.")
+    p.add_argument("--output-dir", default=None,
+                   help="Output directory (default: <repo>/results_survey_florence_detection). "
+                        "Give each parallel attack process its OWN dir to avoid "
+                        "clobbering the shared clean*.json dumps.")
     return p.parse_args()
 
 
@@ -174,7 +178,10 @@ GAUSSIAN_SIGMA = 1.0
 NMS_IOU_THRESHOLD = ARGS.nms_iou
 ENSEMBLE_NMS_IOU = ARGS.nms_iou
 
-OUTPUT_DIR = "/home/king/Documents/Projects/Adversarial_Attack_Defence_Paper/results_survey_florence_detection"
+OUTPUT_DIR = ARGS.output_dir or os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "results_survey_florence_detection",
+)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Map attack key -> COCO condition tag
@@ -198,11 +205,36 @@ pc.print_banner("Florence-2 Detection Robustness Survey", width=70)
 print(f"Attacks: {ARGS.attacks} | tier: {ARGS.tier} | images: {NUM_IMAGES} | novel: {ARGS.novel}")
 print(f"Device: {device} | dtype: {torch_dtype} | output: {OUTPUT_DIR}")
 
+# Florence-2's modeling file lists `flash_attn` as a hard import, but every
+# actual use is guarded by `is_flash_attn_2_available()`. On machines without
+# flash-attn, drop it from transformers' static dependency check so the model
+# loads with eager/SDPA attention (a no-op where flash-attn IS installed).
+from unittest.mock import patch  # noqa: E402
+from transformers.dynamic_module_utils import get_imports  # noqa: E402
+
+
+def _imports_without_flash_attn(filename):
+    imports = get_imports(filename)
+    return [imp for imp in imports if imp != "flash_attn"]
+
+
 processor = AutoProcessor.from_pretrained(model_name, revision=revision, trust_remote_code=True)
-model = AutoModelForCausalLM.from_pretrained(
-    model_name, revision=revision,
-    torch_dtype=torch_dtype, trust_remote_code=True,
-).to(device).eval()
+with patch("transformers.dynamic_module_utils.get_imports", _imports_without_flash_attn):
+    try:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name, revision=revision,
+            torch_dtype=torch_dtype, trust_remote_code=True,
+        ).to(device).eval()
+    except RuntimeError as exc:
+        # Older torch can't run Florence-2's float16 weight init on CPU
+        # ("erfinv_vml_cpu not implemented for 'Half'"). Load in float32 and
+        # cast to half on the GPU instead.
+        if "erfinv" not in str(exc):
+            raise
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name, revision=revision,
+            torch_dtype=torch.float32, trust_remote_code=True,
+        ).to(device).to(torch_dtype).eval()
 
 IMG_MEAN = torch.tensor(processor.image_processor.image_mean,
                         device=device, dtype=torch_dtype).view(1, 3, 1, 1)

@@ -32,6 +32,36 @@ results_survey_*/checkpoint_*.pkl
 results_survey_*/state_*.json
 results_survey_*/*.tmp
 
+# ----------------------------------------------------------------------
+# results/ (consolidated layout, 2026-08-09). Same policy as the legacy
+# root-level results_*/ patterns above: ignore the bulk dumps, KEEP the
+# summaries, run logs and figures.
+# ⚠ Do NOT write `results/*` — that excludes the sub-DIRECTORIES, and git
+# cannot re-include a file whose parent dir is excluded, so every negation
+# below would silently fail and all committed summaries would drop out of
+# version control. Match files, not directories.
+# ----------------------------------------------------------------------
+results/**/*.json
+!results/**/summary*.json
+!results/**/run.log
+results/**/checkpoint_*.pkl
+results/**/state_*.json
+results/**/*.tmp
+
+# ----------------------------------------------------------------------
+# graphify knowledge graph (graphify-out/).
+# Same policy as results_*/: track the small human-readable artifact,
+# ignore the bulk-generated and machine-local parts.
+#   ignored: cache/ (1.8 MB, 96 files — rebuild input, no API cost when warm)
+#            graph.json + graph.html (regenerated wholesale every run)
+#            manifest.json, cost.json, .graphify_python (local run state)
+# DO NOT relocate the folder — "graphify-out" is hardcoded in the graphify
+# package (cache.py:48, detect.py:19) and in ~/.claude/skills/graphify.
+# ----------------------------------------------------------------------
+graphify-out/*
+!graphify-out/GRAPH_REPORT.md
+!graphify-out/README.md
+
 # BFG-generated backup branches (if BFG repo cleaner is run later)
 *.bfg-report/
 

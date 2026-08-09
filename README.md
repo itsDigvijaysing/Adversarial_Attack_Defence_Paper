@@ -42,13 +42,12 @@ everything historical or reference-only lives in a subfolder.
 ├── run_survey_yolo.py                   # survey N=5000 — YOLO detection      (Digvijay)
 ├── run_survey_florence_detection.py     # survey N=5000 — Florence detection  (Lokendra)
 ├── run_survey_florence_ocr.py           # survey N=5000 — Florence OCR         (Ankush)
-├── {FGSM,PGD,Patch}_Phase3_Florence_v2.{py,ipynb}   # locked v2 (paper, N=1000) — DO NOT MODIFY
+├── {FGSM,PGD,Patch}_Phase3_Florence_v2.py           # locked v2 (paper, N=1000) — DO NOT MODIFY
 ├── {FGSM,PGD,Patch}_Phase3_YOLO_v2.ipynb            # locked v2 (paper, N=1000) — DO NOT MODIFY
 ├── {FGSM,PGD,Patch}_Florence2_OCR_Robust.py         # locked v2 OCR             — DO NOT MODIFY
-├── results_phase3_{yolo,florence}_{fgsm,pgd,patch}_v2/   # current v2 outputs (summary.json tracked)
-├── results_{fgsm,pgd,patch}_florence2_ocr_robust/       # current OCR outputs
-├── README.md · CLAUDE.md · memory.md · memory_phase2_archive.md · environment.yml · .gitignore
-├── docs/         # CS24MTECH14020_CVPR_Project_Report.pdf, Presentation.pdf, GPU, tmux.txt
+├── results/      # all 13 run-output dirs (summary*.json, run.log, .png tracked; dumps ignored)
+├── README.md · CLAUDE.md · environment.yml · .gitignore
+├── docs/         # report + Presentation PDFs, memory.md, memory_phase2_archive.md, GPU, tmux.txt
 ├── figures/      # Final_Results_Images/, Result_Images/
 └── archive/      # read-only history: Scripts_Extra/, Logs_Extra/, Very_OLD/
 ```
@@ -180,7 +179,7 @@ COCO per-condition eval JSONs are large and regenerable from `detections.pkl`; o
 `summary_fgsm.json`), plus survey checkpoints and all `*.pkl`. The 414 previously-tracked dump JSONs
 have been untracked (`git rm --cached`; files remain on disk). For a future public release, large
 blobs can be purged from history with **BFG Repo Cleaner** (deferred; all team members must re-clone
-afterward — see `memory.md`).
+afterward — see `docs/memory.md`).
 
 ## Result Artifacts and Versioning Notes
 
@@ -188,7 +187,7 @@ afterward — see `memory.md`).
 - JSON summaries and comparison outputs are the primary files for analysis/reporting.
 - For writing the paper/report, use v2 outputs and cross-check with:
   - `docs/CS24MTECH14020_CVPR_Project_Report.pdf`
-  - `memory.md`
+  - `docs/memory.md`
 
 ## Confirmed v2 Snapshot (N=1000, read from committed `summary.json`)
 

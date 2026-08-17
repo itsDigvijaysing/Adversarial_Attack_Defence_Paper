@@ -48,6 +48,12 @@ results/**/checkpoint_*.pkl
 results/**/state_*.json
 results/**/*.tmp
 
+# --smoke-test output of run_clean_control.py / run_adaptive_bpda.py: a
+# plumbing check (2 images, CPU, reduced decode), never a result. Ignore the
+# whole subtree so its summary*.json can never be committed by accident.
+# MUST stay BELOW the !results/**/summary*.json negation — last match wins.
+results/**/smoke_test/
+
 # ----------------------------------------------------------------------
 # graphify knowledge graph (graphify-out/).
 # Same policy as results_*/: track the small human-readable artifact,

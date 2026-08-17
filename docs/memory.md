@@ -69,10 +69,37 @@ Attempted via `--novel`; dependency-guarded, skip-with-warning if unavailable.
 
 ## Attack Specifications (locked)
 - **FGSM** — eps=0.03, 1 step.
-- **PGD** — eps=0.03, 10 iters, alpha=eps/4, random start, project to eps-ball each step.
+- **PGD** — eps=0.03, 10 iters, random start, project to eps-ball each step.
+  **alpha is NOT uniform:** eps/4 = 0.0075 on every detection track
+  (`PGD_Phase3_YOLO_v2.ipynb`, `PGD_Phase3_Florence_v2.py:82`,
+  `run_survey_florence_detection.py:167`, `run_survey_yolo.py:161`) **and** in the survey OCR
+  script (`run_survey_florence_ocr.py:566`), but **eps/10 = 0.003** in the locked OCR script
+  (`PGD_Florence2_OCR_Robust.py:642`), which is the value that produced the committed N=1000 OCR
+  PGD row (`results/results_pgd_florence2_ocr_robust/summary.json` → `"alpha": 0.003`). Do not
+  write "alpha = eps/4" as a blanket statement, and do not compare the N=1000 OCR PGD number with
+  a future N=5000 OCR PGD number without noting the step-size change.
 - **Patch** — 35×35 center patch, 100 Adam steps, lr=0.02.
 - **Pixel space:** Florence attacks in **normalized** (ImageNet mean/std) space, clamp [−2.5,2.5];
   YOLO attacks in **raw [0,1]**.
+
+### Attack objective — DIFFERENT for the two models (fix this in the paper)
+"Token-level cross-entropy against the model's own clean prediction" is true of **Florence-2 only**.
+YOLO emits no tokens and has no such loss.
+- **Florence-2 (detection `<OD>` and OCR):** self-labeled token-level cross-entropy. The clean image
+  is decoded first (`model.generate`, 5 beams, greedy/deterministic) and the resulting id sequence
+  becomes `labels`; the attack then ascends the HF seq2seq cross-entropy of the *perturbed* image
+  against those frozen self-labels — `out.loss.backward()` for FGSM/PGD,
+  `(-out.loss).backward()` + Adam for Patch (Adam minimizes, so the negation still maximizes CE).
+  Mean reduction over target tokens. Sources: `FGSM_Phase3_Florence_v2.py:287-298`,
+  `PGD_Phase3_Florence_v2.py:289-306`, `Patch_Phase3_Florence_v2.py:294-325`,
+  `FGSM_Florence2_OCR_Robust.py:193-209`, `run_survey_florence_detection.py:390-401`.
+- **YOLOv8x-worldv2:** confidence suppression on the raw detect head. `pred = model.model(x)[0]` is
+  `[1, 4+80, 8400]`; `cls_scores = pred[:, 4:, :]` are **post-sigmoid class probabilities**, and the
+  objective is `-cls_scores.max(dim=1)[0].sum()` — a max over the 80 classes per anchor, summed over
+  all 8400 anchors. No ground truth, no self-labels, no box/DFL term (`pred[:, :4, :]` is excluded),
+  and YOLOv8 is anchor-free so there is **no objectness branch** to include. Sources:
+  `run_survey_yolo.py:243-247, 266-270, 303-307`; identical in `{FGSM,PGD,Patch}_Phase3_YOLO_v2.ipynb`
+  (cell 14).
 
 ## Current Results (N=1000 v2) — read from committed summary.json
 | Track | clean | attacked | best defense | defended | recovery |

@@ -345,7 +345,8 @@ def adaptive_bpda(adapter, args, coco_gt, files, image_ids):
         return buckets
 
     elapsed, computed, failures = core.run_per_image(
-        args, "bpda", files, conditions, compute_one, ckpt, log_every=10)
+        args, "bpda", files, conditions, compute_one, ckpt,
+        log_every=min(getattr(args, "log_every", 100), 25))
     ckpt.flush()
 
     _, cond = core.score_detection(
@@ -446,7 +447,20 @@ def adaptive_bpda(adapter, args, coco_gt, files, image_ids):
     stem = f"adaptive_bpda_{args.model_key}"
     core.write_summary(args, payload, stem)
     core.write_markdown(args, md_text, stem)
-    print("\n" + md_text)
+    # Headline only: the full table and the uncertainty list are in the .md
+    # written above, so repeating them would double them inside run.log.
+    print("\n" + "=" * 70)
+    print(f"RESULT DIGEST — BPDA+EOT vs {ENSEMBLE_PAPER_NAME} "
+          f"(full table in the .md)")
+    print("=" * 70)
+    print(f"  clean, undefended                : {clean:.4f}")
+    print(f"  oblivious attack, undefended     : {obl_undef:.4f}")
+    print(f"  oblivious attack, {ENSEMBLE_PAPER_NAME:<14}: {obl_ens:.4f}  "
+          f"(recovery {obl_ens - obl_undef:+.4f})")
+    print(f"  adaptive  attack, undefended     : {adp_undef:.4f}")
+    print(f"  adaptive  attack, {ENSEMBLE_PAPER_NAME:<14}: {adp_ens:.4f}  "
+          f"(recovery {adp_ens - adp_undef:+.4f})")
+    print(f"  defended mAP lost to adaptivity  : {adp_ens - obl_ens:+.4f}")
     core.print_runtime_estimate(elapsed, computed, str(device))
     return payload
 

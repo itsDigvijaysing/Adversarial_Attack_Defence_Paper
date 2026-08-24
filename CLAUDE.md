@@ -67,6 +67,11 @@ results** and **novel 2025–2026 methods**.
   resume, so a crashed 5000-image run would restart from zero.
 - **Timing:** `seconds_per_image` divides by images *computed this run*, never by `len(files)` —
   checkpoint-resumed images cost nothing and would fake the rate.
+- **Log hygiene (deliberate, tested):** pycocotools' per-condition output is captured and replaced
+  by one `[eval]` line (70% of a Phase-3 log was that boilerplate); the heartbeat is every
+  `--log-every` (100) images; the markdown table is written to the `.md` only, never echoed into
+  `run.log`. Restore the raw eval output with `--verbose-eval` when debugging a suspicious mAP.
+  Do not reintroduce a full-table `print` — `tests/test_flow_stubbed.py` asserts against it.
 - **Every filename written into `results/` must start with `summary`** to survive
   `.gitignore`'s `!results/**/summary*.json` negation.
 

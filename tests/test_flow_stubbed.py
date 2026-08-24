@@ -15,6 +15,7 @@ Only three things are faked, and each is stated at its definition: the model
 number this prints is synthetic — it is a plumbing test, not a measurement, and
 it writes only into a temp directory.
 """
+import io
 import os
 import shutil
 import sys
@@ -96,6 +97,7 @@ def fake_evaluate(args, all_results, coco_gt, image_ids):
     return out
 
 
+GENUINE_EVALUATE = core.evaluate      # keep a handle before faking it
 core.evaluate = fake_evaluate
 
 
@@ -421,6 +423,96 @@ def t_ensemble_member_guard():
 
 check("an ensemble whose member cannot be built is rejected",
       t_ensemble_member_guard)
+
+
+print("\n[5b] log hygiene")
+
+
+def t_quiet_eval():
+    """pycocotools' boilerplate must not reach the committed run.log."""
+    import contextlib
+    saved_pc_eval = pc.evaluate_all_conditions
+
+    def noisy(all_results, coco_gt, image_ids, output_dir):
+        for tag in all_results:
+            print("Running per image evaluation...")
+            print("Evaluate annotation type *bbox*")
+            print("DONE (t=1.23s).")
+            for k in range(12):
+                print(f" Average Precision  (AP) @[ row {k} ] = 0.123")
+        return {t: np.array([0.4, 0.6] + [0.0] * 10) for t in all_results}
+
+    pc.evaluate_all_conditions = noisy
+    genuine = GENUINE_EVALUATE
+    try:
+        args = make_args(yolo, ["--output-dir", os.path.join(tmp, "quiet")])
+        os.makedirs(args.output_dir, exist_ok=True)
+        results = {"clean": [], "clean+jpeg": []}
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            stats = genuine(args, results, None, [1, 2])
+        out = buf.getvalue()
+        assert "Running per image evaluation" not in out, "boilerplate leaked"
+        assert "Average Precision  (AP)" not in out, "12-row block leaked"
+        assert out.count("[eval]") == 3, out          # header + 2 conditions
+        assert len(stats) == 2
+        # and with --verbose-eval it comes back
+        args.verbose_eval = True
+        buf2 = io.StringIO()
+        with contextlib.redirect_stdout(buf2):
+            genuine(args, results, None, [1, 2])
+        assert "Running per image evaluation" in buf2.getvalue()
+    finally:
+        pc.evaluate_all_conditions = saved_pc_eval
+
+
+check("COCO-eval boilerplate is suppressed, one line per condition kept",
+      t_quiet_eval)
+
+
+def t_skip_clean_consistency():
+    """The OCR determinism pass is skippable and actually saves a generate."""
+    files = sorted(os.listdir(img_dir))
+    a1 = make_args(flo, ["--output-dir", os.path.join(tmp, "occ_on")])
+    os.makedirs(a1.output_dir, exist_ok=True)
+    ad1 = FakeAdapter(["florence_ocr"])
+    core.clean_control(ad1, a1, None, files, IMAGE_IDS)
+
+    a2 = make_args(flo, ["--skip-clean-consistency",
+                         "--output-dir", os.path.join(tmp, "occ_off")])
+    os.makedirs(a2.output_dir, exist_ok=True)
+    ad2 = FakeAdapter(["florence_ocr"])
+    p2 = core.clean_control(ad2, a2, None, files, IMAGE_IDS)
+    assert ad2.calls == ad1.calls - len(files), (ad1.calls, ad2.calls)
+    assert p2["tracks"]["florence_ocr"]["clean_repeat_selfconsistency"] == 1.0
+
+
+check("--skip-clean-consistency drops exactly one generate per image",
+      t_skip_clean_consistency)
+
+
+def t_no_markdown_duplication():
+    """The full table must not be echoed into stdout (it is in the .md)."""
+    import contextlib
+    args = make_args(yolo, ["--output-dir", os.path.join(tmp, "nodup")])
+    os.makedirs(args.output_dir, exist_ok=True)
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        core.clean_control(FakeAdapter(["yolo"]), args, None,
+                           sorted(os.listdir(img_dir)), IMAGE_IDS)
+    out = buf.getvalue()
+    md = open(os.path.join(args.output_dir,
+                           "summary_clean_control_yolo_latest.md")).read()
+    assert "| Defense | Kind |" not in out, "the full table was echoed to the log"
+    assert "| Defense | Kind |" in md, "the table must still be in the .md"
+    assert "RESULT DIGEST" in out, "the log needs a compact digest"
+    assert "undefended clean" in out
+    # the digest must be a fraction of the table's size
+    assert len(out) < len(md) * 3, (len(out), len(md))
+
+
+check("run.log carries a digest, not a copy of the markdown table",
+      t_no_markdown_duplication)
 
 
 print("\n[6] checkpoint resume")

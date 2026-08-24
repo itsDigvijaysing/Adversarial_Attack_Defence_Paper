@@ -119,7 +119,7 @@ python tests/test_offline_logic.py
 
 Shared flags: `--n/--num-images`, `--select {head,random}`, `--seed`, `--tracks`, `--gpu`,
 `--device {auto,cuda,cpu}`, `--checkpoint-every`, `--no-checkpoint`, `--keep-eval-dumps`,
-`--no-per-image`, plus the defense hyperparameters (defaults match Phase 3 exactly:
+`--no-per-image`, `--log-every N`, `--verbose-eval`, `--skip-clean-consistency`, plus the defense hyperparameters (defaults match Phase 3 exactly:
 JPEG q75, median 3x3, TVM w=0.05/200 iters, sigma=1.0, SVD 90%, NMS IoU 0.5).
 
 `--select head` (the default) picks the first `--n` of the sorted file list — exactly the subset the
@@ -171,6 +171,24 @@ track, and their PGD alpha is not uniform:
 Each run ends with a **RUN ARTIFACTS** table listing every file it wrote, split into
 *committed (share these)* and *local only (do not share)*, and warns if any committed file exceeds
 5 MB. So `git add results/` is safe and a run directory can be zipped and sent to a teammate as-is.
+
+### What the log deliberately does NOT contain
+
+Measured on `logs/survey_fgsm_n5000.log` (a Phase-3 run): **803 of its 1,155 lines — 70% — are
+pycocotools boilerplate** (480 `Average Precision/Recall` rows, 200 `Running per image
+evaluation…/DONE (t=…)` lines, 123 index-loading lines), of which we use exactly two numbers per
+condition. Phase 4 removes three sources of noise:
+
+| Removed | Was | Now |
+|---|---|---|
+| COCO-eval chatter | ~18 lines × every condition | one `[eval]` line per condition (mAP, AP50, #dets). `--verbose-eval` restores the raw output |
+| Progress heartbeat | every 25 images (200 lines/track at n=5000) | every 100 images, `--log-every N` |
+| The markdown table | printed in full into `run.log` **and** written to the `.md` | a short RESULT DIGEST (baseline, best 3, worst 1) + the `.md` path |
+
+Estimated effect for an n=5000 two-track run: roughly **750 → 170 lines (~50 KB → ~12 KB)** per
+`run.log`, with no loss of anything you would cite. The historical `logs/*.log` from Phase 3 are
+left untouched on purpose — they are the evidence behind committed numbers, and 400 KB total is not
+a problem worth rewriting history for.
 
 The archived Phase-3 scripts in `archive/Phase3/` do **not** use this — they still write the
 per-condition dumps into their output directory (this is where the ~702 MB on disk came from).

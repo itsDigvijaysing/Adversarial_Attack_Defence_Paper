@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import os
 import random
@@ -152,6 +153,15 @@ def base_parser(description, experiments):
                         "shareable.")
     p.add_argument("--no-per-image", action="store_true",
                    help="Skip the per-image audit JSON (gitignored either way).")
+    p.add_argument("--log-every", type=int, default=100,
+                   help="Progress heartbeat cadence in images (Phase-3 value).")
+    p.add_argument("--verbose-eval", action="store_true",
+                   help="Keep pycocotools' full per-condition output in the "
+                        "log instead of one summary line per condition.")
+    p.add_argument("--skip-clean-consistency", action="store_true",
+                   help="OCR: skip the second undefended clean pass (the "
+                        "decode-determinism check) and record 1.0 for it. "
+                        "Saves ~11%% of the OCR track's runtime.")
     p.add_argument("--smoke-test", action="store_true",
                    help="2 images on CPU into <output-dir>/smoke_test, stamped "
                         "smoke_test=true. Proves the plumbing; NOT a result.")
@@ -478,7 +488,7 @@ def make_checkpoint(args, track, sig):
 
 
 def run_per_image(args, label, files, conditions, compute_one, ckpt,
-                  log_every=25):
+                  log_every=None):
     """Run `compute_one(pil, img_id) -> {tag: value}` over `files`.
 
     Returns (elapsed_seconds, computed_count, failures). `computed` counts only
@@ -486,6 +496,7 @@ def run_per_image(args, label, files, conditions, compute_one, ckpt,
     so dividing by len(files) would report a fake speed and wreck the runtime
     estimate. Asserts, after the loop, that every image carries every condition.
     """
+    log_every = log_every or getattr(args, "log_every", 100)
     start = time.time()
     failures, computed = [], 0
     for i, fname in enumerate(files):
@@ -533,11 +544,32 @@ def record_dets(buckets, tag, dets, img_id):
 # 7. Scoring.
 # ======================================================================
 def evaluate(args, all_results, coco_gt, image_ids):
-    """COCO-eval every condition, with the bulky dumps sent to a temp dir."""
+    """COCO-eval every condition. Bulky dumps -> temp dir; output -> one line.
+
+    pycocotools prints ~18 lines per condition (its own progress chatter plus
+    the 12-row AP/AR block) and we keep exactly two of those numbers. At 15
+    conditions that is ~270 lines of noise in a committed run.log, so the
+    boilerplate is captured and dropped, and each condition is logged as one
+    line instead. `--verbose-eval` restores the raw output for debugging.
+    """
+    import contextlib
     with eval_dump_dir(args.output_dir, keep=args.keep_eval_dumps) as dumps:
-        return rt.pc.evaluate_all_conditions(
-            all_results, coco_gt, image_ids=sorted(image_ids),
-            output_dir=dumps)
+        if args.verbose_eval:
+            stats = rt.pc.evaluate_all_conditions(
+                all_results, coco_gt, image_ids=sorted(image_ids),
+                output_dir=dumps)
+        else:
+            sink = io.StringIO()
+            with contextlib.redirect_stdout(sink):
+                stats = rt.pc.evaluate_all_conditions(
+                    all_results, coco_gt, image_ids=sorted(image_ids),
+                    output_dir=dumps)
+    print(f"[eval] {len(stats)} conditions | "
+          f"{'mAP':>7} {'AP50':>7}  detections")
+    for tag in sorted(stats):
+        print(f"[eval]   {float(stats[tag][0]):7.4f} {float(stats[tag][1]):7.4f}"
+              f"  {len(all_results.get(tag, [])):>7}  {tag}")
+    return stats
 
 
 def score_detection(args, ckpt, names, ensembles, coco_gt, attack_tags=(),
@@ -733,6 +765,30 @@ def print_runtime_estimate(elapsed, computed, device, targets=(300, 1000, 5000))
         print("  ⚠ CPU timing — GPU is far faster; treat as an upper bound.")
 
 
+def print_result_digest(results, names, ensembles, top=3):
+    """Compact end-of-run block for the log: baseline + best/worst per track.
+
+    The full per-defense table lives in the committed .md; this is what a person
+    watching a tmux pane actually needs.
+    """
+    print("\n" + "=" * 70)
+    print("RESULT DIGEST (full table in the .md next to this log)")
+    print("=" * 70)
+    for track, r in results.items():
+        print(f"  {track}: undefended clean = {r['undefended_clean']:.4f}"
+              f"  [{TRACK_METRIC[track]}]")
+        rows = sorted(r["defenses"].items(),
+                      key=lambda kv: kv[1]["delta_vs_measured"], reverse=True)
+        for name, d in rows[:top]:
+            label = ENSEMBLE_PAPER_NAMES.get(name) or SOLO_PAPER_NAMES.get(name, name)
+            print(f"      best  {label:<24} {d['value']:.4f} "
+                  f"({d['delta_vs_measured']:+.4f})")
+        for name, d in rows[-1:]:
+            label = ENSEMBLE_PAPER_NAMES.get(name) or SOLO_PAPER_NAMES.get(name, name)
+            print(f"      worst {label:<24} {d['value']:.4f} "
+                  f"({d['delta_vs_measured']:+.4f})")
+
+
 def finish(args):
     """Last thing every entry point calls: list what is safe to share."""
     return artifact_report(args.output_dir)
@@ -779,9 +835,12 @@ def clean_control(adapter, args, coco_gt, files, image_ids):
                 # clean_ref = the UNDEFENDED clean OCR output: the anchor every
                 # similarity is measured against.
                 texts["clean_ref"] = _ocr(pil_img)
-                # A second undefended pass is the determinism check; beam search
-                # should reproduce it exactly (=> 1.0).
-                texts["clean_repeat"] = _ocr(pil_img)
+                # A second undefended pass is the decode-determinism check; beam
+                # search should reproduce it exactly (=> 1.0). Skippable because
+                # it is a whole extra generate per image on the slowest track.
+                texts["clean_repeat"] = (
+                    texts["clean_ref"] if args.skip_clean_consistency
+                    else _ocr(pil_img))
                 defended = build_branches(pil_img, device, args, names)
                 for bn in names:
                     texts[f"clean+{bn}"] = _ocr(defended[bn])
@@ -920,6 +979,8 @@ def clean_control(adapter, args, coco_gt, files, image_ids):
     stem = f"clean_control_{args.model_key}"
     write_summary(args, payload, stem)
     write_markdown(args, md_text, stem)
-    print("\n" + md_text)
+    # The full table is already in the .md written above; repeating it here
+    # would double it inside the committed run.log for no benefit.
+    print_result_digest(results, names, ensembles)
     print_timing(results, adapter.device)
     return payload

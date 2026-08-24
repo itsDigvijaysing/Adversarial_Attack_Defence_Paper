@@ -126,6 +126,25 @@ JPEG q75, median 3x3, TVM w=0.05/200 iters, sigma=1.0, SVD 90%, NMS IoU 0.5).
 Phase-3 attacked runs scored — so the deltas are same-subset comparable. The chosen image ids and a
 SHA1 digest of them go into every summary.
 
+### Measured throughput (RTX 3060 Laptop, 6 GB, verified 2026-08-24)
+
+Real `s/image` from GPU runs on this hardware — not estimates. All exited 0.
+
+| Run | s/image | n | n=1000 | n=5000 | peak VRAM |
+|---|---|---|---|---|---|
+| `p4_yolo.py --experiment clean_control` | **0.67** | 10 | 0.19 h | 0.93 h | ~2.3 GB |
+| `p4_yolo.py --experiment adaptive_bpda` | 1.61 | 2 | 0.45 h | 2.24 h | ~2.3 GB |
+| `p4_florence.py` `florence_det` (5 beams) | 2.44 | 2 | 0.68 h | 3.39 h | ~1.3 GB |
+| `p4_florence.py` `florence_ocr` (5 beams) | 1.13 | 2 | 0.31 h | 1.57 h | (same load) |
+
+Only the YOLO `clean_control` row is measured over 10 images; the rest are 2-image runs, so treat
+them as ±30% and trust the `s/image` each run prints for itself. The Florence rows use the
+production decode (`--num-beams 5`), not the reduced `--smoke-test` decode.
+
+6 GB is enough for either model at batch 1 (YOLO peaked ~2.3 GB, Florence ~1.3 GB of 5.8 GB free,
+and VRAM returned to idle after each run). **Do not run both entry points on the same 6 GB card at
+once** — run them in sequence. On a larger card they can share.
+
 ### The two experiments
 
 | Experiment | Model(s) | What it answers |

@@ -2,6 +2,13 @@ coco_val2017*
 val2017/
 annotations/
 *.pt
+
+# Runtime weights dir. YOLO-World's set_classes() fetches CLIP into
+# ./weights/clip/ (ViT-B-32.pt, 338 MB) on first run. The .pt itself is already
+# covered by the *.pt rule above; this line ignores the directory as a whole so
+# any non-.pt file the download drops there (configs, partial .tmp files) cannot
+# creep into a commit either.
+weights/
 __pycache__/
 *.pyc
 *.pkl

@@ -140,7 +140,10 @@ def base_parser(description, experiments):
                    help="COCO instances_val2017.json. Default: auto-resolve.")
     p.add_argument("--gpu", type=int, default=0,
                    help="GPU index; <0 picks the freest via nvidia-smi.")
-    p.add_argument("--device", choices=["auto", "cuda", "cpu"], default="auto")
+    p.add_argument("--device", choices=["auto", "cuda", "cpu"], default=None,
+                   help="Default auto (cuda when available). --smoke-test "
+                   "falls back to cpu ONLY if you do not set this, so "
+                   "`--smoke-test --device cuda` validates the GPU path.")
     p.add_argument("--results-root", default=DEFAULT_RESULTS_ROOT)
     p.add_argument("--output-dir", default=None,
                    help="Override the whole output path (default: "
@@ -191,9 +194,14 @@ def finalize_args(args, model_key):
             args.results_root, f"{args.experiment}_{model_key}")
     if args.smoke_test:
         args.n = 2
-        args.device = "cpu"
         args.no_checkpoint = True
         args.output_dir = os.path.join(args.output_dir, "smoke_test")
+        # CPU only when the caller did not ask for a device: a smoke test that
+        # can never touch CUDA cannot validate the GPU code path.
+        if args.device is None:
+            args.device = "cpu"
+    if args.device is None:
+        args.device = "auto"
     return args
 
 

@@ -79,6 +79,13 @@ class _Tee:
 
     def write(self, data):
         self._stream.write(data)
+        # Live progress repaints (tqdm bars from model/weight downloads,
+        # ultralytics) use \r to overwrite one terminal line. They are useful
+        # to watch and worthless in a committed log — a single 338 MB download
+        # writes hundreds of lines. Keep them on the terminal, drop them from
+        # the file; the final \n-terminated line still lands.
+        if "\r" in data and not data.endswith("\n"):
+            return len(data)
         self._handle.write(data)
         self._handle.flush()          # tmux-friendly: tail -f sees it live
         return len(data)

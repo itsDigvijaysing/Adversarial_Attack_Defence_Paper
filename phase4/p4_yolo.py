@@ -517,8 +517,8 @@ def main(argv=None):
 
         rt.pc.print_banner(f"PHASE 4 — YOLO — {args.experiment}", width=80)
         if args.smoke_test:
-            print("*** SMOKE TEST: 2 images on CPU. The numbers below are NOT "
-                  "results. ***")
+            print(f"*** SMOKE TEST: {args.n} images on {device}. The numbers "
+                  f"below are NOT results. ***")
         print(f"  run id    : {args.run_id}")
         print(f"  images    : {args.n} from {args.image_dir} "
               f"(--select {args.select}, seed {args.seed})")

@@ -8,12 +8,26 @@ dependencies:
   - pip
   - ipykernel
   - pip:
+      # PyTorch CUDA builds are NOT on PyPI. Without this line the +cu118 pins
+      # below cannot resolve and `conda env create -f environment.yml` fails.
+      - --extra-index-url https://download.pytorch.org/whl/cu118
       # Core ML
       - torch==2.6.0+cu118
       - torchvision==0.21.0+cu118
       - torchaudio==2.6.0+cu118
       - transformers==4.51.0
+      # accelerate is REQUIRED, not optional: without it transformers 4.51
+      # raises `NameError: init_empty_weights` when loading Florence-2.
       - accelerate==1.6.0
+      # einops is imported by Florence-2's trust_remote_code modeling file.
+      - einops==0.8.2
+      # The YOLO track needs ultralytics; it was missing from this file, so the
+      # YOLO entry point could not run from a fresh env. Verified with 8.4.127
+      # (the Phase-3 runs used an unrecorded 8.x, so this is a Phase-4 pin).
+      # NOTE: ultralytics auto-installs `clip` the first time set_classes() is
+      # called, and that downloads ViT-B-32.pt (338 MB) into ./weights/clip/
+      # (gitignored). Expect that one-off download on a new machine.
+      - ultralytics==8.4.127
       - timm==1.0.15
       - safetensors==0.5.3
       # Data & evaluation

@@ -123,6 +123,12 @@ def t_smoke_overrides():
     assert b.pgd_iters == 10, "an explicit --pgd-iters wins"
     c = flo.parse_args(["--smoke-test"])
     assert c.n == 2 and c.device == "cpu" and c.num_beams == 1
+    # an explicit --device must survive --smoke-test, else the GPU path can
+    # never be smoke-tested at all
+    g = flo.parse_args(["--smoke-test", "--device", "cuda"])
+    assert g.device == "cuda" and g.n == 2, vars(g)
+    assert yolo.parse_args(["--smoke-test", "--device", "cuda"]).device == "cuda"
+    assert yolo.parse_args([]).device == "auto"
     d = flo.parse_args(["--smoke-test", "--full-gen"])
     assert d.num_beams == 5, "--full-gen restores the Phase-3 decode"
 

@@ -298,31 +298,48 @@ check("clean_control(florence) scores det + OCR from one adapter",
 print("\n[4] adaptive_bpda driver runs end to end")
 
 
-def t_adaptive_driver():
-    """Exercise the adaptive experiment's driver.
+def run_adaptive_stubbed(extra, outdir):
+    """Run yolo.adaptive_bpda with the attack math stubbed out.
 
-    The attack MATH (BPDA straight-through, EOT averaging, the YOLO loss) needs
-    real autograd and is stubbed out here — that part is only provable by the
-    GPU smoke test. What this covers is everything around it: condition tags,
-    the ensemble merge across three attack prefixes, the headline arithmetic,
-    and the report writers.
+    The attack MATH (BPDA surrogates, EOT, the YOLO objective, PGD) needs real
+    autograd and is covered by tests/test_attack_units.py on CPU torch. Here
+    both attacks return the image unchanged with a fixed, SYNTHETIC info dict
+    (objective 5.0 adaptive / 8.0 oblivious, clean 10.0), so what is under
+    test is everything around them: condition tags, the merge across three
+    attack prefixes, the headline arithmetic and the report writers.
     """
-    saved = (yolo.assert_gaussian_matches, yolo.pgd_oblivious,
-             yolo.pgd_adaptive_bpda_eot)
-    yolo.assert_gaussian_matches = lambda *a, **k: None
-    yolo.pgd_oblivious = lambda pil, model, device, args: pil
-    yolo.pgd_adaptive_bpda_eot = lambda pil, model, device, args, branches: pil
+    def fake_attack(objective):
+        def attack(pil, model, device, args, *rest):
+            assert isinstance(rest[-1], int), "image id must reach the attack"
+            return pil, {"objective": objective, "restart": 0,
+                         "restart_objectives": [objective] * args.restarts,
+                         "adv_q": None}
+        return attack
+
+    saved = (yolo.check_surrogates, yolo.pgd_oblivious,
+             yolo.pgd_adaptive_bpda_eot, yolo.target_objectives)
+    yolo.check_surrogates = lambda *a, **k: None
+    yolo.pgd_oblivious = fake_attack(8.0)
+    yolo.pgd_adaptive_bpda_eot = fake_attack(5.0)
+    yolo.target_objectives = lambda *a, **k: {"clean": 10.0, "oblivious": 8.0}
     try:
         args = make_args(yolo, ["--experiment", "adaptive_bpda",
-                                "--output-dir", os.path.join(tmp, "adaptive")])
+                                "--output-dir", os.path.join(tmp, outdir),
+                                *extra])
         os.makedirs(args.output_dir, exist_ok=True)
         adapter = FakeAdapter(["yolo"], "yolov8x-worldv2.pt")
         payload = yolo.adaptive_bpda(adapter, args, None,
                                      sorted(os.listdir(img_dir)), IMAGE_IDS)
     finally:
-        (yolo.assert_gaussian_matches, yolo.pgd_oblivious,
-         yolo.pgd_adaptive_bpda_eot) = saved
+        (yolo.check_surrogates, yolo.pgd_oblivious,
+         yolo.pgd_adaptive_bpda_eot, yolo.target_objectives) = saved
+    md = open(os.path.join(args.output_dir,
+                           f"summary_{yolo.summary_stem(args)}_latest.md")).read()
+    return args, adapter, payload, md
 
+
+def t_adaptive_driver():
+    args, adapter, payload, md = run_adaptive_stubbed([], "adaptive")
     h = payload["headline"]
     for k in ("clean_mAP", "oblivious_attacked_undefended_mAP",
               "oblivious_attacked_defended_mAP",
@@ -345,19 +362,142 @@ def t_adaptive_driver():
                 "pgd_oblivious+ens_jpeg_median_gaussian", "pgd_adaptive",
                 "pgd_adaptive+ens_jpeg_median_gaussian"):
         assert tag in payload["conditions"], f"missing condition {tag}"
-    assert len(payload["implementation_uncertainty"]) == 5
+    unc = payload["implementation_uncertainty"]
+    assert len(unc) >= 8 and any("LOWER bound" in u for u in unc), unc
     assert payload["attack"]["alpha"] == payload["attack"]["eps"] / 4
+    assert payload["defense"] == {
+        "name": "EnsJMG", "key": "ens_jpeg_median_gaussian", "kind": "ensemble",
+        "branches": ["jpeg", "median", "gaussian"],
+        "merge": "class-aware NMS", "nms_iou": 0.5}, payload["defense"]
+    # every adaptive flag, with its default, in the JSON
+    assert payload["attack_flags"] == {
+        "target": "ens_jpeg_median_gaussian", "eot_loss": "max", "restarts": 1,
+        "median_surrogate": "true", "quantize": "truncate",
+        "attack_space": "letterbox"}, payload["attack_flags"]
+    assert payload["bpda"]["true_gradient_branches"] == ["median", "gaussian"]
+    assert payload["bpda"]["identity_gradient_branches"] == ["jpeg"]
+    so = payload["surrogate_objective"]
+    assert (so["mean_clean"], so["mean_oblivious_adv"], so["mean_adaptive_adv"],
+            so["frac_images_adaptive_below_oblivious"]) == (10.0, 8.0, 5.0, 1.0)
     # 12 inferences per image: (clean + 3) x (clean, oblivious, adaptive)
     assert adapter.calls == 5 * 12, adapter.calls
-    md = open(os.path.join(args.output_dir,
-                           "summary_adaptive_bpda_yolo_latest.md")).read()
     for needle in ("EnsJMG", "adaptive attack, undefended",
-                   "Implementation uncertainty", "LOWER bound"):
+                   "Implementation uncertainty", "LOWER bound",
+                   "EOT loss `max`", "Attack space `letterbox`",
+                   "quantization `truncate`", "median surrogate `true`",
+                   "1 restart(s)", "| adaptive attack | EnsJMG |"):
         assert needle in md, f"markdown missing {needle!r}"
+    assert os.path.isfile(os.path.join(
+        args.output_dir,
+        "summary_adaptive_bpda_yolo_ens_jpeg_median_gaussian_seed42_latest.json"))
 
 
 check("adaptive_bpda driver: conditions, headline arithmetic, report",
       t_adaptive_driver)
+
+
+def t_adaptive_driver_ens4w_flags():
+    """Non-default flags reach the JSON and the markdown header."""
+    args, adapter, payload, md = run_adaptive_stubbed(
+        ["--target", "ens_4way", "--eot-loss", "mean", "--restarts", "2",
+         "--median-surrogate", "identity", "--quantize", "round",
+         "--attack-space", "native", "--seed", "7"], "adaptive_4w")
+    assert payload["defense"]["name"] == "Ens4W"
+    assert set(payload["defense"]["branches"]) == {"jpeg", "median", "tvm",
+                                                   "gaussian"}
+    assert payload["attack_flags"] == {
+        "target": "ens_4way", "eot_loss": "mean", "restarts": 2,
+        "median_surrogate": "identity", "quantize": "round",
+        "attack_space": "native"}, payload["attack_flags"]
+    a = payload["attack"]
+    assert (a["restarts"], a["quantize"], a["attack_space"], a["seed"]) == \
+        (2, "round", "native", 7)
+    assert set(payload["bpda"]["identity_gradient_branches"]) == \
+        {"jpeg", "median", "tvm"}
+    for tag in ("pgd_oblivious+ens_4way", "pgd_adaptive+ens_4way",
+                "pgd_adaptive+tvm"):
+        assert tag in payload["conditions"], tag
+    # (clean + 4 branches) x (clean, oblivious, adaptive)
+    assert adapter.calls == 5 * 15, adapter.calls
+    for needle in ("Ens4W", "EOT loss `mean`", "Attack space `native`",
+                   "quantization `round`", "median surrogate `identity`",
+                   "2 restart(s)", "seed 7", "Native space"):
+        assert needle in md, f"markdown missing {needle!r}"
+    assert "LOWER bound" not in md, "native space has no letterbox-scale bound"
+    # ablation flags get their own stem, so the headline _latest survives
+    assert os.path.isfile(os.path.join(
+        args.output_dir,
+        "summary_adaptive_bpda_yolo_ens_4way_seed7_eot-loss-mean_restarts-2"
+        "_median-surrogate-identity_quantize-round_attack-space-native"
+        "_latest.json"))
+
+
+check("adaptive_bpda vs Ens4W with every non-default flag: JSON + markdown",
+      t_adaptive_driver_ens4w_flags)
+
+
+def t_adaptive_driver_solo():
+    args, adapter, payload, md = run_adaptive_stubbed(
+        ["--target", "median"], "adaptive_median")
+    assert payload["defense"]["name"] == "Median"
+    assert payload["defense"]["kind"] == "solo"
+    assert payload["defense"]["merge"] == "none (solo transform)"
+    assert not any(t.split("+")[-1].startswith("ens_")
+                   for t in payload["conditions"]), "a solo target has no merge"
+    h = payload["headline"]
+    assert h["adaptive_attacked_defended_mAP"] == \
+        payload["conditions"]["pgd_adaptive+median"]["mAP"]
+    assert adapter.calls == 5 * 6, adapter.calls      # (clean + 1) x 3
+    assert "Median" in md and "single branch" in md
+
+
+check("adaptive_bpda vs a solo target (Median): no merge, right headline",
+      t_adaptive_driver_solo)
+
+
+def t_adaptive_signature_flags():
+    """Every flag that changes an attacked image must change the checkpoint sig."""
+    files = sorted(os.listdir(img_dir))
+
+    def sig(extra):
+        a = make_args(yolo, ["--experiment", "adaptive_bpda", *extra])
+        _, branches, _ = yolo.resolve_target(a.target)
+        return yolo.adaptive_signature(a, FakeAdapter(["yolo"]), a.target,
+                                       branches, files, IMAGE_IDS, "cpu")
+
+    base = sig([])
+    assert base == sig([]), "signature must be deterministic"
+    variants = {"target": ["--target", "ens_4way"],
+                "eot_loss": ["--eot-loss", "mean"],
+                "restarts": ["--restarts", "2"],
+                "median_surrogate": ["--median-surrogate", "identity"],
+                "quantize": ["--quantize", "round"],
+                "attack_space": ["--attack-space", "native"],
+                "seed": ["--seed", "7"], "eps": ["--eps", "0.1"],
+                "iters": ["--pgd-iters", "50"]}
+    sigs = {k: sig(v) for k, v in variants.items()}
+    same = [k for k, s in sigs.items() if s == base]
+    assert not same, f"flags not in the checkpoint signature: {same}"
+    assert len(set(sigs.values())) == len(sigs), "two flags collided"
+
+
+check("each adaptive flag (+ seed, eps, iters) changes the checkpoint signature",
+      t_adaptive_signature_flags)
+
+
+def t_quantize_modes():
+    v = np.array([0.0, 1.4, 1.6, 254.7, 255.0], dtype=np.float32)
+    assert yolo.quantize_array(v, "truncate").tolist() == [0, 1, 1, 254, 255]
+    assert yolo.quantize_array(v, "round").tolist() == [0, 1, 2, 255, 255]
+    assert yolo.quantize_array(v, "round").dtype == np.uint8
+    try:
+        yolo.quantize_array(v, "floor")
+    except ValueError:
+        return
+    raise AssertionError("an unknown --quantize mode must raise")
+
+
+check("--quantize truncate (Phase 3) vs round", t_quantize_modes)
 
 
 print("\n[5] guards actually fire")

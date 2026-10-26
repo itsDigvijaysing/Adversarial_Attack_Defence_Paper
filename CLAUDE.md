@@ -21,8 +21,16 @@ results** and **novel 2025–2026 methods**.
   `PYTHONPATH=.`).
 - **Do NOT execute training/eval scripts unless explicitly asked** — they need GPU + model + COCO.
   For code changes, verify with `python -m py_compile <file>` **and**
-  `python tests/test_offline_logic.py` (30 torch-free checks: CLI, output paths, seeded selection,
-  OCR helpers, artifact policy, and an AST check that p4's 7 ensembles match `phase3_common`).
+  `python tests/test_offline_logic.py` (37 torch-free checks: CLI incl. the adaptive flags, output
+  paths, seeded selection + the short-image-dir error, the matching `--preflight` image count, the
+  BPDA surrogate table, OCR helpers, artifact policy, and AST checks that p4's 7 ensembles and the
+  `--target` member lists come from `phase3_common`) **and**
+  `python tests/test_flow_stubbed.py` (20 checks: the real `clean_control` / `adaptive_bpda`
+  drivers with stubbed model + attacks, incl. "every adaptive flag changes the checkpoint
+  signature"). After any edit to the attack math also run
+  `CUDA_VISIBLE_DEVICES='' /home/king/miniconda3/envs/vlm_ftune/bin/python tests/test_attack_units.py`
+  (14 CPU-torch checks on a fake detector, no weights or COCO; prints SKIP and exits 0 without
+  torch).
 
 ## Layout (restructured for Phase 4 on 2026-08-17)
 - **`phase3_common.py`** — shared core, **stays at the repo root**: GPU defenses (`tvm_gpu`,
@@ -39,12 +47,20 @@ results** and **novel 2025–2026 methods**.
     and the `clean_control` experiment shared by both models.
   - `p4_yolo.py` — ENTRY POINT. Letterbox, detection parsing, the confidence-suppression attack
     objective, oblivious PGD, and the BPDA+EOT adaptive attack (`adaptive_bpda`, YOLO-only).
+    Adaptive flags: `--target` (EnsJMG default, Ens4W, EnsJMT, EnsBTC, or a solo; members read
+    from `pc.TIER1_ENSEMBLES`), `--eot-loss {max,mean}` (max = union-aware, default),
+    `--restarts R`, `--median-surrogate {true,identity}`, `--quantize {truncate,round}`,
+    `--attack-space {letterbox,native}`. With the defaults the oblivious PGD is Phase 3's apart
+    from the now-seeded init; the adaptive defaults differ from the earlier pilot in
+    `--eot-loss max` and the true median gradient (pilot: `mean`, `identity`).
   - `p4_florence.py` — ENTRY POINT. Florence-2 loaded ONCE serving both `<OD>` and `<OCR>`;
     `FLORENCE_TO_COCO`, the fabricated `compute_score`, NMS. Attacks NOT ported yet (they live in
     `archive/Phase3/`) — port them only when a Phase-4 attack experiment is defined.
   - `p4_logging.py` — the run-artifact policy: `run_log` (tee to `run.log`), `eval_dump_dir`
     (COCO dumps to a temp dir, deleted), `artifact_report` (committed vs local split).
-- **`tests/test_offline_logic.py`** — 30 torch-free checks; run it after any `phase4/` edit.
+- **`tests/`**: `test_offline_logic.py` (37 torch-free checks) and `test_flow_stubbed.py` (20
+  stubbed end-to-end checks): run both after any `phase4/` edit. `test_attack_units.py` (14 checks,
+  vlm_ftune python, CPU only): run after touching the attack math.
 - **`docs/`** — report + presentation PDFs, `memory.md`, `memory_phase2_archive.md`, `GPU`,
   `tmux.txt`. **`figures/`** — result images. **`results/`** — Phase-3 output dirs plus
   `results/phase4/<experiment>_<model>/` for new runs.
@@ -74,6 +90,26 @@ results** and **novel 2025–2026 methods**.
   Do not reintroduce a full-table `print` — `tests/test_flow_stubbed.py` asserts against it.
 - **Every filename written into `results/` must start with `summary`** to survive
   `.gitignore`'s `!results/**/summary*.json` negation.
+- **Adaptive summaries are keyed by target, seed and every non-default ablation flag:**
+  `summary_adaptive_bpda_yolo_<target>_seed<S>[_<flag>-<value>...]_n<N>_<ts>.json` (+ `_latest`;
+  e.g. `_median-surrogate-identity`, from `STEM_FLAG_DEFAULTS`), so 3 seeds x 3 targets and any
+  `--eot-loss/--restarts/--median-surrogate/--quantize/--attack-space` ablation in one run
+  directory each keep a citable `_latest`. Eps / iteration diagnostics still share the stem: give
+  them their own `--output-dir`.
+- **eps=0.03 is 7.65/255, not a whole uint8 step.** `--attack-space native` clips the uint8 output
+  to the clean image +/- 7/255 (`uint8_budget`), so the defense never sees more than eps. The
+  letterbox default keeps Phase 3's truncation (a pixel can move 8/255 in the letterbox) and is
+  bicubic-resampled afterwards, so no per-pixel bound holds there; the `.md` says so.
+- **Too few images is an error.** `select_images` raises (naming
+  http://images.cocodataset.org/zips/val2017.zip) when the image dir holds fewer than `--n`; only
+  `--smoke-test` keeps the old warning (both entry points pass `allow_short=args.smoke_test`).
+  `--preflight` applies the same count (`list_images`) and reports `SHORT` / NOT READY, so READY
+  means the run can start.
+- **The scored defense is always `phase3_common`'s.** The BPDA surrogates in `p4_yolo.py` only
+  shape the attacker's gradient; their forward is the deployed transform bit for bit
+  (`tests/test_attack_units.py` checks it against `build_branches`). Each branch's surrogate is
+  one row of `SURROGATES`; `bpda_branch`, `surrogate_description`, `is_identity_surrogate` and
+  `check_surrogates` all read it via `surrogate_spec`, so edit that table, not the helpers.
 
 ## Critical conventions & gotchas
 - **Never modify the frozen v2 files or `pc.SOLO_DEFENSES`/`pc.ENSEMBLES`.** v2 scripts iterate
@@ -108,6 +144,9 @@ results** and **novel 2025–2026 methods**.
   is). Cite preprints as preprints; see the table in `docs/memory.md`.
 
 ## Git
+- **Three files the code and docs depend on are untracked:** `tests/test_attack_units.py`,
+  `tests/test_rescore.py`, `phase4/p4_rescore.py`. Any commit of the `phase4/` changes must `git add`
+  them too, or the cited checks (and `p4_yolo.py`'s summary text) point at nothing.
 - **Do not commit unless explicitly asked.** Per the user's global preference, **never add
   `Co-Authored-By` or any AI/assistant attribution** to commits/PRs.
 - Only `summary*.json`, `run.log`, `.png`, code, and docs are tracked under `results/`; dump JSONs,

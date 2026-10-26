@@ -357,7 +357,8 @@ def main(argv=None):
         args.image_dir = core.resolve_image_dir(args.image_dir)
         args.ann_file = core.resolve_ann_file(args.ann_file)
         files, image_ids = core.select_images(args.image_dir, args.n, args.seed,
-                                             args.select)
+                                             args.select,
+                                             allow_short=args.smoke_test)
         args.n = len(files)
 
         rt.pc.print_banner(f"PHASE 4 — FLORENCE-2 — {args.experiment}", width=80)

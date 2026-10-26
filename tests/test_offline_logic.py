@@ -259,6 +259,64 @@ check("non-COCO filenames are rejected (no silent bad image_id)",
       t_selection_guard)
 
 
+def t_short_dir_is_an_error():
+    """--n larger than the image dir must stop the run (20 images here)."""
+    for mode in ("head", "random"):
+        try:
+            core.select_images(img_dir, 50, 42, mode)
+        except RuntimeError as exc:
+            msg = str(exc)
+            assert "n=50" in msg and "only 20" in msg, msg
+            assert "val2017" in msg and "missing" in msg, msg
+            assert "http://images.cocodataset.org/zips/val2017.zip" in msg, msg
+        else:
+            raise AssertionError(f"{mode}: a short image dir must raise")
+    import contextlib
+    import io
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):       # --smoke-test path: warn only
+        files, ids = core.select_images(img_dir, 50, 42, "head",
+                                        allow_short=True)
+    assert len(files) == len(ids) == 20 and "[WARN]" in buf.getvalue()
+    assert core.select_images(img_dir, 20, 42, "head")[1] == list(range(1, 21))
+
+
+check("fewer images than --n is an error naming val2017.zip (smoke: warning)",
+      t_short_dir_is_an_error)
+
+
+def t_preflight_counts_images():
+    """--preflight says READY only when the run itself can start."""
+    import contextlib
+    import io
+
+    def run(img, *flags):
+        a = yolo.parse_args(["--image-dir", img, "--ann-file", ann] + list(flags))
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = core.preflight(a, modules=[], weights=[])
+        return rc, buf.getvalue()
+
+    rc, out = run(img_dir, "--n", "50")              # 20 on disk < 50
+    assert rc == 1 and "SHORT" in out and "holds 20 images" in out, out
+    assert core.COCO_VAL2017_URL in out and "NOT READY" in out, out
+    rc, out = run(img_dir, "--n", "20")
+    assert rc == 0 and "(20 images)" in out and "[verdict] READY" in out, out
+    one = os.path.join(tmp, "one_image")
+    os.makedirs(one, exist_ok=True)
+    open(os.path.join(one, "000000000001.jpg"), "wb").close()
+    rc, out = run(one, "--smoke-test")               # smoke: n=2, 1 is allowed
+    assert rc == 0 and "(1 images)" in out, out
+    empty = os.path.join(tmp, "no_images")
+    os.makedirs(empty, exist_ok=True)
+    rc, out = run(empty, "--smoke-test")             # select_images would raise
+    assert rc == 1 and "holds 0 images" in out, out
+
+
+check("preflight: READY only if the image dir holds --n images (smoke: >= 1)",
+      t_preflight_counts_images)
+
+
 print("\n[5] OCR metric helpers (verbatim Phase-3 copies)")
 
 
@@ -358,15 +416,190 @@ check("all 7 paper ensembles exist in phase3_common with buildable members",
       t_ensembles_match_phase3)
 
 
-def t_ensjmg_is_the_bpda_target():
+def t_bpda_targets_from_phase3():
+    """--target reads its branch lists from phase3_common, never restates them."""
     ns = _parse_phase3_dicts()
-    members = ns["SURVEY_ENSEMBLES"][yolo.ENSEMBLE_KEY]
-    assert sorted(members) == ["gaussian", "jpeg", "median"], members
-    assert yolo.ENSEMBLE_PAPER_NAME == "EnsJMG"
+    tier1 = ns["TIER1_ENSEMBLES"]
+    assert yolo.DEFAULT_TARGET == "ens_jpeg_median_gaussian"
+    expected = {"ens_jpeg_median_gaussian": ("EnsJMG",
+                                             {"jpeg", "median", "gaussian"}),
+                "ens_4way": ("Ens4W", {"jpeg", "median", "tvm", "gaussian"}),
+                "ens_jpeg_median_tvm": ("EnsJMT", {"jpeg", "median", "tvm"})}
+    for key, (label, members) in expected.items():
+        assert key in yolo.ENSEMBLE_TARGETS, key
+        ens, branches, paper = yolo.resolve_target(key, table=tier1)
+        assert branches == tier1[key] and set(branches) == members, branches
+        assert ens == {key: tier1[key]} and paper == label, (ens, paper)
+    for key in yolo.ENSEMBLE_TARGETS:     # every choice resolves + has surrogates
+        assert yolo.resolve_target(key, table=tier1)[1] == tier1[key]
+    for solo, label in (("median", "Median"), ("jpeg", "JPEG"),
+                        ("gaussian", "Gaussian"), ("tvm", "TVM")):
+        assert yolo.resolve_target(solo, table=tier1) == ({}, [solo], label)
+    try:                                   # svd has no surrogate -> not a target
+        yolo.resolve_target("ens_jpeg_tvm_svd", table=tier1)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("EnsJTS (svd member) must not be a --target")
+    # No module constant, and nothing in the target-resolving or driver code,
+    # may restate an ensemble's members as a literal. (bpda_branch's
+    # identity-surrogate tuple is a set of BRANCH TYPES that merely coincides
+    # with EnsJMT, so the scan is scoped instead of file-wide.)
+    tree = ast.parse(open(os.path.join(PHASE4, "p4_yolo.py")).read())
+    scopes = [s for s in tree.body if isinstance(s, (ast.Assign, ast.AnnAssign))]
+    scopes += [s for s in tree.body if isinstance(s, ast.FunctionDef)
+               and s.name in ("resolve_target", "adaptive_bpda", "parse_args")]
+    assert len(scopes) > 10, "scope detection broke"
+    member_sets = [set(v) for v in tier1.values()]
+    for scope in scopes:
+        for node in ast.walk(scope):
+            if isinstance(node, (ast.List, ast.Tuple)) and node.elts and all(
+                    isinstance(e, ast.Constant) and isinstance(e.value, str)
+                    for e in node.elts):
+                assert {e.value for e in node.elts} not in member_sets, (
+                    f"p4_yolo.py:{node.lineno} hard-codes an ensemble's members")
 
 
-check("the BPDA target EnsJMG is jpeg+median+gaussian in phase3_common",
-      t_ensjmg_is_the_bpda_target)
+check("--target ensembles come from phase3_common (EnsJMG/Ens4W/EnsJMT + solos)",
+      t_bpda_targets_from_phase3)
+
+
+def t_adaptive_flags():
+    a = yolo.parse_args(["--experiment", "adaptive_bpda"])
+    assert (a.target, a.eot_loss, a.restarts, a.median_surrogate, a.quantize,
+            a.attack_space) == ("ens_jpeg_median_gaussian", "max", 1, "true",
+                                "truncate", "letterbox"), vars(a)
+    b = yolo.parse_args(["--target", "ens_4way", "--eot-loss", "mean",
+                         "--restarts", "3", "--median-surrogate", "identity",
+                         "--quantize", "round", "--attack-space", "native"])
+    assert (b.target, b.eot_loss, b.restarts, b.median_surrogate, b.quantize,
+            b.attack_space) == ("ens_4way", "mean", 3, "identity", "round",
+                                "native")
+    assert tuple(yolo.ATTACK_FLAGS) == ("target", "eot_loss", "restarts",
+                                        "median_surrogate", "quantize",
+                                        "attack_space")
+    import contextlib
+    import io
+    for bad in (["--restarts", "0"], ["--target", "ens_jpeg_tvm_svd"],
+                ["--eot-loss", "sum"], ["--quantize", "floor"],
+                ["--attack-space", "square"]):
+        with contextlib.redirect_stderr(io.StringIO()):
+            try:
+                yolo.parse_args(bad)
+            except SystemExit:
+                continue
+        raise AssertionError(f"{bad} should have been rejected")
+
+
+check("adaptive flags: defaults (EnsJMG, max, R=1, true median, truncate, "
+      "letterbox) and choices", t_adaptive_flags)
+
+
+def t_pgd_init_seed():
+    s = yolo.pgd_init_seed
+    assert s(42, 139, 0) == s(42, 139, 0), "must be deterministic"
+    seen = {s(seed, iid, r) for seed in (0, 1, 42) for iid in (139, 285)
+            for r in (0, 1, 2)}
+    assert len(seen) == 18, "seed, image id and restart must all change the draw"
+    assert all(0 <= v < 2 ** 63 for v in seen), "torch manual_seed range"
+    # restart r keeps its draw whatever --restarts is: no dependence on R
+    assert s(42, 139, 1) == yolo.pgd_init_seed(42, 139, restart=1)
+
+
+check("PGD init seed: deterministic per (seed, image id, restart)",
+      t_pgd_init_seed)
+
+
+def t_summary_stem():
+    a = yolo.parse_args(["--experiment", "adaptive_bpda", "--seed", "1"])
+    b = yolo.parse_args(["--experiment", "adaptive_bpda", "--seed", "2"])
+    c = yolo.parse_args(["--experiment", "adaptive_bpda", "--target", "median"])
+    stems = {yolo.summary_stem(x) for x in (a, b, c)}
+    assert len(stems) == 3, "each (target, seed) needs its own _latest"
+    assert yolo.summary_stem(a) == \
+        "adaptive_bpda_yolo_ens_jpeg_median_gaussian_seed1"
+    # an ablation in the same dir must not take over the headline's _latest
+    assert set(yolo.STEM_FLAG_DEFAULTS) == set(yolo.ATTACK_FLAGS) - {"target"}
+    assert yolo.STEM_FLAG_DEFAULTS == {
+        k: getattr(a, k) for k in yolo.STEM_FLAG_DEFAULTS}, "stale defaults"
+    m = yolo.parse_args(["--experiment", "adaptive_bpda", "--seed", "1",
+                         "--median-surrogate", "identity"])
+    assert yolo.summary_stem(m) == yolo.summary_stem(a) + \
+        "_median-surrogate-identity"
+    for flag, val in (("--eot-loss", "mean"), ("--restarts", "2"),
+                      ("--quantize", "round"), ("--attack-space", "native")):
+        x = yolo.parse_args(["--experiment", "adaptive_bpda", "--seed", "1",
+                             flag, val])
+        assert yolo.summary_stem(x) == \
+            f"{yolo.summary_stem(a)}_{flag[2:]}-{val}", flag
+    assert yolo.condition_label("pgd_adaptive+ens_4way") == \
+        ("adaptive attack", "Ens4W")
+    assert yolo.condition_label("pgd_oblivious") == \
+        ("oblivious attack", "undefended")
+    assert yolo.condition_label("clean+median") == ("clean", "Median")
+
+
+check("adaptive summaries: one stem per (target, seed, ablation flags); "
+      "paper labels",
+      t_summary_stem)
+
+
+def t_uncertainty_text():
+    base = yolo.parse_args(["--experiment", "adaptive_bpda"])
+    jmg = ["jpeg", "median", "gaussian"]
+    lb = " ".join(yolo.implementation_uncertainty(base, "EnsJMG", jmg))
+    for needle in ("Scale mismatch", "LOWER bound", "Geometry mismatch",
+                   "bicubic", "truncation", "union", "jpeg"):
+        assert needle in lb, f"letterbox text lacks {needle!r}"
+    assert "a.e. gradient" in lb, "median is a TRUE gradient by default"
+    nat = yolo.parse_args(["--experiment", "adaptive_bpda", "--attack-space",
+                           "native", "--median-surrogate", "identity",
+                           "--quantize", "round", "--eot-loss", "mean",
+                           "--restarts", "3"])
+    nt = " ".join(yolo.implementation_uncertainty(nat, "EnsJMG", jmg))
+    assert "Native space" in nt and "Scale mismatch" not in nt
+    assert "interpolation" in nt, "native must still state its residual mismatch"
+    assert "identity Jacobian (straight-through) for jpeg, median" in nt
+    assert "rounded to uint8" in nt and "3 restarts" in nt
+    assert "clipped to the clean image +/- 7/255" in nt, "native eps clip"
+    assert "8/255 (eps*255 = 7.65)" in lb, "letterbox must state its overshoot"
+    assert (yolo.uint8_budget(0.03), yolo.uint8_budget(0.06),
+            yolo.uint8_budget(8 / 255), yolo.uint8_budget(0.1)) == \
+        (7, 15, 8, 25)
+    assert "'mean'" in nt
+    solo = " ".join(yolo.implementation_uncertainty(base, "Median", ["median"]))
+    assert "union" not in solo, "a solo target has no union merge"
+
+
+check("implementation_uncertainty tracks every attack option",
+      t_uncertainty_text)
+
+
+def t_surrogate_table():
+    """Every surrogate helper reads SURROGATES: one classification, no drift."""
+    assert yolo.SURROGATE_BRANCHES == tuple(yolo.SURROGATES)
+    expect = {"true": {"jpeg", "tvm"}, "identity": {"jpeg", "tvm", "median"}}
+    for mode, ident in expect.items():
+        a = yolo.parse_args(["--experiment", "adaptive_bpda",
+                             "--median-surrogate", mode])
+        got = {b for b in yolo.SURROGATE_BRANCHES
+               if yolo.is_identity_surrogate(b, a)}
+        assert got == ident, (mode, got)
+        for b in yolo.SURROGATE_BRANCHES:
+            kind, text = yolo.surrogate_spec(b, a)
+            assert kind in ("identity", "gaussian", "median"), (b, kind)
+            assert yolo.surrogate_description(b, a) == text
+            # the identity flag comes from the kind, never from the wording
+            assert (kind == "identity") == yolo.is_identity_surrogate(b, a)
+    try:
+        yolo.surrogate_spec("svd", a)
+    except ValueError:
+        return
+    raise AssertionError("a branch without a surrogate must raise")
+
+
+check("BPDA surrogates: one table drives kind, text and the identity split",
+      t_surrogate_table)
 
 
 def t_unknown_member_rejected():
@@ -539,10 +772,17 @@ def t_header_lines():
     a.image_dir, a.ann_file = img_dir, ann
     md = "\n".join(core.header_lines(a, [1, 2, 3, 4, 5]))
     assert "id digest" in md and a.run_id in md and "yolo" in md
+    assert "SMOKE" not in md, "a real run must not carry the smoke banner"
     b = yolo.parse_args(["--smoke-test"])
     b.image_dir, b.ann_file = img_dir, ann
     smoke_md = "\n".join(core.header_lines(b, [1, 2]))
     assert "NOT A RESULT" in smoke_md, "smoke output must self-label"
+    assert "2 images, device `cpu`" in smoke_md, smoke_md
+    # the banner states the REAL n and device, not a hard-coded "2 images, CPU"
+    c = yolo.parse_args(["--smoke-test", "--device", "cuda"])
+    c.image_dir, c.ann_file = img_dir, ann
+    gpu_md = "\n".join(core.header_lines(c, [1, 2, 3], device="cuda:0"))
+    assert "3 images, device `cuda:0`" in gpu_md, gpu_md
 
 
 check("header_lines records provenance and labels smoke runs", t_header_lines)

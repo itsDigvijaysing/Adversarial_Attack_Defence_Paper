@@ -166,8 +166,11 @@ def base_parser(description, experiments):
                         "decode-determinism check) and record 1.0 for it. "
                         "Saves ~11%% of the OCR track's runtime.")
     p.add_argument("--smoke-test", action="store_true",
-                   help="2 images on CPU into <output-dir>/smoke_test, stamped "
-                        "smoke_test=true. Proves the plumbing; NOT a result.")
+                   help="2 images (CPU unless --device is given) into "
+                        "<output-dir>/smoke_test, stamped smoke_test=true. "
+                        "Proves the plumbing; NOT a result. The only mode "
+                        "that tolerates an image dir holding fewer than --n "
+                        "images.")
     p.add_argument("--preflight", action="store_true",
                    help="Check dependencies / data / weights, then exit.")
 
@@ -253,10 +256,24 @@ def preflight(args, modules, weights):
     for label, fn, val in (("images", resolve_image_dir, args.image_dir),
                            ("annotations", resolve_ann_file, args.ann_file)):
         try:
-            print(f"  {label:<14} OK       {fn(val)}")
+            path = fn(val)
         except RuntimeError as exc:
             ok = False
             print(f"  {label:<14} MISSING  {exc}")
+            continue
+        if label != "images":
+            print(f"  {label:<14} OK       {path}")
+            continue
+        # The same count select_images() enforces, so READY means the run can
+        # actually start: a short dir is fatal unless --smoke-test.
+        k = len(list_images(path))
+        if k == 0 or (k < args.n and not args.smoke_test):
+            ok = False
+            print(f"  {label:<14} SHORT    {path} holds {k} images, --n needs "
+                  f"{args.n}. Download {COCO_VAL2017_URL} and unzip it there "
+                  f"(or use --smoke-test).")
+        else:
+            print(f"  {label:<14} OK       {path} ({k} images)")
     print("\n[weights]")
     for label, present in weights:
         print(f"  {label:<26} {'present/cached' if present else 'will download'}")
@@ -266,24 +283,45 @@ def preflight(args, modules, weights):
         ok = False
     print(f"  phase3_common.py {'OK' if os.path.isfile(core) else 'MISSING'}"
           f"       {core}")
-    print("\n[verdict] " + ("READY" if ok else "NOT READY — see MISSING above"))
+    print("\n[verdict] " + ("READY" if ok else "NOT READY: see MISSING / SHORT above"))
     print("=" * 70)
     return 0 if ok else 1
 
 
-def select_images(image_dir, n, seed, mode):
+COCO_VAL2017_URL = "http://images.cocodataset.org/zips/val2017.zip"
+
+
+def list_images(image_dir):
+    """Sorted image filenames in image_dir: what select_images and preflight count."""
+    return sorted(f for f in os.listdir(image_dir)
+                  if f.lower().endswith((".jpg", ".jpeg", ".png")))
+
+
+def select_images(image_dir, n, seed, mode, allow_short=False):
     # Phase 3 used a bare sorted(os.listdir(...)); the extension filter is a
     # strict improvement that changes nothing on a clean COCO val2017 dir, so
     # `--select head` reproduces exactly the subset the attacked runs scored.
-    files = sorted(f for f in os.listdir(image_dir)
-                   if f.lower().endswith((".jpg", ".jpeg", ".png")))
+    #
+    # Fewer images than --n is an ERROR, not a warning: a "1000-image" run on
+    # a partial directory would score a different, smaller subset and still
+    # be filed under the requested n. Only --smoke-test (allow_short) keeps
+    # the old warning, because it proves plumbing, not results.
+    files = list_images(image_dir)
     if not files:
         raise RuntimeError(f"No images found in {image_dir}")
+    if len(files) < n and not allow_short:
+        raise RuntimeError(
+            f"requested n={n} but {image_dir} holds only {len(files)} images: "
+            f"the full COCO val2017 (5000 images) is missing. Download "
+            f"{COCO_VAL2017_URL}, unzip it so that directory holds all 5000 "
+            f"images (or pass --image-dir), and re-run. Use --smoke-test for a "
+            f"plumbing check on the images you have.")
     chosen = (files[:n] if mode == "head"
               else sorted(random.Random(seed).sample(files, min(n, len(files)))))
     if len(chosen) < n:
         print(f"[WARN] requested n={n} but only {len(chosen)} images exist; "
-              f"treating {len(chosen)} as the requested set.")
+              f"treating {len(chosen)} as the requested set (allowed only "
+              f"under --smoke-test).")
     ids = []
     for f in chosen:
         stem = os.path.splitext(f)[0]
@@ -682,11 +720,14 @@ def fmt_delta(v, nd=4):
     return "n/a" if v is None else f"{v:+.{nd}f}"
 
 
-def header_lines(args, image_ids, extra=()):
+def header_lines(args, image_ids, extra=(), device=None):
+    """Provenance block. `device` is the resolved torch device when known;
+    otherwise the --device request is reported."""
     lines = []
     if args.smoke_test:
-        lines.append("> **SMOKE TEST OUTPUT — NOT A RESULT.** 2 images, CPU. "
-                     "Do not cite.\n")
+        dev = device if device is not None else args.device
+        lines.append(f"> **SMOKE TEST OUTPUT, NOT A RESULT.** "
+                     f"{len(image_ids)} images, device `{dev}`. Do not cite.\n")
     lines.append(f"- Run `{args.run_id}` · model `{args.model_key}` · "
                  f"experiment `{args.experiment}`")
     lines.append(f"- Images: **n = {len(image_ids)}** (`--select {args.select}`, "
@@ -913,7 +954,7 @@ def clean_control(adapter, args, coco_gt, files, image_ids):
     tracks = list(results)
     md = [f"# Clean-image control — {adapter.model_name} "
           f"(defenses on UNATTACKED images)\n"]
-    md += header_lines(args, image_ids, extra=[
+    md += header_lines(args, image_ids, device=device, extra=[
         "- Metric per track: " + "; ".join(
             f"`{t}` = {TRACK_METRIC[t]}" for t in tracks),
         "- A small negative delta is expected — it is the clean-accuracy cost "

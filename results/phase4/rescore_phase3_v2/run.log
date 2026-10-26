@@ -1,0 +1,368 @@
+==============================================================================
+RUN START  2026-10-24 01:18:47
+  host    : king
+  python  : 3.9.7
+  git     : 5112d30-dirty
+  cwd     : /home/king/Documents/Projects/Adversarial_Attack_Defence_Paper
+  command : phase4/p4_rescore.py --B 1000
+  run_id  : 20261024-011847
+==============================================================================
+[cfg] B=1000 seed=42 ci=95% engine=fast workers=6 verify_resamples=3 n=1000
+[cfg] input root results  GT annotations/instances_val2017.json
+[gt] 1000 of 5000 val2017 ids (first sorted), 7204 GT boxes, digest 620b79f17bd75ab3
+[run] 72 unique dumps (108 condition slots), 6 worker(s)
+[eval  1/72] yolo     fgsm_eps0.03+ens_blur_tvm_combo    dets=113218 mAP=0.3364 AP50=0.4790  evaluate 15s  boot 64s
+[eval  2/72] yolo     fgsm_eps0.03+ens_jpeg_median_tvm   dets=115140 mAP=0.3058 AP50=0.4412  evaluate 16s  boot 65s
+[eval  3/72] yolo     clean+ens_blur_tvm_combo           dets=118685 mAP=0.4647 AP50=0.6301  evaluate 16s  boot 66s
+[eval  4/72] yolo     clean+ens_jpeg_median_tvm          dets=119602 mAP=0.4671 AP50=0.6319  evaluate 16s  boot 66s
+[eval  5/72] yolo     patch+ens_jpeg_median_tvm          dets=123606 mAP=0.4599 AP50=0.6223  evaluate 16s  boot 68s
+[eval  6/72] yolo     patch+ens_blur_tvm_combo           dets=122058 mAP=0.4563 AP50=0.6190  evaluate 17s  boot 69s
+[eval  7/72] yolo     patch+tvm                          dets= 83610 mAP=0.4288 AP50=0.5891  evaluate 12s  boot 49s
+[eval  8/72] yolo     fgsm_eps0.03+ens_jpeg_median_gaussian dets= 96336 mAP=0.3098 AP50=0.4443  evaluate 13s  boot 55s
+[eval  9/72] yolo     patch+ens_jpeg_median_gaussian     dets=106673 mAP=0.4574 AP50=0.6220  evaluate 14s  boot 59s
+[eval 10/72] yolo     clean+ens_jpeg_median_gaussian     dets=103979 mAP=0.4656 AP50=0.6326  evaluate 14s  boot 58s
+[eval 11/72] yolo     pgd_eps0.03+ens_blur_tvm_combo     dets=101805 mAP=0.4128 AP50=0.5687  evaluate 14s  boot 57s
+[eval 12/72] yolo     pgd_eps0.03+ens_jpeg_median_tvm    dets=101241 mAP=0.4114 AP50=0.5696  evaluate 14s  boot 57s
+[eval 13/72] yolo     pgd_eps0.03+ens_jpeg_median_gaussian dets= 82974 mAP=0.4045 AP50=0.5626  evaluate 17s  boot 65s
+[eval 14/72] yolo     fgsm_eps0.03+tvm                   dets= 76452 mAP=0.2966 AP50=0.4298  evaluate 19s  boot 62s
+[eval 15/72] yolo     clean                              dets= 76082 mAP=0.4765 AP50=0.6400  evaluate 19s  boot 62s
+[eval 16/72] yolo     fgsm_eps0.03                       dets= 76343 mAP=0.2259 AP50=0.3368  evaluate 20s  boot 63s
+[eval 17/72] yolo     patch                              dets= 77614 mAP=0.4537 AP50=0.6166  evaluate 20s  boot 64s
+[eval 18/72] yolo     clean+tvm                          dets= 81853 mAP=0.4472 AP50=0.6091  evaluate 20s  boot 65s
+[eval 19/72] yolo     patch+blur_tvm                     dets= 74679 mAP=0.4093 AP50=0.5633  evaluate 12s  boot 47s
+[eval 20/72] yolo     patch+jpeg                         dets= 67762 mAP=0.4391 AP50=0.5994  evaluate 11s  boot 43s
+[eval 21/72] yolo     pgd_eps0.03+tvm                    dets= 70581 mAP=0.4049 AP50=0.5662  evaluate 11s  boot 43s
+[eval 22/72] yolo     patch+median                       dets= 74635 mAP=0.4496 AP50=0.6109  evaluate 12s  boot 46s
+[eval 23/72] yolo     clean+blur_tvm                     dets= 72580 mAP=0.4149 AP50=0.5717  evaluate 11s  boot 45s
+[eval 24/72] yolo     clean+median                       dets= 73002 mAP=0.4583 AP50=0.6210  evaluate 12s  boot 46s
+[eval 25/72] yolo     clean+gaussian                     dets= 62315 mAP=0.4614 AP50=0.6271  evaluate 10s  boot 51s
+[eval 26/72] yolo     fgsm_eps0.03+blur_tvm              dets= 67264 mAP=0.3448 AP50=0.4919  evaluate 11s  boot 54s
+[eval 27/72] yolo     patch+gaussian                     dets= 63969 mAP=0.4511 AP50=0.6157  evaluate 11s  boot 52s
+[eval 28/72] yolo     fgsm_eps0.03+median                dets= 62778 mAP=0.2928 AP50=0.4253  evaluate 10s  boot 52s
+[eval 29/72] yolo     clean+jpeg                         dets= 66155 mAP=0.4525 AP50=0.6156  evaluate 11s  boot 52s
+[eval 30/72] yolo     pgd_eps0.03+blur_tvm               dets= 67208 mAP=0.4025 AP50=0.5546  evaluate 11s  boot 54s
+[eval 31/72] yolo     pgd_eps0.03                        dets= 38516 mAP=0.0737 AP50=0.1222  evaluate 8s  boot 29s
+[eval 32/72] yolo     pgd_eps0.03+jpeg                   dets= 48833 mAP=0.3643 AP50=0.5124  evaluate 9s  boot 34s
+[eval 33/72] yolo     pgd_eps0.03+gaussian               dets= 50960 mAP=0.4053 AP50=0.5618  evaluate 10s  boot 35s
+[eval 34/72] yolo     fgsm_eps0.03+gaussian              dets= 55075 mAP=0.3171 AP50=0.4540  evaluate 10s  boot 37s
+[eval 35/72] yolo     pgd_eps0.03+median                 dets= 53942 mAP=0.3639 AP50=0.5117  evaluate 10s  boot 37s
+[eval 36/72] yolo     fgsm_eps0.03+jpeg                  dets= 58713 mAP=0.2697 AP50=0.3935  evaluate 10s  boot 39s
+[eval 37/72] florence fgsm_eps0.03+ens_blur_tvm_combo    dets=  7225 mAP=0.3262 AP50=0.4608  evaluate 4s  boot 17s
+[eval 38/72] florence fgsm_eps0.03+ens_jpeg_median_tvm   dets=  7194 mAP=0.3261 AP50=0.4615  evaluate 4s  boot 16s
+[eval 39/72] florence fgsm_eps0.03+ens_jpeg_median_gaussian dets=  7184 mAP=0.3281 AP50=0.4623  evaluate 4s  boot 17s
+[eval 40/72] florence clean+ens_blur_tvm_combo           dets=  7037 mAP=0.3520 AP50=0.4887  evaluate 4s  boot 16s
+[eval 41/72] florence clean+ens_jpeg_median_gaussian     dets=  7026 mAP=0.3513 AP50=0.4862  evaluate 4s  boot 16s
+[eval 42/72] florence clean+ens_jpeg_median_tvm          dets=  7028 mAP=0.3563 AP50=0.4923  evaluate 4s  boot 17s
+[eval 43/72] florence pgd_eps0.03+ens_blur_tvm_combo     dets=  6677 mAP=0.3243 AP50=0.4557  evaluate 4s  boot 16s
+[eval 44/72] florence pgd_eps0.03+ens_jpeg_median_gaussian dets=  6672 mAP=0.3245 AP50=0.4550  evaluate 4s  boot 16s
+[eval 45/72] florence pgd_eps0.03+ens_jpeg_median_tvm    dets=  6669 mAP=0.3228 AP50=0.4533  evaluate 4s  boot 16s
+[eval 46/72] florence patch+ens_jpeg_median_gaussian     dets=  6664 mAP=0.3290 AP50=0.4488  evaluate 4s  boot 16s
+[eval 47/72] florence patch+ens_blur_tvm_combo           dets=  6662 mAP=0.3324 AP50=0.4582  evaluate 4s  boot 16s
+[eval 48/72] florence patch+ens_jpeg_median_tvm          dets=  6605 mAP=0.3307 AP50=0.4533  evaluate 4s  boot 16s
+[eval 49/72] florence clean                              dets=  6256 mAP=0.3605 AP50=0.4876  evaluate 4s  boot 16s
+[eval 50/72] florence fgsm_eps0.03+median                dets=  5974 mAP=0.3194 AP50=0.4406  evaluate 3s  boot 16s
+[eval 51/72] florence clean+jpeg                         dets=  5912 mAP=0.3523 AP50=0.4712  evaluate 3s  boot 17s
+[eval 52/72] florence fgsm_eps0.03+jpeg                  dets=  5930 mAP=0.3199 AP50=0.4419  evaluate 4s  boot 18s
+[eval 53/72] florence clean+median                       dets=  5884 mAP=0.3528 AP50=0.4743  evaluate 4s  boot 17s
+[eval 54/72] florence fgsm_eps0.03                       dets=  5743 mAP=0.2731 AP50=0.3900  evaluate 4s  boot 17s
+[eval 55/72] florence patch+jpeg                         dets=  5681 mAP=0.3270 AP50=0.4358  evaluate 4s  boot 17s
+[eval 56/72] florence pgd_eps0.03+jpeg                   dets=  5603 mAP=0.3162 AP50=0.4307  evaluate 4s  boot 17s
+[eval 57/72] florence patch+median                       dets=  5528 mAP=0.3289 AP50=0.4385  evaluate 4s  boot 16s
+[eval 58/72] florence pgd_eps0.03+median                 dets=  5480 mAP=0.3198 AP50=0.4377  evaluate 4s  boot 17s
+[eval 59/72] florence patch                              dets=  5291 mAP=0.3268 AP50=0.4394  evaluate 4s  boot 16s
+[eval 60/72] florence pgd_eps0.03                        dets=  4544 mAP=0.2243 AP50=0.3279  evaluate 3s  boot 16s
+[eval 61/72] florence fgsm_eps0.03+gaussian              dets=  4485 mAP=0.2848 AP50=0.3928  evaluate 3s  boot 16s
+[eval 62/72] florence patch+gaussian                     dets=  4427 mAP=0.2903 AP50=0.3859  evaluate 3s  boot 15s
+[eval 63/72] florence pgd_eps0.03+gaussian               dets=  4321 mAP=0.2874 AP50=0.3905  evaluate 3s  boot 15s
+[eval 64/72] florence clean+gaussian                     dets=  4291 mAP=0.2914 AP50=0.3916  evaluate 3s  boot 16s
+[eval 65/72] florence clean+tvm                          dets=  4077 mAP=0.2891 AP50=0.3891  evaluate 4s  boot 15s
+[eval 66/72] florence patch+blur_tvm                     dets=  3897 mAP=0.2676 AP50=0.3622  evaluate 3s  boot 15s
+[eval 67/72] florence fgsm_eps0.03+tvm                   dets=  3873 mAP=0.2631 AP50=0.3591  evaluate 3s  boot 15s
+[eval 68/72] florence patch+tvm                          dets=  3837 mAP=0.2652 AP50=0.3582  evaluate 3s  boot 16s
+[eval 69/72] florence fgsm_eps0.03+blur_tvm              dets=  3817 mAP=0.2745 AP50=0.3714  evaluate 3s  boot 16s
+[eval 70/72] florence pgd_eps0.03+tvm                    dets=  3777 mAP=0.2622 AP50=0.3585  evaluate 3s  boot 15s
+[eval 71/72] florence clean+blur_tvm                     dets=  3800 mAP=0.2652 AP50=0.3586  evaluate 3s  boot 15s
+[eval 72/72] florence pgd_eps0.03+blur_tvm               dets=  3762 mAP=0.2723 AP50=0.3675  evaluate 3s  boot 15s
+[ids] yolo: 1000 distinct image ids across 36 dumps; subset of the 1000 scored ids: True; equal: True; dets outside: 0
+[ids] florence: 981 distinct image ids across 36 dumps; subset of the 1000 scored ids: True; equal: False; dets outside: 0
+[check] summary.json: 114/114 values within 0.0001 (max |diff| 0.00e+00)
+[check] fast accumulate vs pycocotools: point max |diff| 0.0e+00, resamples max |diff| 0.0e+00 (216 checked)
+[check] bootstrap mean vs point (mAP): median |bias| 0.0107, max 0.0151 (1.42 SE, florence/patch+ens_blur_tvm_combo); flagged 72
+[check] paired mAP differences (76): median |bias| 0.25 SE, max 0.75 SE (yolo/pgd/recovery/median); 'excludes 0' verdict changes under the bias-corrected CI: 1 (florence/fgsm/ens_jpeg_median_gaussian - median)
+[out] /home/king/Documents/Projects/Adversarial_Attack_Defence_Paper/results/phase4/rescore_phase3_v2/summary_rescore_phase3_v2_20261024-011847.json
+[out] /home/king/Documents/Projects/Adversarial_Attack_Defence_Paper/results/phase4/rescore_phase3_v2/summary_rescore_phase3_v2_latest.json
+[out] /home/king/Documents/Projects/Adversarial_Attack_Defence_Paper/results/phase4/rescore_phase3_v2/summary_rescore_phase3_v2_20261024-011847.md
+[out] /home/king/Documents/Projects/Adversarial_Attack_Defence_Paper/results/phase4/rescore_phase3_v2/summary_rescore_phase3_v2_latest.md
+[done] 72 dumps, 532 s
+
+======================================================================
+                            RUN ARTIFACTS                             
+======================================================================
+  /home/king/Documents/Projects/Adversarial_Attack_Defence_Paper/results/phase4/rescore_phase3_v2
+
+  committed to git (share these):
+        10 KB  run.log
+       382 KB  summary_rescore_phase3_v2_20261024-011847.json
+        21 KB  summary_rescore_phase3_v2_20261024-011847.md
+       382 KB  summary_rescore_phase3_v2_latest.json
+        21 KB  summary_rescore_phase3_v2_latest.md
+
+  local only (gitignored, do not share):
+    (none)
+
+  committed total: 815 KB | directory total: 815 KB
+  ✓ every committed artifact is small enough to push and share.
+======================================================================
+==============================================================================
+RUN END    2026-10-24 01:27:39  | 8.9 min | OK
+==============================================================================
+==============================================================================
+RUN START  2026-10-24 01:29:07
+  host    : king
+  python  : 3.9.7
+  git     : 5112d30-dirty
+  cwd     : /home/king/Documents/Projects/Adversarial_Attack_Defence_Paper
+  command : phase4/p4_rescore.py --B 1000
+  run_id  : 20261024-012907
+==============================================================================
+[cfg] B=1000 seed=42 ci=95% engine=fast workers=6 verify_resamples=3 n=1000
+[cfg] input root results  GT annotations/instances_val2017.json
+[gt] 1000 of 5000 val2017 ids (first sorted), 7204 GT boxes, digest 620b79f17bd75ab3
+[run] 72 unique dumps (108 condition slots), 6 worker(s)
+[eval  1/72] yolo     fgsm_eps0.03+ens_blur_tvm_combo    dets=113218 mAP=0.3364 AP50=0.4790  evaluate 16s  boot 67s
+[eval  2/72] yolo     fgsm_eps0.03+ens_jpeg_median_tvm   dets=115140 mAP=0.3058 AP50=0.4412  evaluate 17s  boot 69s
+[eval  3/72] yolo     clean+ens_blur_tvm_combo           dets=118685 mAP=0.4647 AP50=0.6301  evaluate 17s  boot 71s
+[eval  4/72] yolo     clean+ens_jpeg_median_tvm          dets=119602 mAP=0.4671 AP50=0.6319  evaluate 17s  boot 72s
+[eval  5/72] yolo     patch+ens_jpeg_median_tvm          dets=123606 mAP=0.4599 AP50=0.6223  evaluate 17s  boot 73s
+[eval  6/72] yolo     patch+ens_blur_tvm_combo           dets=122058 mAP=0.4563 AP50=0.6190  evaluate 17s  boot 73s
+[eval  7/72] yolo     patch+tvm                          dets= 83610 mAP=0.4288 AP50=0.5891  evaluate 13s  boot 50s
+[eval  8/72] yolo     fgsm_eps0.03+ens_jpeg_median_gaussian dets= 96336 mAP=0.3098 AP50=0.4443  evaluate 14s  boot 56s
+[eval  9/72] yolo     patch+ens_jpeg_median_gaussian     dets=106673 mAP=0.4574 AP50=0.6220  evaluate 15s  boot 61s
+[eval 10/72] yolo     pgd_eps0.03+ens_jpeg_median_tvm    dets=101241 mAP=0.4114 AP50=0.5696  evaluate 15s  boot 58s
+[eval 11/72] yolo     pgd_eps0.03+ens_blur_tvm_combo     dets=101805 mAP=0.4128 AP50=0.5687  evaluate 15s  boot 59s
+[eval 12/72] yolo     clean+ens_jpeg_median_gaussian     dets=103979 mAP=0.4656 AP50=0.6326  evaluate 15s  boot 62s
+[eval 13/72] yolo     pgd_eps0.03+ens_jpeg_median_gaussian dets= 82974 mAP=0.4045 AP50=0.5626  evaluate 14s  boot 51s
+[eval 14/72] yolo     patch                              dets= 77614 mAP=0.4537 AP50=0.6166  evaluate 14s  boot 48s
+[eval 15/72] yolo     fgsm_eps0.03+tvm                   dets= 76452 mAP=0.2966 AP50=0.4298  evaluate 13s  boot 48s
+[eval 16/72] yolo     fgsm_eps0.03                       dets= 76343 mAP=0.2259 AP50=0.3368  evaluate 13s  boot 48s
+[eval 17/72] yolo     clean                              dets= 76082 mAP=0.4765 AP50=0.6400  evaluate 13s  boot 47s
+[eval 18/72] yolo     clean+tvm                          dets= 81853 mAP=0.4472 AP50=0.6091  evaluate 14s  boot 51s
+[eval 19/72] yolo     patch+blur_tvm                     dets= 74679 mAP=0.4093 AP50=0.5633  evaluate 12s  boot 48s
+[eval 20/72] yolo     patch+jpeg                         dets= 67762 mAP=0.4391 AP50=0.5994  evaluate 12s  boot 44s
+[eval 21/72] yolo     patch+median                       dets= 74635 mAP=0.4496 AP50=0.6109  evaluate 12s  boot 46s
+[eval 22/72] yolo     clean+median                       dets= 73002 mAP=0.4583 AP50=0.6210  evaluate 12s  boot 46s
+[eval 23/72] yolo     pgd_eps0.03+tvm                    dets= 70581 mAP=0.4049 AP50=0.5662  evaluate 12s  boot 46s
+[eval 24/72] yolo     clean+blur_tvm                     dets= 72580 mAP=0.4149 AP50=0.5717  evaluate 12s  boot 48s
+[eval 25/72] yolo     fgsm_eps0.03+blur_tvm              dets= 67264 mAP=0.3448 AP50=0.4919  evaluate 12s  boot 43s
+[eval 26/72] yolo     pgd_eps0.03+blur_tvm               dets= 67208 mAP=0.4025 AP50=0.5546  evaluate 12s  boot 43s
+[eval 27/72] yolo     patch+gaussian                     dets= 63969 mAP=0.4511 AP50=0.6157  evaluate 12s  boot 41s
+[eval 28/72] yolo     clean+jpeg                         dets= 66155 mAP=0.4525 AP50=0.6156  evaluate 12s  boot 43s
+[eval 29/72] yolo     fgsm_eps0.03+median                dets= 62778 mAP=0.2928 AP50=0.4253  evaluate 13s  boot 41s
+[eval 30/72] yolo     clean+gaussian                     dets= 62315 mAP=0.4614 AP50=0.6271  evaluate 12s  boot 41s
+[eval 31/72] yolo     pgd_eps0.03                        dets= 38516 mAP=0.0737 AP50=0.1222  evaluate 7s  boot 27s
+[eval 32/72] yolo     pgd_eps0.03+gaussian               dets= 50960 mAP=0.4053 AP50=0.5618  evaluate 9s  boot 32s
+[eval 33/72] yolo     pgd_eps0.03+jpeg                   dets= 48833 mAP=0.3643 AP50=0.5124  evaluate 9s  boot 32s
+[eval 34/72] yolo     pgd_eps0.03+median                 dets= 53942 mAP=0.3639 AP50=0.5117  evaluate 10s  boot 34s
+[eval 35/72] yolo     fgsm_eps0.03+gaussian              dets= 55075 mAP=0.3171 AP50=0.4540  evaluate 10s  boot 34s
+[eval 36/72] yolo     fgsm_eps0.03+jpeg                  dets= 58713 mAP=0.2697 AP50=0.3935  evaluate 10s  boot 36s
+[eval 37/72] florence fgsm_eps0.03+ens_blur_tvm_combo    dets=  7225 mAP=0.3262 AP50=0.4608  evaluate 3s  boot 15s
+[eval 38/72] florence fgsm_eps0.03+ens_jpeg_median_tvm   dets=  7194 mAP=0.3261 AP50=0.4615  evaluate 4s  boot 15s
+[eval 39/72] florence fgsm_eps0.03+ens_jpeg_median_gaussian dets=  7184 mAP=0.3281 AP50=0.4623  evaluate 4s  boot 15s
+[eval 40/72] florence clean+ens_blur_tvm_combo           dets=  7037 mAP=0.3520 AP50=0.4887  evaluate 4s  boot 15s
+[eval 41/72] florence clean+ens_jpeg_median_gaussian     dets=  7026 mAP=0.3513 AP50=0.4862  evaluate 4s  boot 15s
+[eval 42/72] florence clean+ens_jpeg_median_tvm          dets=  7028 mAP=0.3563 AP50=0.4923  evaluate 3s  boot 15s
+[eval 43/72] florence pgd_eps0.03+ens_blur_tvm_combo     dets=  6677 mAP=0.3243 AP50=0.4557  evaluate 4s  boot 15s
+[eval 44/72] florence pgd_eps0.03+ens_jpeg_median_gaussian dets=  6672 mAP=0.3245 AP50=0.4550  evaluate 4s  boot 14s
+[eval 45/72] florence pgd_eps0.03+ens_jpeg_median_tvm    dets=  6669 mAP=0.3228 AP50=0.4533  evaluate 4s  boot 15s
+[eval 46/72] florence patch+ens_jpeg_median_gaussian     dets=  6664 mAP=0.3290 AP50=0.4488  evaluate 3s  boot 15s
+[eval 47/72] florence patch+ens_blur_tvm_combo           dets=  6662 mAP=0.3324 AP50=0.4582  evaluate 3s  boot 14s
+[eval 48/72] florence patch+ens_jpeg_median_tvm          dets=  6605 mAP=0.3307 AP50=0.4533  evaluate 3s  boot 14s
+[eval 49/72] florence clean                              dets=  6256 mAP=0.3605 AP50=0.4876  evaluate 3s  boot 14s
+[eval 50/72] florence fgsm_eps0.03+median                dets=  5974 mAP=0.3194 AP50=0.4406  evaluate 3s  boot 14s
+[eval 51/72] florence fgsm_eps0.03+jpeg                  dets=  5930 mAP=0.3199 AP50=0.4419  evaluate 3s  boot 14s
+[eval 52/72] florence clean+median                       dets=  5884 mAP=0.3528 AP50=0.4743  evaluate 3s  boot 14s
+[eval 53/72] florence clean+jpeg                         dets=  5912 mAP=0.3523 AP50=0.4712  evaluate 3s  boot 14s
+[eval 54/72] florence fgsm_eps0.03                       dets=  5743 mAP=0.2731 AP50=0.3900  evaluate 3s  boot 14s
+[eval 55/72] florence patch+jpeg                         dets=  5681 mAP=0.3270 AP50=0.4358  evaluate 3s  boot 15s
+[eval 56/72] florence pgd_eps0.03+jpeg                   dets=  5603 mAP=0.3162 AP50=0.4307  evaluate 3s  boot 15s
+[eval 57/72] florence pgd_eps0.03                        dets=  4544 mAP=0.2243 AP50=0.3279  evaluate 3s  boot 14s
+[eval 58/72] florence pgd_eps0.03+median                 dets=  5480 mAP=0.3198 AP50=0.4377  evaluate 3s  boot 15s
+[eval 59/72] florence patch+median                       dets=  5528 mAP=0.3289 AP50=0.4385  evaluate 3s  boot 15s
+[eval 60/72] florence patch                              dets=  5291 mAP=0.3268 AP50=0.4394  evaluate 3s  boot 15s
+[eval 61/72] florence fgsm_eps0.03+gaussian              dets=  4485 mAP=0.2848 AP50=0.3928  evaluate 3s  boot 13s
+[eval 62/72] florence patch+gaussian                     dets=  4427 mAP=0.2903 AP50=0.3859  evaluate 3s  boot 13s
+[eval 63/72] florence pgd_eps0.03+gaussian               dets=  4321 mAP=0.2874 AP50=0.3905  evaluate 3s  boot 13s
+[eval 64/72] florence patch+blur_tvm                     dets=  3897 mAP=0.2676 AP50=0.3622  evaluate 3s  boot 13s
+[eval 65/72] florence clean+gaussian                     dets=  4291 mAP=0.2914 AP50=0.3916  evaluate 3s  boot 13s
+[eval 66/72] florence clean+tvm                          dets=  4077 mAP=0.2891 AP50=0.3891  evaluate 3s  boot 13s
+[eval 67/72] florence fgsm_eps0.03+tvm                   dets=  3873 mAP=0.2631 AP50=0.3591  evaluate 3s  boot 14s
+[eval 68/72] florence patch+tvm                          dets=  3837 mAP=0.2652 AP50=0.3582  evaluate 3s  boot 13s
+[eval 69/72] florence fgsm_eps0.03+blur_tvm              dets=  3817 mAP=0.2745 AP50=0.3714  evaluate 3s  boot 13s
+[eval 70/72] florence pgd_eps0.03+tvm                    dets=  3777 mAP=0.2622 AP50=0.3585  evaluate 3s  boot 13s
+[eval 71/72] florence clean+blur_tvm                     dets=  3800 mAP=0.2652 AP50=0.3586  evaluate 3s  boot 13s
+[eval 72/72] florence pgd_eps0.03+blur_tvm               dets=  3762 mAP=0.2723 AP50=0.3675  evaluate 3s  boot 13s
+[ids] yolo: 1000 distinct image ids across 36 dumps; subset of the 1000 scored ids: True; equal: True; dets outside: 0
+[ids] florence: 981 distinct image ids across 36 dumps; subset of the 1000 scored ids: True; equal: False; dets outside: 0
+[check] summary.json: 114/114 values within 0.0001 (max |diff| 0.00e+00)
+[check] fast accumulate vs pycocotools: point max |diff| 0.0e+00, resamples max |diff| 0.0e+00 (216 checked)
+[check] bootstrap mean vs point (mAP): median |bias| 0.0107, max 0.0151 (1.42 SE, florence/patch+ens_blur_tvm_combo); flagged 72
+[check] paired mAP differences (88): median |bias| 0.25 SE, max 0.75 SE (yolo/pgd/recovery/median); 'excludes 0' verdict changes under the bias-corrected CI: 2 (florence/fgsm/ens_jpeg_median_gaussian - median, yolo/patch/ens_blur_tvm_combo - median)
+[check] paired AP50 differences (76): median |bias| 0.19 SE, max 0.75 SE (florence/patch/recovery/ens_jpeg_median_gaussian); 'excludes 0' verdict changes under the bias-corrected CI: 4 (florence/patch/recovery/ens_jpeg_median_gaussian, florence/patch/recovery/ens_jpeg_median_tvm, yolo/clean cost/ens_jpeg_median_gaussian, yolo/clean cost/ens_jpeg_median_tvm)
+[out] /home/king/Documents/Projects/Adversarial_Attack_Defence_Paper/results/phase4/rescore_phase3_v2/summary_rescore_phase3_v2_20261024-012907.json
+[out] /home/king/Documents/Projects/Adversarial_Attack_Defence_Paper/results/phase4/rescore_phase3_v2/summary_rescore_phase3_v2_latest.json
+[out] /home/king/Documents/Projects/Adversarial_Attack_Defence_Paper/results/phase4/rescore_phase3_v2/summary_rescore_phase3_v2_20261024-012907.md
+[out] /home/king/Documents/Projects/Adversarial_Attack_Defence_Paper/results/phase4/rescore_phase3_v2/summary_rescore_phase3_v2_latest.md
+[done] 72 dumps, 498 s
+
+======================================================================
+                            RUN ARTIFACTS                             
+======================================================================
+  /home/king/Documents/Projects/Adversarial_Attack_Defence_Paper/results/phase4/rescore_phase3_v2
+
+  committed to git (share these):
+        22 KB  run.log
+       382 KB  summary_rescore_phase3_v2_20261024-011847.json
+        21 KB  summary_rescore_phase3_v2_20261024-011847.md
+       382 KB  summary_rescore_phase3_v2_20261024-012907.json
+        21 KB  summary_rescore_phase3_v2_20261024-012907.md
+       382 KB  summary_rescore_phase3_v2_latest.json
+        21 KB  summary_rescore_phase3_v2_latest.md
+
+  local only (gitignored, do not share):
+    (none)
+
+  committed total: 1.2 MB | directory total: 1.2 MB
+  ✓ every committed artifact is small enough to push and share.
+======================================================================
+==============================================================================
+RUN END    2026-10-24 01:37:25  | 8.3 min | OK
+==============================================================================
+==============================================================================
+RUN START  2026-10-24 06:31:33
+  host    : king
+  python  : 3.9.7
+  git     : 5112d30-dirty
+  cwd     : /home/king/Documents/Projects/Adversarial_Attack_Defence_Paper
+  command : phase4/p4_rescore.py --B 1000
+  run_id  : 20261024-063133
+==============================================================================
+[cfg] B=1000 seed=42 ci=95% engine=fast workers=6 verify_resamples=3 n=1000
+[cfg] input root results  GT annotations/instances_val2017.json
+[gt] 1000 of 5000 val2017 ids (first sorted), 7204 GT boxes, digest 620b79f17bd75ab3
+[run] 72 unique dumps (108 condition slots), 6 worker(s)
+[eval  1/72] yolo     fgsm_eps0.03+ens_blur_tvm_combo    dets=113218 mAP=0.3364 AP50=0.4790  evaluate 15s  boot 60s  diag 10s
+[eval  2/72] yolo     fgsm_eps0.03+ens_jpeg_median_tvm   dets=115140 mAP=0.3058 AP50=0.4412  evaluate 15s  boot 61s  diag 10s
+[eval  3/72] yolo     clean+ens_blur_tvm_combo           dets=118685 mAP=0.4647 AP50=0.6301  evaluate 15s  boot 62s  diag 10s
+[eval  4/72] yolo     clean+ens_jpeg_median_tvm          dets=119602 mAP=0.4671 AP50=0.6319  evaluate 15s  boot 62s  diag 10s
+[eval  5/72] yolo     patch+ens_blur_tvm_combo           dets=122058 mAP=0.4563 AP50=0.6190  evaluate 15s  boot 64s  diag 11s
+[eval  6/72] yolo     patch+ens_jpeg_median_tvm          dets=123606 mAP=0.4599 AP50=0.6223  evaluate 15s  boot 64s  diag 11s
+[eval  7/72] yolo     patch+tvm                          dets= 83610 mAP=0.4288 AP50=0.5891  evaluate 12s  boot 48s  diag 8s
+[eval  8/72] yolo     fgsm_eps0.03+ens_jpeg_median_gaussian dets= 96336 mAP=0.3098 AP50=0.4443  evaluate 13s  boot 53s  diag 9s
+[eval  9/72] yolo     pgd_eps0.03+ens_jpeg_median_tvm    dets=101241 mAP=0.4114 AP50=0.5696  evaluate 13s  boot 54s  diag 9s
+[eval 10/72] yolo     pgd_eps0.03+ens_blur_tvm_combo     dets=101805 mAP=0.4128 AP50=0.5687  evaluate 13s  boot 55s  diag 9s
+[eval 11/72] yolo     patch+ens_jpeg_median_gaussian     dets=106673 mAP=0.4574 AP50=0.6220  evaluate 14s  boot 57s  diag 10s
+[eval 12/72] yolo     clean+ens_jpeg_median_gaussian     dets=103979 mAP=0.4656 AP50=0.6326  evaluate 13s  boot 58s  diag 10s
+[eval 13/72] yolo     pgd_eps0.03+ens_jpeg_median_gaussian dets= 82974 mAP=0.4045 AP50=0.5626  evaluate 12s  boot 48s  diag 8s
+[eval 14/72] yolo     fgsm_eps0.03+tvm                   dets= 76452 mAP=0.2966 AP50=0.4298  evaluate 11s  boot 46s  diag 8s
+[eval 15/72] yolo     fgsm_eps0.03                       dets= 76343 mAP=0.2259 AP50=0.3368  evaluate 12s  boot 45s  diag 8s
+[eval 16/72] yolo     patch                              dets= 77614 mAP=0.4537 AP50=0.6166  evaluate 12s  boot 46s  diag 8s
+[eval 17/72] yolo     clean                              dets= 76082 mAP=0.4765 AP50=0.6400  evaluate 11s  boot 45s  diag 8s
+[eval 18/72] yolo     clean+tvm                          dets= 81853 mAP=0.4472 AP50=0.6091  evaluate 12s  boot 48s  diag 8s
+[eval 19/72] yolo     patch+blur_tvm                     dets= 74679 mAP=0.4093 AP50=0.5633  evaluate 11s  boot 45s  diag 8s
+[eval 20/72] yolo     pgd_eps0.03+tvm                    dets= 70581 mAP=0.4049 AP50=0.5662  evaluate 11s  boot 43s  diag 7s
+[eval 21/72] yolo     clean+blur_tvm                     dets= 72580 mAP=0.4149 AP50=0.5717  evaluate 11s  boot 44s  diag 7s
+[eval 22/72] yolo     clean+median                       dets= 73002 mAP=0.4583 AP50=0.6210  evaluate 11s  boot 44s  diag 8s
+[eval 23/72] yolo     patch+median                       dets= 74635 mAP=0.4496 AP50=0.6109  evaluate 11s  boot 45s  diag 8s
+[eval 24/72] yolo     patch+jpeg                         dets= 67762 mAP=0.4391 AP50=0.5994  evaluate 11s  boot 43s  diag 7s
+[eval 25/72] yolo     fgsm_eps0.03+median                dets= 62778 mAP=0.2928 AP50=0.4253  evaluate 10s  boot 39s  diag 7s
+[eval 26/72] yolo     patch+gaussian                     dets= 63969 mAP=0.4511 AP50=0.6157  evaluate 11s  boot 40s  diag 7s
+[eval 27/72] yolo     fgsm_eps0.03+blur_tvm              dets= 67264 mAP=0.3448 AP50=0.4919  evaluate 11s  boot 42s  diag 7s
+[eval 28/72] yolo     clean+gaussian                     dets= 62315 mAP=0.4614 AP50=0.6271  evaluate 10s  boot 40s  diag 7s
+[eval 29/72] yolo     clean+jpeg                         dets= 66155 mAP=0.4525 AP50=0.6156  evaluate 11s  boot 41s  diag 7s
+[eval 30/72] yolo     pgd_eps0.03+blur_tvm               dets= 67208 mAP=0.4025 AP50=0.5546  evaluate 11s  boot 42s  diag 7s
+[eval 31/72] yolo     pgd_eps0.03                        dets= 38516 mAP=0.0737 AP50=0.1222  evaluate 8s  boot 29s  diag 5s
+[eval 32/72] yolo     pgd_eps0.03+jpeg                   dets= 48833 mAP=0.3643 AP50=0.5124  evaluate 9s  boot 34s  diag 6s
+[eval 33/72] yolo     pgd_eps0.03+gaussian               dets= 50960 mAP=0.4053 AP50=0.5618  evaluate 10s  boot 35s  diag 6s
+[eval 34/72] yolo     fgsm_eps0.03+gaussian              dets= 55075 mAP=0.3171 AP50=0.4540  evaluate 10s  boot 36s  diag 6s
+[eval 35/72] yolo     pgd_eps0.03+median                 dets= 53942 mAP=0.3639 AP50=0.5117  evaluate 10s  boot 36s  diag 6s
+[eval 36/72] yolo     fgsm_eps0.03+jpeg                  dets= 58713 mAP=0.2697 AP50=0.3935  evaluate 10s  boot 38s  diag 7s
+[eval 37/72] florence fgsm_eps0.03+ens_blur_tvm_combo    dets=  7225 mAP=0.3262 AP50=0.4608  evaluate 4s  boot 16s  diag 3s
+[eval 38/72] florence fgsm_eps0.03+ens_jpeg_median_tvm   dets=  7194 mAP=0.3261 AP50=0.4615  evaluate 4s  boot 15s  diag 3s
+[eval 39/72] florence fgsm_eps0.03+ens_jpeg_median_gaussian dets=  7184 mAP=0.3281 AP50=0.4623  evaluate 4s  boot 15s  diag 3s
+[eval 40/72] florence clean+ens_jpeg_median_gaussian     dets=  7026 mAP=0.3513 AP50=0.4862  evaluate 4s  boot 15s  diag 3s
+[eval 41/72] florence clean+ens_blur_tvm_combo           dets=  7037 mAP=0.3520 AP50=0.4887  evaluate 4s  boot 15s  diag 3s
+[eval 42/72] florence clean+ens_jpeg_median_tvm          dets=  7028 mAP=0.3563 AP50=0.4923  evaluate 3s  boot 15s  diag 3s
+[eval 43/72] florence pgd_eps0.03+ens_blur_tvm_combo     dets=  6677 mAP=0.3243 AP50=0.4557  evaluate 3s  boot 15s  diag 3s
+[eval 44/72] florence pgd_eps0.03+ens_jpeg_median_gaussian dets=  6672 mAP=0.3245 AP50=0.4550  evaluate 3s  boot 15s  diag 3s
+[eval 45/72] florence pgd_eps0.03+ens_jpeg_median_tvm    dets=  6669 mAP=0.3228 AP50=0.4533  evaluate 4s  boot 15s  diag 3s
+[eval 46/72] florence patch+ens_jpeg_median_gaussian     dets=  6664 mAP=0.3290 AP50=0.4488  evaluate 3s  boot 15s  diag 3s
+[eval 47/72] florence patch+ens_blur_tvm_combo           dets=  6662 mAP=0.3324 AP50=0.4582  evaluate 3s  boot 15s  diag 3s
+[eval 48/72] florence patch+ens_jpeg_median_tvm          dets=  6605 mAP=0.3307 AP50=0.4533  evaluate 3s  boot 15s  diag 3s
+[eval 49/72] florence clean                              dets=  6256 mAP=0.3605 AP50=0.4876  evaluate 3s  boot 15s  diag 3s
+[eval 50/72] florence fgsm_eps0.03+median                dets=  5974 mAP=0.3194 AP50=0.4406  evaluate 3s  boot 15s  diag 3s
+[eval 51/72] florence clean+jpeg                         dets=  5912 mAP=0.3523 AP50=0.4712  evaluate 3s  boot 14s  diag 3s
+[eval 52/72] florence fgsm_eps0.03+jpeg                  dets=  5930 mAP=0.3199 AP50=0.4419  evaluate 3s  boot 14s  diag 3s
+[eval 53/72] florence clean+median                       dets=  5884 mAP=0.3528 AP50=0.4743  evaluate 3s  boot 14s  diag 3s
+[eval 54/72] florence fgsm_eps0.03                       dets=  5743 mAP=0.2731 AP50=0.3900  evaluate 3s  boot 14s  diag 3s
+[eval 55/72] florence patch+jpeg                         dets=  5681 mAP=0.3270 AP50=0.4358  evaluate 3s  boot 15s  diag 3s
+[eval 56/72] florence pgd_eps0.03+jpeg                   dets=  5603 mAP=0.3162 AP50=0.4307  evaluate 3s  boot 15s  diag 3s
+[eval 57/72] florence patch                              dets=  5291 mAP=0.3268 AP50=0.4394  evaluate 3s  boot 14s  diag 3s
+[eval 58/72] florence pgd_eps0.03+median                 dets=  5480 mAP=0.3198 AP50=0.4377  evaluate 3s  boot 14s  diag 3s
+[eval 59/72] florence pgd_eps0.03                        dets=  4544 mAP=0.2243 AP50=0.3279  evaluate 3s  boot 14s  diag 3s
+[eval 60/72] florence patch+median                       dets=  5528 mAP=0.3289 AP50=0.4385  evaluate 3s  boot 15s  diag 3s
+[eval 61/72] florence fgsm_eps0.03+gaussian              dets=  4485 mAP=0.2848 AP50=0.3928  evaluate 3s  boot 14s  diag 3s
+[eval 62/72] florence patch+gaussian                     dets=  4427 mAP=0.2903 AP50=0.3859  evaluate 3s  boot 13s  diag 2s
+[eval 63/72] florence clean+tvm                          dets=  4077 mAP=0.2891 AP50=0.3891  evaluate 3s  boot 13s  diag 3s
+[eval 64/72] florence pgd_eps0.03+gaussian               dets=  4321 mAP=0.2874 AP50=0.3905  evaluate 3s  boot 13s  diag 3s
+[eval 65/72] florence clean+gaussian                     dets=  4291 mAP=0.2914 AP50=0.3916  evaluate 3s  boot 13s  diag 3s
+[eval 66/72] florence patch+blur_tvm                     dets=  3897 mAP=0.2676 AP50=0.3622  evaluate 3s  boot 13s  diag 3s
+[eval 67/72] florence fgsm_eps0.03+tvm                   dets=  3873 mAP=0.2631 AP50=0.3591  evaluate 3s  boot 13s  diag 2s
+[eval 68/72] florence patch+tvm                          dets=  3837 mAP=0.2652 AP50=0.3582  evaluate 3s  boot 13s  diag 2s
+[eval 69/72] florence clean+blur_tvm                     dets=  3800 mAP=0.2652 AP50=0.3586  evaluate 3s  boot 13s  diag 2s
+[eval 70/72] florence pgd_eps0.03+tvm                    dets=  3777 mAP=0.2622 AP50=0.3585  evaluate 3s  boot 13s  diag 2s
+[eval 71/72] florence fgsm_eps0.03+blur_tvm              dets=  3817 mAP=0.2745 AP50=0.3714  evaluate 3s  boot 13s  diag 2s
+[eval 72/72] florence pgd_eps0.03+blur_tvm               dets=  3762 mAP=0.2723 AP50=0.3675  evaluate 3s  boot 13s  diag 2s
+[ids] yolo: 1000 distinct image ids across 36 dumps; subset of the 1000 scored ids: True; equal: True; dets outside: 0
+[ids] florence: 981 distinct image ids across 36 dumps; subset of the 1000 scored ids: True; equal: False; dets outside: 0
+[check] summary.json: 168/168 values within 0.0001 (max |diff| 0.00e+00)
+[check] fast accumulate vs pycocotools: point max |diff| 0.0e+00, resamples max |diff| 0.0e+00 (216 checked)
+[check] bootstrap mean vs point (mAP): median |bias| 0.0107, max 0.0151 (1.42 SE, florence/patch+ens_blur_tvm_combo); flagged 72
+[check] bias decomposition (medians over 72): total +0.0107 = composition +0.0003 + within-class +0.0103; envelope share of within-class 26% (first 200 resamples)
+[check] paired mAP differences (88): median |bias| 0.25 SE, max 0.75 SE (yolo/pgd/recovery/median); 'excludes 0' verdict changes under the bias-corrected CI: 2 (florence/fgsm/ens_jpeg_median_gaussian - median, yolo/patch/ens_blur_tvm_combo - median)
+[check] paired AP50 differences (76): median |bias| 0.19 SE, max 0.75 SE (florence/patch/recovery/ens_jpeg_median_gaussian); 'excludes 0' verdict changes under the bias-corrected CI: 4 (florence/patch/recovery/ens_jpeg_median_gaussian, florence/patch/recovery/ens_jpeg_median_tvm, yolo/clean cost/ens_jpeg_median_gaussian, yolo/clean cost/ens_jpeg_median_tvm)
+[out] /home/king/Documents/Projects/Adversarial_Attack_Defence_Paper/results/phase4/rescore_phase3_v2/summary_rescore_phase3_v2_20261024-063133.json
+[out] /home/king/Documents/Projects/Adversarial_Attack_Defence_Paper/results/phase4/rescore_phase3_v2/summary_rescore_phase3_v2_latest.json
+[out] /home/king/Documents/Projects/Adversarial_Attack_Defence_Paper/results/phase4/rescore_phase3_v2/summary_rescore_phase3_v2_20261024-063133.md
+[out] /home/king/Documents/Projects/Adversarial_Attack_Defence_Paper/results/phase4/rescore_phase3_v2/summary_rescore_phase3_v2_latest.md
+[done] 72 dumps, 537 s
+
+======================================================================
+                            RUN ARTIFACTS                             
+======================================================================
+  /home/king/Documents/Projects/Adversarial_Attack_Defence_Paper/results/phase4/rescore_phase3_v2
+
+  committed to git (share these):
+        34 KB  run.log
+         3 KB  smoke_test/run.log
+         8 KB  smoke_test/summary_rescore_phase3_v2_20261024-063105.json
+         6 KB  smoke_test/summary_rescore_phase3_v2_20261024-063105.md
+         8 KB  smoke_test/summary_rescore_phase3_v2_latest.json
+         6 KB  smoke_test/summary_rescore_phase3_v2_latest.md
+       382 KB  summary_rescore_phase3_v2_20261024-011847.json
+        21 KB  summary_rescore_phase3_v2_20261024-011847.md
+       382 KB  summary_rescore_phase3_v2_20261024-012907.json
+        21 KB  summary_rescore_phase3_v2_20261024-012907.md
+       302 KB  summary_rescore_phase3_v2_20261024-063133.json
+        22 KB  summary_rescore_phase3_v2_20261024-063133.md
+       302 KB  summary_rescore_phase3_v2_latest.json
+        22 KB  summary_rescore_phase3_v2_latest.md
+
+  local only (gitignored, do not share):
+    (none)
+
+  committed total: 1.5 MB | directory total: 1.5 MB
+  ✓ every committed artifact is small enough to push and share.
+======================================================================
+==============================================================================
+RUN END    2026-10-24 06:40:30  | 8.9 min | OK
+==============================================================================

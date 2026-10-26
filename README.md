@@ -58,7 +58,9 @@ one tmux pane per process.
 │   ├── p4_yolo.py              # ENTRY POINT — YOLOv8x-worldv2 (+ the BPDA/EOT adaptive attack)
 │   ├── p4_florence.py          # ENTRY POINT — Florence-2 detection + OCR from one model load
 │   └── p4_logging.py           # run-artifact policy (run.log, ephemeral eval dumps)
-├── tests/test_offline_logic.py # torch-free checks of the Phase-4 glue (no GPU needed)
+├── tests/                      # Phase-4 checks, none need a GPU, weights or COCO:
+│                               #   test_offline_logic.py (torch-free), test_flow_stubbed.py
+│                               #   (drivers, stubbed model), test_attack_units.py (CPU torch)
 ├── results/
 │   ├── phase4/<experiment>_<model>/   # Phase-4 runs (timestamped summaries + run.log)
 │   └── results_*/              # Phase-3 outputs (summary*.json, run.log, .png tracked)
@@ -97,8 +99,11 @@ Phase-3 scripts have hardcoded, per-track defaults — see `archive/Phase3/READM
 ## Phase 4 — how to run
 
 Two entry points, one per model. Each is one process on one GPU, i.e. one tmux pane. `--preflight`
-needs no GPU and lists anything missing; `--smoke-test` runs 2 images on CPU into a `smoke_test/`
-subdirectory that is gitignored and stamped `"smoke_test": true`.
+needs no GPU and lists anything missing; `--smoke-test` runs 2 images (CPU unless `--device` is
+given) into a `smoke_test/` subdirectory that is gitignored and stamped `"smoke_test": true`.
+**A real run stops with an error if the image directory holds fewer than `--n` images** (the
+message names http://images.cocodataset.org/zips/val2017.zip); only `--smoke-test` tolerates it.
+`--preflight` counts the images the same way and says NOT READY (`SHORT`) in that case.
 
 ```bash
 conda activate vlm_ftune
@@ -108,13 +113,27 @@ python phase4/p4_yolo.py     --experiment clean_control --n 1000 --gpu 0
 python phase4/p4_florence.py --experiment clean_control --n 1000 --gpu 0   # both tracks
 python phase4/p4_florence.py --experiment clean_control --tracks florence_ocr --gpu 1
 
-# --- adaptive white-box pilot: BPDA + EOT PGD through EnsJMG (YOLO only) -----
-python phase4/p4_yolo.py     --experiment adaptive_bpda --n 300 --gpu 0
+# --- adaptive white-box: BPDA + EOT PGD through a defense (YOLO only) -------
+# vs EnsJMG (default target), n=1000, 3 seeds (seed = PGD init draw; same images)
+for s in 0 1 2; do
+  python phase4/p4_yolo.py --experiment adaptive_bpda --target ens_jpeg_median_gaussian \
+      --n 1000 --seed $s --gpu 0
+done
+python phase4/p4_yolo.py --experiment adaptive_bpda --target median   --n 1000 --seed 0 --gpu 0
+python phase4/p4_yolo.py --experiment adaptive_bpda --target ens_4way --n 1000 --seed 0 --gpu 0
+
+# convergence check (50 iterations) and large-eps sanity check, own dirs
+python phase4/p4_yolo.py --experiment adaptive_bpda --n 300 --pgd-iters 50 --seed 0 --gpu 0 \
+    --output-dir results/phase4/adaptive_bpda_yolo_iters50
+python phase4/p4_yolo.py --experiment adaptive_bpda --n 100 --eps 0.1 --seed 0 --gpu 0 \
+    --output-dir results/phase4/adaptive_bpda_yolo_eps0.1
 
 # --- checks that need no GPU -------------------------------------------------
 python phase4/p4_yolo.py --preflight
 python phase4/p4_florence.py --experiment clean_control --smoke-test
-python tests/test_offline_logic.py
+python tests/test_offline_logic.py      # 37 torch-free checks
+python tests/test_flow_stubbed.py       # 20 driver checks, model + attacks stubbed
+CUDA_VISIBLE_DEVICES='' python tests/test_attack_units.py   # 14 CPU-torch attack checks
 ```
 
 Shared flags: `--n/--num-images`, `--select {head,random}`, `--seed`, `--tracks`, `--gpu`,
@@ -138,7 +157,10 @@ Real `s/image` from GPU runs on this hardware — not estimates. All exited 0.
 | `p4_florence.py` `florence_ocr` (5 beams) | 1.13 | 2 | 0.31 h | 1.57 h | (same load) |
 
 Only the YOLO `clean_control` row is measured over 10 images; the rest are 2-image runs, so treat
-them as ±30% and trust the `s/image` each run prints for itself. The Florence rows use the
+them as ±30% and trust the `s/image` each run prints for itself. The `adaptive_bpda` row predates
+the current attack (it ran 2 PGD iterations with the `mean` EOT loss); the defaults now run 10
+iterations with the `max` loss, which adds one no-grad forward per branch per step, so expect it
+to be slower per image (5x the PGD steps, plus those forwards) until re-measured. The Florence rows use the
 production decode (`--num-beams 5`), not the reduced `--smoke-test` decode.
 
 6 GB is enough for either model at batch 1 (YOLO peaked ~2.3 GB, Florence ~1.3 GB of 5.8 GB free,
@@ -150,7 +172,28 @@ once** — run them in sequence. On a larger card they can share.
 | Experiment | Model(s) | What it answers |
 |---|---|---|
 | `clean_control` | both | Do these transforms counter *attacks*, or do they just help/hurt images in general? Scores the 7 ensembles (EnsJMG, EnsJMT, Ens4W, EnsBTC, EnsBMT, EnsJBT, EnsJTS) and 6 solos (JPEG, Median, Gaussian, TVM, Blur+TVM, Bilateral — plus SVD, needed as an EnsJTS member) on clean images. **A small negative delta is an expected, publishable result**: it is the clean-accuracy cost of the transform. |
-| `adaptive_bpda` | YOLO only | What happens when the attacker knows the defense? PGD eps=0.03/10 iters/alpha=eps/4 with BPDA (identity gradient for JPEG and median, true gradient for Gaussian) and EOT (mean of the three branch gradients), against EnsJMG. Reports clean / oblivious-defended / adaptive-defended mAP on the same subset. Its approximations are listed in the file header and in the summary's `implementation_uncertainty` field. |
+| `adaptive_bpda` | YOLO only | What happens when the attacker knows the defense? PGD eps=0.03/10 iters/alpha=eps/4 through the `--target` defense with BPDA and EOT, against the same PGD run obliviously from the **same seeded start**. Reports clean / oblivious-defended / adaptive-defended mAP on the same subset, plus the attacker's own objective J through the target. Its approximations, for the options chosen, are in the summary's `implementation_uncertainty` field and the `.md`. |
+
+Adaptive-attack flags (each enters the checkpoint signature, the summary JSON `attack_flags` block
+and the `.md` header):
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--target` | `ens_jpeg_median_gaussian` (EnsJMG) | also `ens_4way` (Ens4W), `ens_jpeg_median_tvm` (EnsJMT), `ens_blur_tvm_combo` (EnsBTC), solos `median`, `jpeg`, `gaussian`, `tvm`, `blur_tvm`. Ensemble members are read from `phase3_common.TIER1_ENSEMBLES`; the scored defense is always phase3_common's |
+| `--eot-loss` | `max` | `max` = union-aware: per anchor, suppress the most confident branch (the NMS union keeps a box if ANY branch does). `mean` = mean of the branch objectives (the earlier pilot) |
+| `--restarts` | `1` | seeded restarts per image (both attacks); keeps the lowest surrogate objective |
+| `--median-surrogate` | `true` | `true` = exact almost-everywhere gradient of the unfold median; `identity` = BPDA straight-through. JPEG and TVM are always identity, Gaussian always its true gradient |
+| `--quantize` | `truncate` | final uint8 conversion; `truncate` is Phase 3's, `round` rounds |
+| `--attack-space` | `letterbox` | `letterbox` (Phase 3) optimises the square 640 letterbox, so the surrogate defense runs at a different scale than the deployed one. `native` optimises at native resolution and feeds the model through a differentiable copy of ultralytics' predict letterbox |
+
+`--seed` sets the per-(seed, image id, restart) PGD init draw, shared by the oblivious and the
+adaptive attack; with `--select head` it does not change the images. Adaptive summaries are named
+`summary_adaptive_bpda_yolo_<target>_seed<S>[_<flag>-<value>...]_n<N>_<timestamp>.json` (+ `_latest`),
+where each non-default flag of the table above except `--target` is appended (e.g.
+`_median-surrogate-identity`), so every target/seed/ablation keeps its own citable `_latest` in the
+one resumable run directory. `--eps` / `--pgd-iters` diagnostics still need their own `--output-dir`.
+In `native` space the uint8 attack output is clipped to the clean image +/- floor(eps*255)/255
+(7/255 at eps 0.03, since 0.03*255 = 7.65); `letterbox` keeps Phase 3's truncation.
 
 Both reuse `phase3_common.apply_all_defenses_gpu` and the same class-aware NMS merge
 (`assemble_results` / `merge_branches_nms`, IoU 0.5) as the Phase-3 attacked runs — that identity is

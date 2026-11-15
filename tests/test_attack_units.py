@@ -424,6 +424,20 @@ def t_pgd_and_restarts():
     assert abs(objs[0] - adp["objective"]) < 1e-6 * abs(objs[0]), \
         "restart 0 must not depend on --restarts"
     assert adp3["objective"] <= adp["objective"]
+    # --pgd-select best: never worse than last on the quantized objective,
+    # for both attacks, and the default stays `last`
+    assert args.pgd_select == "last"
+    argsb = make_args("--pgd-iters", "8", "--eps", "0.06", "--pgd-select",
+                      "best")
+    _, oblb = yolo.pgd_oblivious(pil, MODEL, CPU, argsb, 139)
+    _, adpb = yolo.pgd_adaptive_bpda_eot(pil, MODEL, CPU, argsb, branches, 139)
+    assert oblb["objective"] <= obl["objective"] + 1e-9
+    assert adpb["objective"] <= adp["objective"] + 1e-9
+    frame_b = yolo.attack_frame(pil, CPU, argsb, MODEL)
+    re_j, _ = yolo.eot_objective(MODEL, frame_b, branches, argsb)(
+        adpb["adv_q"], False)
+    assert abs(re_j - adpb["objective"]) < 1e-6 * abs(re_j), \
+        "the returned tensor must be the one the objective was measured on"
 
 
 check("PGD lowers J (fake model); --restarts keeps the lowest-J restart",

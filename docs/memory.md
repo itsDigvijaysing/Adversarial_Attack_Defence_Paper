@@ -268,7 +268,17 @@ attack on Florence-2.
     the 20-image dir); the BPDA surrogate choice is one table (`SURROGATES` + `surrogate_spec`)
     instead of four hand-kept copies. The review's "test_attack_units.py is missing" was the file
     being untracked: it, `test_rescore.py` and `p4_rescore.py` must be `git add`ed with any commit.
-- **Still open in the attack:** 10 iterations with no convergence check yet (a GPU run);
+- **13 Nov (CPU only, uncommitted):** `run_per_image` now flushes the checkpoint before its
+  end-of-run asserts (a failed image used to lose the unflushed tail); new opt-in
+  `--pgd-select best` (default `last` = Phase 3), in the signature, the stem and the tests. All
+  four suites pass (37 / 20 / 14 / 20). **The real YOLO model has not run since 24 Aug**, so the
+  union-max loss, native space, true median gradient, restarts and `--pgd-select` have only run
+  against the fake detector: do `python phase4/p4_yolo.py --experiment adaptive_bpda --smoke-test`
+  (CPU, 2 images, no download; weights and CLIP are on disk) before any GPU booking. Florence-2
+  weights are not cached on the laptop. Full paper draft: `docs/paper_draft/` (see its README;
+  red `\pending{}` marks every result not yet run).
+- **Still open in the attack:** 10 iterations with no convergence check yet (a GPU run); the loss
+  is post-sigmoid (no logit or margin variant); JPEG and TVM are identity-gradient only;
   letterbox vs native resolution stays the default (the `native` ablation exists).
 - **Blockers for real runs:** only **20** val2017 images on disk; the download
   (`http://images.cocodataset.org/zips/val2017.zip`, ~780 MB) is the user's call and was not done

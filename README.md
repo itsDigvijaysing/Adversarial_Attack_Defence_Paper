@@ -184,6 +184,7 @@ and the `.md` header):
 | `--restarts` | `1` | seeded restarts per image (both attacks); keeps the lowest surrogate objective |
 | `--median-surrogate` | `true` | `true` = exact almost-everywhere gradient of the unfold median; `identity` = BPDA straight-through. JPEG and TVM are always identity, Gaussian always its true gradient |
 | `--quantize` | `truncate` | final uint8 conversion; `truncate` is Phase 3's, `round` rounds |
+| `--pgd-select` | `last` | which iterate a restart returns (both attacks). `last` is Phase 3's. `best` also quantizes the lowest-objective iterate seen and keeps whichever of the two has the lower objective after quantization; use it for the long (50+ iteration) runs |
 | `--attack-space` | `letterbox` | `letterbox` (Phase 3) optimises the square 640 letterbox, so the surrogate defense runs at a different scale than the deployed one. `native` optimises at native resolution and feeds the model through a differentiable copy of ultralytics' predict letterbox |
 
 `--seed` sets the per-(seed, image id, restart) PGD init draw, shared by the oblivious and the

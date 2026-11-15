@@ -593,6 +593,13 @@ def eot_objective(model, frame, branches, args):
 def run_pgd(frame, objective, args, image_id):
     """L_inf PGD with --restarts seeded restarts; keeps the lowest final J.
 
+    --pgd-select last (default, Phase 3): each restart returns its last
+    iterate. --pgd-select best: the iterate with the lowest J seen during the
+    restart is quantized as well, and whichever of {last, best-seen} has the
+    lower J AFTER quantization is the restart's result, so `best` is never
+    worse than `last` on the objective. It costs one extra no-grad objective
+    per restart and no extra gradient (J comes with every gradient call).
+
     Update rule, projection and clamps are Phase 3's
     (archive/Phase3/run_survey_yolo.py:255-280): `adv + alpha*sign(dLoss)`
     with Loss = -J is written here as `adv - alpha*sign(dJ)`, the same step.
@@ -609,16 +616,24 @@ def run_pgd(frame, objective, args, image_id):
     for r in range(args.restarts):
         adv = (x0 + pgd_init_noise(x0, args.eps, args.seed, image_id, r)
                ).clamp(0.0, 1.0)
+        seen = None                      # (J, iterate) with the lowest J
         for _ in range(args.pgd_iters):
-            _, grad = objective(adv, need_grad=True)
+            j_now, grad = objective(adv, need_grad=True)
+            if args.pgd_select == "best" and (seen is None or j_now < seen[0]):
+                seen = (j_now, adv)
             with torch.no_grad():
                 adv = adv - args.alpha * grad.sign()
                 delta = torch.clamp(adv - x0, min=-args.eps, max=args.eps)
                 adv = torch.clamp(x0 + delta, 0.0, 1.0).detach()
-        u8, adv_q = quantize_adv(
-            adv, args.quantize, x0 if frame.space == "native" else None,
-            args.eps)
+        clip_ref = x0 if frame.space == "native" else None
+        u8, adv_q = quantize_adv(adv, args.quantize, clip_ref, args.eps)
         obj, _ = objective(adv_q, need_grad=False)
+        if seen is not None:
+            u8_b, adv_q_b = quantize_adv(seen[1], args.quantize, clip_ref,
+                                         args.eps)
+            obj_b, _ = objective(adv_q_b, need_grad=False)
+            if obj_b < obj:
+                obj, u8, adv_q = obj_b, u8_b, adv_q_b
         restart_objs.append(obj)
         if best is None or obj < best[0]:
             best = (obj, r, u8, adv_q)
@@ -708,12 +723,12 @@ def condition_label(tag):
 
 
 ATTACK_FLAGS = ("target", "eot_loss", "restarts", "median_surrogate",
-                "quantize", "attack_space")
+                "quantize", "attack_space", "pgd_select")
 # parse_args defaults of the ablation flags (tests/test_offline_logic.py
 # checks they match); a non-default value is appended to the summary stem.
 STEM_FLAG_DEFAULTS = {"eot_loss": "max", "restarts": 1,
                       "median_surrogate": "true", "quantize": "truncate",
-                      "attack_space": "letterbox"}
+                      "attack_space": "letterbox", "pgd_select": "last"}
 
 
 def summary_stem(args):
@@ -843,6 +858,18 @@ def implementation_uncertainty(args, paper, branches):
         "the two differ only in the gradient they follow. Phase 3 drew its "
         "init from the unseeded global RNG, so Phase-3 and Phase-4 attacked "
         "numbers also differ by init noise.")
+    if args.pgd_select == "best":
+        items.append(
+            "PGD iterate selection 'best': per restart, the last iterate and "
+            "the lowest-objective iterate seen are both quantized and the one "
+            "with the lower objective after quantization is kept (Phase 3 "
+            "kept the last iterate). Applied to the oblivious and the "
+            "adaptive attack alike.")
+    else:
+        items.append(
+            "PGD iterate selection 'last': each restart returns its final "
+            "iterate, as in Phase 3, even if an earlier iterate had a lower "
+            "objective; --pgd-select best removes that slack.")
     if args.restarts > 1:
         items.append(
             f"{args.restarts} restarts per image: the kept one has the lowest "
@@ -862,7 +889,8 @@ def adaptive_signature(args, adapter, target, branches, files, image_ids,
         init=PGD_INIT_SCHEME, surrogates=SURROGATE_VERSION,
         restarts=args.restarts, eot_loss=args.eot_loss,
         median_surrogate=args.median_surrogate, quantize=args.quantize,
-        attack_space=args.attack_space, jpeg_quality=args.jpeg_quality,
+        attack_space=args.attack_space, pgd_select=args.pgd_select,
+        jpeg_quality=args.jpeg_quality,
         median_kernel=args.median_kernel, gaussian_sigma=args.gaussian_sigma,
         tvm_weight=args.tvm_weight, tvm_iters=args.tvm_iters,
         nms_iou=args.nms_iou, n=len(files), ids=core.ids_digest(image_ids),
@@ -996,6 +1024,7 @@ def adaptive_bpda(adapter, args, coco_gt, files, image_ids):
                    "restart_selection": ("lowest surrogate objective on the "
                                          "quantized attack-frame tensor"),
                    "quantize": args.quantize,
+                   "iterate_selection": args.pgd_select,
                    "attack_space": args.attack_space,
                    "pixel_space": ("raw [0,1], " + (
                        f"letterboxed {args.yolo_imgsz}x{args.yolo_imgsz}"
@@ -1057,7 +1086,8 @@ def adaptive_bpda(adapter, args, coco_gt, files, image_ids):
         f"space; seeded init per (seed {args.seed}, image id, restart), "
         f"shared by both attacks",
         f"- Attack space `{args.attack_space}` · output quantization "
-        f"`{args.quantize}` · median surrogate `{args.median_surrogate}`",
+        f"`{args.quantize}` · median surrogate `{args.median_surrogate}` · "
+        f"iterate selection `{args.pgd_select}`",
         f"- EOT loss `{args.eot_loss}`: {eot_description(args, branches)}",
         "- BPDA surrogates (backward only; every forward is the deployed "
         "value): " + "; ".join(f"{b}: {d}" for b, d in surrogates.items()),
@@ -1191,6 +1221,11 @@ def parse_args(argv=None):
                         "640 letterbox. native = optimise at native resolution "
                         "where the defense runs, through a differentiable copy "
                         "of ultralytics' predict letterbox.")
+    a.add_argument("--pgd-select", choices=["last", "best"], default="last",
+                   help="Which PGD iterate a restart returns (both attacks). "
+                        "last = Phase-3 compatible. best = the lower-objective "
+                        "of the last and the best-seen iterate, compared "
+                        "after quantization.")
     m = p.add_argument_group("model (Phase-3 values)")
     m.add_argument("--yolo-model", default="yolov8x-worldv2.pt")
     m.add_argument("--yolo-imgsz", type=int, default=640)

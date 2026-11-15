@@ -1,0 +1,24 @@
+No attack, no defense & 1.000 & 1.000 & 1.000 \\
+Attacked, no defense & 0.346 & 0.294 & 0.383 \\
+\midrule \multicolumn{4}{@{}l}{\emph{Single transforms}}\\
+TVM ($w{=}0.05$) & 0.598 & 0.654 & 0.406 \\
+Bilateral & 0.482 & 0.637 & 0.380 \\
+Anisotropic & 0.507 & 0.630 & 0.372 \\
+JPEG ($q{=}75$) & 0.522 & 0.616 & 0.407 \\
+Gaussian ($\sigma{=}1$) & 0.535 & 0.609 & 0.572 \\
+BM3D & 0.569 & 0.598 & 0.360 \\
+Random resize-and-pad & 0.532 & 0.584 & 0.567 \\
+Median ($3{\times}3$) & 0.452 & 0.546 & 0.581 \\
+Bit-depth (4-bit) & 0.445 & 0.521 & 0.349 \\
+Ordered dithering & 0.437 & 0.516 & 0.343 \\
+Blur+TVM & 0.470 & 0.487 & 0.477 \\
+NLM ($h{=}0.8\hat\sigma$) & 0.367 & 0.383 & 0.367 \\
+SVD (top 90\% of rank) & 0.350 & 0.309 & 0.385 \\
+\midrule \multicolumn{4}{@{}l}{\emph{Output-level ensembles (consensus vote)}}\\
+EnsJBT & 0.537 & 0.661 & 0.401 \\
+Ens4W & 0.561 & 0.652 & 0.566 \\
+EnsBMT & 0.530 & 0.651 & 0.427 \\
+EnsJMT & 0.555 & 0.649 & 0.442 \\
+EnsJMG & 0.522 & 0.620 & 0.578 \\
+EnsBTC & 0.502 & 0.586 & 0.550 \\
+EnsJTS & 0.507 & 0.580 & 0.405 \\

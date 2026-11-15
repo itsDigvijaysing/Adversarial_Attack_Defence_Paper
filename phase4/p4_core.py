@@ -564,9 +564,15 @@ def run_per_image(args, label, files, conditions, compute_one, ckpt,
             rt.torch.cuda.empty_cache()
 
     elapsed = time.time() - start
+    # Flush BEFORE the asserts below: a failed image makes them raise, and the
+    # images computed since the last periodic flush would otherwise be lost
+    # (up to --checkpoint-every - 1 of them). A re-run then only redoes the
+    # failed images.
+    ckpt.flush()
     if failures:
         print(f"[{label}] {len(failures)} image(s) failed "
-              f"(first: {failures[0]}).")
+              f"(first: {failures[0]}). Re-run the same command to retry "
+              f"them; everything else is checkpointed.")
     assert len(ckpt.buckets) == len(files), (
         f"[{label}] image count mismatch: processed {len(ckpt.buckets)} but "
         f"expected {len(files)} ({len(failures)} failures).")

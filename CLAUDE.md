@@ -50,7 +50,8 @@ results** and **novel 2025–2026 methods**.
     Adaptive flags: `--target` (EnsJMG default, Ens4W, EnsJMT, EnsBTC, or a solo; members read
     from `pc.TIER1_ENSEMBLES`), `--eot-loss {max,mean}` (max = union-aware, default),
     `--restarts R`, `--median-surrogate {true,identity}`, `--quantize {truncate,round}`,
-    `--attack-space {letterbox,native}`. With the defaults the oblivious PGD is Phase 3's apart
+    `--attack-space {letterbox,native}`, `--pgd-select {last,best}` (best = lower-objective of
+    the last and the best-seen iterate, after quantization). With the defaults the oblivious PGD is Phase 3's apart
     from the now-seeded init; the adaptive defaults differ from the earlier pilot in
     `--eot-loss max` and the true median gradient (pilot: `mean`, `identity`).
   - `p4_florence.py` — ENTRY POINT. Florence-2 loaded ONCE serving both `<OD>` and `<OCR>`;
@@ -93,7 +94,7 @@ results** and **novel 2025–2026 methods**.
 - **Adaptive summaries are keyed by target, seed and every non-default ablation flag:**
   `summary_adaptive_bpda_yolo_<target>_seed<S>[_<flag>-<value>...]_n<N>_<ts>.json` (+ `_latest`;
   e.g. `_median-surrogate-identity`, from `STEM_FLAG_DEFAULTS`), so 3 seeds x 3 targets and any
-  `--eot-loss/--restarts/--median-surrogate/--quantize/--attack-space` ablation in one run
+  `--eot-loss/--restarts/--median-surrogate/--quantize/--attack-space/--pgd-select` ablation in one run
   directory each keep a citable `_latest`. Eps / iteration diagnostics still share the stem: give
   them their own `--output-dir`.
 - **eps=0.03 is 7.65/255, not a whole uint8 step.** `--attack-space native` clips the uint8 output

@@ -477,12 +477,14 @@ def t_adaptive_flags():
                                 "native")
     assert tuple(yolo.ATTACK_FLAGS) == ("target", "eot_loss", "restarts",
                                         "median_surrogate", "quantize",
-                                        "attack_space")
+                                        "attack_space", "pgd_select")
+    assert a.pgd_select == "last"
+    assert yolo.parse_args(["--pgd-select", "best"]).pgd_select == "best"
     import contextlib
     import io
     for bad in (["--restarts", "0"], ["--target", "ens_jpeg_tvm_svd"],
                 ["--eot-loss", "sum"], ["--quantize", "floor"],
-                ["--attack-space", "square"]):
+                ["--attack-space", "square"], ["--pgd-select", "first"]):
         with contextlib.redirect_stderr(io.StringIO()):
             try:
                 yolo.parse_args(bad)
@@ -527,7 +529,8 @@ def t_summary_stem():
     assert yolo.summary_stem(m) == yolo.summary_stem(a) + \
         "_median-surrogate-identity"
     for flag, val in (("--eot-loss", "mean"), ("--restarts", "2"),
-                      ("--quantize", "round"), ("--attack-space", "native")):
+                      ("--quantize", "round"), ("--attack-space", "native"),
+                      ("--pgd-select", "best")):
         x = yolo.parse_args(["--experiment", "adaptive_bpda", "--seed", "1",
                              flag, val])
         assert yolo.summary_stem(x) == \

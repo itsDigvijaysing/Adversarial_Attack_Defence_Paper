@@ -373,7 +373,8 @@ def t_adaptive_driver():
     assert payload["attack_flags"] == {
         "target": "ens_jpeg_median_gaussian", "eot_loss": "max", "restarts": 1,
         "median_surrogate": "true", "quantize": "truncate",
-        "attack_space": "letterbox"}, payload["attack_flags"]
+        "attack_space": "letterbox", "pgd_select": "last"}, \
+        payload["attack_flags"]
     assert payload["bpda"]["true_gradient_branches"] == ["median", "gaussian"]
     assert payload["bpda"]["identity_gradient_branches"] == ["jpeg"]
     so = payload["surrogate_objective"]
@@ -401,14 +402,16 @@ def t_adaptive_driver_ens4w_flags():
     args, adapter, payload, md = run_adaptive_stubbed(
         ["--target", "ens_4way", "--eot-loss", "mean", "--restarts", "2",
          "--median-surrogate", "identity", "--quantize", "round",
-         "--attack-space", "native", "--seed", "7"], "adaptive_4w")
+         "--attack-space", "native", "--pgd-select", "best", "--seed", "7"],
+        "adaptive_4w")
     assert payload["defense"]["name"] == "Ens4W"
     assert set(payload["defense"]["branches"]) == {"jpeg", "median", "tvm",
                                                    "gaussian"}
     assert payload["attack_flags"] == {
         "target": "ens_4way", "eot_loss": "mean", "restarts": 2,
         "median_surrogate": "identity", "quantize": "round",
-        "attack_space": "native"}, payload["attack_flags"]
+        "attack_space": "native", "pgd_select": "best"}, \
+        payload["attack_flags"]
     a = payload["attack"]
     assert (a["restarts"], a["quantize"], a["attack_space"], a["seed"]) == \
         (2, "round", "native", 7)
@@ -429,6 +432,7 @@ def t_adaptive_driver_ens4w_flags():
         args.output_dir,
         "summary_adaptive_bpda_yolo_ens_4way_seed7_eot-loss-mean_restarts-2"
         "_median-surrogate-identity_quantize-round_attack-space-native"
+        "_pgd-select-best"
         "_latest.json"))
 
 
@@ -473,6 +477,7 @@ def t_adaptive_signature_flags():
                 "median_surrogate": ["--median-surrogate", "identity"],
                 "quantize": ["--quantize", "round"],
                 "attack_space": ["--attack-space", "native"],
+                "pgd_select": ["--pgd-select", "best"],
                 "seed": ["--seed", "7"], "eps": ["--eps", "0.1"],
                 "iters": ["--pgd-iters", "50"]}
     sigs = {k: sig(v) for k, v in variants.items()}

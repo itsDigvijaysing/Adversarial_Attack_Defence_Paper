@@ -100,14 +100,24 @@ check("--n / --num-images alias on both entry points", t_alias)
 
 def t_experiments_exposed():
     assert yolo.EXPERIMENTS == ("clean_control", "adaptive_bpda")
-    assert flo.EXPERIMENTS == ("clean_control",)
-    for bad in (["--experiment", "adaptive_bpda"],):
+    assert flo.EXPERIMENTS == ("clean_control", "adaptive_bpda")
+    f = flo.parse_args(["--experiment", "adaptive_bpda", "--target", "median"])
+    assert f.tracks == ["florence_det"], f.tracks      # the attack is <OD> only
+    assert f.attack_space == "native" and f.eot_loss == "max"
+    assert abs(f.alpha - f.eps / 4) < 1e-12 and f.pgd_iters == 10
+    assert not hasattr(f, "eot_batch")
+    # native is Florence's default, so it never enters the summary name
+    assert yolo.summary_stem(f, flo.STEM_FLAG_DEFAULTS) == \
+        "adaptive_bpda_florence_median_seed42"
+    assert f.deterministic is False
+    assert flo.parse_args(["--deterministic"]).deterministic is True
+    for bad in (["--attack-space", "letterbox"],):
         try:
             flo.parse_args(bad)
         except SystemExit:
             break
     else:
-        raise AssertionError("Florence must reject the YOLO-only experiment")
+        raise AssertionError("Florence attacks at native resolution only")
 
 
 check("each model exposes only the experiments it implements",

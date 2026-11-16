@@ -896,7 +896,7 @@ STEM_FLAG_DEFAULTS = {"eot_loss": "max", "restarts": 1,
                       "attack_space": "letterbox", "pgd_select": "last"}
 
 
-def summary_stem(args):
+def summary_stem(args, defaults=None):
     """One summary stem per (target, seed, non-default ablation flags).
 
     With --target selectable and 3 seeds per target, a single
@@ -909,7 +909,7 @@ def summary_stem(args):
     Eps and iteration diagnostics still need their own --output-dir.
     """
     stem = f"adaptive_bpda_{args.model_key}_{args.target}_seed{args.seed}"
-    for k, default in STEM_FLAG_DEFAULTS.items():
+    for k, default in (defaults or STEM_FLAG_DEFAULTS).items():
         if getattr(args, k) != default:
             stem += f"_{k.replace('_', '-')}-{getattr(args, k)}"
     return stem
@@ -922,6 +922,7 @@ def execution_record(args, branches):
             "eot_batch_reason": args.eot_batch_reason,
             "eot_batch_oom_fallback": bool(args.eot_batch_oom_fallback),
             "eot_batch_applies": len(branches) > 1,
+            "deterministic": bool(getattr(args, "deterministic", False)),
             "log_name": getattr(args, "log_name", "run.log")}
 
 
@@ -1370,8 +1371,12 @@ def _positive_int(text):
     return v
 
 
-def parse_args(argv=None):
-    p = core.base_parser("Phase-4 YOLOv8x-worldv2 runs.", EXPERIMENTS)
+def add_attack_arguments(p, native_only=False):
+    """The attack flags shared by every adaptive experiment.
+
+    native_only (p4_florence): the attack variable is always the native image,
+    so --attack-space offers only `native` and --eot-batch is not added.
+    """
     g = p.add_argument_group("attack (adaptive_bpda only; Phase-3 values)")
     g.add_argument("--eps", type=float, default=0.03)
     g.add_argument("--pgd-iters", type=int, default=None,
@@ -1404,8 +1409,10 @@ def parse_args(argv=None):
                    default="truncate",
                    help="Final uint8 conversion of the attack output. "
                         "truncate = Phase-3 compatible.")
-    a.add_argument("--attack-space", choices=["letterbox", "native"],
-                   default="letterbox",
+    a.add_argument("--attack-space",
+                   choices=["native"] if native_only else ["letterbox",
+                                                           "native"],
+                   default="native" if native_only else "letterbox",
                    help="letterbox (Phase-3 compatible) = optimise the square "
                         "640 letterbox. native = optimise at native resolution "
                         "where the defense runs, through a differentiable copy "
@@ -1415,6 +1422,8 @@ def parse_args(argv=None):
                         "last = Phase-3 compatible. best = the lower-objective "
                         "of the last and the best-seen iterate, compared "
                         "after quantization.")
+    if native_only:
+        return
     x = p.add_argument_group("execution (adaptive_bpda; does not change what "
                              "is measured)")
     x.add_argument("--eot-batch", choices=list(EOT_BATCH_CHOICES),
@@ -1427,6 +1436,19 @@ def parse_args(argv=None):
                         f"CUDA device with >= {EOT_BATCH_MIN_GIB:g} GiB, else "
                         "off. Not part of the checkpoint signature or the "
                         "summary name.")
+
+
+def finalize_attack_args(args):
+    if args.alpha is None:
+        args.alpha = args.eps / 4.0
+    if args.pgd_iters is None:
+        args.pgd_iters = 2 if args.smoke_test else 10
+    return args
+
+
+def parse_args(argv=None):
+    p = core.base_parser("Phase-4 YOLOv8x-worldv2 runs.", EXPERIMENTS)
+    add_attack_arguments(p)
     m = p.add_argument_group("model (Phase-3 values)")
     m.add_argument("--yolo-model", default="yolov8x-worldv2.pt")
     m.add_argument("--yolo-imgsz", type=int, default=640)
@@ -1435,11 +1457,7 @@ def parse_args(argv=None):
 
     args = p.parse_args(argv)
     core.finalize_args(args, "yolo")
-    if args.alpha is None:
-        args.alpha = args.eps / 4.0
-    if args.pgd_iters is None:
-        args.pgd_iters = 2 if args.smoke_test else 10
-    return args
+    return finalize_attack_args(args)
 
 
 CLIP_FILE = "ViT-B-32.pt"     # what YOLO-World's set_classes() loads

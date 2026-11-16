@@ -17,6 +17,8 @@
 %           results/ BEFORE SUBMITTING, and re-generate tab_*_n5000.tex.
 %     README.md lists every number check (15 Nov 2026) and which run fills
 %     each \pending{}.
+%   * Figure 2 (fig_cost_vs_patch.pdf) is drawn by make_figures.py from
+%     source (a). Figure 1 is TikZ, inline below.
 %   * Build: pdflatex main && bibtex main && pdflatex main && pdflatex main
 %     (pdfLaTeX only; on Overleaf set Menu > Compiler to pdfLaTeX).
 % ======================================================================
@@ -27,6 +29,8 @@
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs}
 \usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
 \usepackage{xcolor}
 \usepackage{microtype}
 \usepackage[numbers,sort&compress]{natbib}
@@ -96,8 +100,10 @@ For closed-set detectors, adaptive attacks have also bypassed a wide range of
 patch defenses~\cite{zheng2025revisiting}. For open-vocabulary models the
 question has not been asked. Their robustness has been studied under
 distribution shift~\cite{chhipa2024open} and under new
-attacks~\cite{zhao2025one}, but we found no measurement of input transforms on
-either model, with or without an adaptive attacker.
+attacks~\cite{zhao2025one,liang2026unified}. The one measurement of input
+transforms we know of covers \fl{} alone, against attackers who ignore the
+defense~\cite{rajput2026evaluating}. We found none on \yw{}, and none on
+either model with an adaptive attacker.
 
 An earlier version of this study measured only what is easy: recovery of mAP
 against attacks crafted without knowledge of the defense, one run per
@@ -162,6 +168,21 @@ one does, and BaRT looked robust under BPDA until the attack was tuned.
 Carlini et al.~\cite{carlini2019evaluating} list the checks an evaluation
 should pass; Sec.~\ref{sec:adaptive} follows the ones that apply.
 
+Recent classifier results point the same way for the filters we study.
+Guesmi and Shafique~\cite{guesmi2025drift} report that JPEG keeps no robust
+accuracy on four ImageNet classifiers under PGD with BPDA and EOT at
+$\epsilon=4/255$, and that BaRT keeps 5 to 11\%. R\"aber et
+al.~\cite{raber2025keep} find that JPEG falls from 70\% to 19\% accuracy on
+a ResNet-50 at the same budget, under both a straight-through gradient and
+the true one, while learned codecs that reconstruct realistic images are
+much harder to attack. Wang et al.~\cite{wang2026shared} argue that the
+identity approximation works against filtering and compression because these
+transforms stay close to the identity; in their experiments it succeeds less
+often against JPEG than against mean or Gaussian filtering. All three study
+classifiers. We use the identity for JPEG and TVM
+(Sec.~\ref{sec:adaptive-method}), and their results are a reason to treat
+the JPEG branch as the part of our attack most likely to be too weak.
+
 \paragraph{Detectors and open-vocabulary models.}
 Patch defenses for detectors locate and mask or complete the
 patch~\cite{liu2022segment,xu2023patchzero} or certify against
@@ -172,11 +193,14 @@ purification~\cite{nie2022diffusion} is the modern heavy alternative to the
 filters studied here. For open-vocabulary models, Chhipa et
 al.~\cite{chhipa2024open} measure \yw{}, OWL-ViT and Grounding DINO under
 distribution shift, and Zhao et al.~\cite{zhao2025one} attack unified
-vision-language models including \fl{} across tasks. Neither studies
-defenses.
-% TODO: after reading the PDFs, add the four works listed at the end of
-% refs.bib (DRIFT, Keep It Real, arXiv 2607.18339, arXiv 2610.29196), and
-% the authors' own APSCON 2026 paper in the third person.
+vision-language models including \fl{} across tasks. Liang et
+al.~\cite{liang2026unified} optimize person-worn patches, applied digitally,
+against eleven models that include \yw{} and Grounding DINO but not \fl{}.
+None of the three studies defenses.
+Rajput~\cite{rajput2026evaluating} evaluates FGSM and PGD on \fl{} together
+with input-level defenses, against attackers who do not take the defense into
+account. That study has no second model, no clean-cost or interval analysis
+and no adaptive attack, which are the subject of this paper.
 
 % ======================================================================
 \section{Setup}
@@ -211,7 +235,49 @@ not know a defense will be applied. The adversarial image is computed against
 the bare model and then passed through the defense. In the \emph{adaptive}
 setting the attacker knows the transforms, their parameters and the merge
 rule, and optimizes through them. Both attackers are white-box with respect
-to the model and are bounded in the same way.
+to the model and are bounded in the same way. Figure~\ref{fig:pipeline}
+shows the two settings for a three-branch ensemble.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[font=\small, >={Stealth[length=2mm]},
+  box/.style={draw, rounded corners=2pt, minimum height=6.5mm,
+              minimum width=19mm, inner sep=3pt},
+  obl/.style={blue!60!black, dashed, thick},
+  ada/.style={orange!75!black, dashed, thick}]
+\node[box, minimum width=15mm] (x) at (0,0) {image $x'$};
+\node[box] (t1) at (3.3,1.1) {$T_1$: JPEG};
+\node[box] (t2) at (3.3,0) {$T_2$: Median};
+\node[box] (t3) at (3.3,-1.1) {$T_3$: Gaussian};
+\node[box] (f1) at (6.6,1.1) {detector};
+\node[box] (f2) at (6.6,0) {detector};
+\node[box] (f3) at (6.6,-1.1) {detector};
+\node[box, align=center] (m) at (9.9,0) {pool boxes,\\NMS at IoU 0.5};
+\node (o) at (12.7,0) {detections};
+\foreach \i in {1,2,3} {
+  \draw[->] (x.east) -- (t\i.west);
+  \draw[->] (t\i) -- (f\i);
+  \draw[->] (f\i.east) -- (m.west);
+}
+\draw[->] (m) -- (o);
+% adaptive gradient: back through every branch
+\draw[ada, ->] (f1.north) -- (6.6,1.85) -| (x.north);
+\node[ada, solid, draw=none, anchor=south] at (3.3,1.88)
+  {adaptive: gradient of $J_{\max}$ through every $T_b$};
+% oblivious gradient: bare detector only
+\node[box, obl] (fb) at (6.6,-2.6) {detector, no defense};
+\draw[obl, ->] (fb.west) -| (x.south);
+\node[obl, solid, draw=none, anchor=south] at (2.7,-2.57)
+  {oblivious: gradient of $J$};
+\end{tikzpicture}
+\caption{The defense that is scored (solid) and the gradient each attacker
+follows (dashed), for the ensemble EnsJMG on \yw{}. Every branch runs the
+detector once on a transformed copy of the image, and a box survives the
+merge if any branch keeps it. The oblivious attacker differentiates the bare
+detector; the adaptive attacker differentiates the objective of
+Eq.~\ref{eq:Jmax} through all branches (Sec.~\ref{sec:adaptive-method}).}
+\label{fig:pipeline}
+\end{figure}
 
 \subsection{Attacks}
 \label{sec:attacks}
@@ -354,7 +420,7 @@ included; Sec.~\ref{sec:adaptive} uses three seeds.
 The adaptive attacker targets a specific defense with branches
 $T_1,\dots,T_k$ (for a single transform, $k=1$). On the forward pass each
 branch computes exactly what the deployed defense computes, including its
-8-bit rounding. On the backward pass we need a gradient through $T_b$:
+8-bit conversion. On the backward pass we need a gradient through $T_b$:
 \begin{itemize}
 \item Gaussian: the true gradient (it is a convolution).
 \item Median: the true gradient almost everywhere. Each output pixel passes
@@ -364,7 +430,7 @@ choice~\cite{athalye2018obfuscated}.
 \item Blur+TVM: the true gradient of the Gaussian, then the identity through
 TVM.
 \end{itemize}
-The 8-bit rounding inside each branch is passed straight through.
+The 8-bit conversion inside each branch is passed straight through.
 
 With several branches the usual EOT objective averages the branch losses.
 That is the wrong target for a merge that keeps a box when \emph{any} branch
@@ -397,6 +463,23 @@ a restart we keep whichever of the last iterate and the lowest-objective
 iterate seen during the run has the lower objective after the 8-bit
 conversion, and across restarts the restart whose result has the lowest
 objective. Both attacks use this rule, each with its own objective.
+
+\paragraph{\fl{}.} The same experiment runs on \fl{} detection with the
+loss $\mathcal{L}_{\mathrm F}$ of Sec.~\ref{sec:attacks} in place of $J$:
+the attacker maximizes the cross-entropy of the clean decode, through each
+branch with the same backward rules. With several branches the counterpart
+of Eq.~\ref{eq:Jmax} raises, at every step, the cross-entropy of the branch
+that still agrees best with the clean decode,
+$\min_{b\le k}\mathcal{L}_{\mathrm F}(T_b(z'))$, since a box survives the
+merge as long as one branch keeps it. Unlike the \fl{} attacks of
+Sec.~\ref{sec:attacks}, this one perturbs the image itself, at its original
+resolution and in $[0,1]$, and reaches the model through a differentiable
+copy of the processor's resize and normalization. Its budget is therefore
+the same $\pm7$ gray levels as for \yw{}, about four times the budget of
+the earlier \fl{} runs, and its numbers are not comparable with
+Tables~\ref{tab:ci-florence} and~\ref{tab:full-florence}. Scored inference
+still decodes with beam search, which the attack does not differentiate
+through.
 
 % ======================================================================
 \section{Results}
@@ -495,11 +578,23 @@ are significantly negative, and here the clean-cost column explains what the
 earlier version of this work could only guess at. In all six significantly
 negative cases (JPEG, TVM and Blur+TVM on \yw{}; TVM, Gaussian and Blur+TVM
 on \fl{}) the loss under the patch is no larger than the same transform's
-loss on clean images. A patch that removes 0.023 mAP (\yw{}) or 0.034 mAP
+loss on clean images (Figure~\ref{fig:cost-patch}). A patch that removes 0.023 mAP (\yw{}) or 0.034 mAP
 (\fl{}) on these images leaves an image that is, for the detector, almost
 clean, and a filter applied to it pays
 its usual price and gets nothing back. These transforms are not being
 defeated by the patch. There is too little damage for them to undo.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{fig_cost_vs_patch.pdf}
+\caption{Clean cost against the mAP change under the patch, first 1{,}000
+images, for the eight defenses of Tables~\ref{tab:ci-yolo}
+and~\ref{tab:ci-florence}. Bars are 95\% paired bootstrap intervals. On the
+dashed line a transform loses as much on patched images as on clean ones.
+Every defense lies on or above it: none loses more under the patch than it
+already loses without an attack.}
+\label{fig:cost-patch}
+\end{figure}
 
 \paragraph{Ensembles beat Median on \yw{} only.}
 Median is the one single transform that is never significantly harmful
@@ -587,9 +682,32 @@ longer run on 300 images. (iii) A larger budget drives defended mAP toward
 zero. (iv) The max objective of Eq.~\ref{eq:Jmax} against the mean objective.
 (v) True median gradient against the identity.}
 
-\paragraph{Scope.} We ran the adaptive attack on \yw{} only. \fl{} decodes
-with beam search, and an adaptive attack through it is a separate piece of
-work; the conclusions of this section should not be assumed to carry over.
+\paragraph{\fl{}.} \pending{Table and one paragraph for \fl{} detection
+under the adaptive attack of Sec.~\ref{sec:adaptive-method}: Median and
+EnsJMG, same five columns as Table~\ref{tab:adaptive}, from
+\texttt{p4\_florence.py -{}-experiment adaptive\_bpda}.}
+
+\subsection{A third model}
+\label{sec:third}
+
+Whether a transform chosen on two detectors carries over to a model of a
+different kind is a fair question for a defense that is meant to be attached
+to any model. We therefore fixed one more model before running anything on
+it: SmolVLM-256M-Instruct, a chat-style vision-language model with 0.26
+billion parameters. It returns text, not boxes, so the task changes. For
+each image we ask yes/no questions of the form ``Is there a \emph{class} in
+this image?'', half about a COCO class annotated in the image and half about
+one that is not, and score accuracy against the annotations; the answer is
+read from the next-token probabilities of ``yes'' and ``no''. The attack is
+oblivious PGD ($\epsilon=0.03$ on the image, 10 steps) that maximizes the
+cross-entropy of the correct answers. An ensemble answers with the mean of
+its branches' yes-probabilities. Every image is resized to the model's
+$512\times512$ input in every condition, so the transforms act at that
+size. No adaptive attack was run on this model.
+\pending{Table: clean accuracy, attacked accuracy, and for every transform
+and ensemble the clean cost and the recovery with paired intervals, from
+\texttt{p4\_smolvlm.py}. One paragraph on whether Median and the ensembles
+recover accuracy here as they do on the detectors.}
 
 % ======================================================================
 \section{Discussion}
@@ -639,7 +757,8 @@ defenses we did not run.
 
 The two models are attacked with budgets that differ by a factor of 4.4, so
 we compare transforms within a model and never models with each other. The
-adaptive evaluation covers one model. We did not include a control in which
+adaptive evaluation covers detection on two models; the OCR track and the
+third model are evaluated against oblivious attacks only. We did not include a control in which
 the ensemble's extra forward passes are spent on views that do not denoise
 (for example a flipped or rescaled image), so we cannot say how much of the
 ensemble's advantage on \yw{} comes from denoising and how much from merging
@@ -728,11 +847,15 @@ the saved detections, with no model or image loaded; the script reproduces
 all 168 mAP values of the original runs exactly before resampling. PGD
 starting points in the adaptive experiment are derived from a hash of the
 run seed, the image id and the restart index, so the oblivious and adaptive
-attacks on an image start from the same point and any run can be repeated.
+attacks on an image start from the same point. \pending{One sentence on
+repeatability, from the two identical 10-image runs: either ``repeating a
+command reproduces its numbers exactly'' or the measured run-to-run
+difference, which GPU arithmetic causes even from the same starting point.}
 When GPU memory allows, the adaptive runs pass the $k$ defended copies of the
 image through the detector as one batch, with one backward pass, per PGD
 step; this is an execution option (\texttt{-{}-eot-batch}) that leaves the
-objective and its gradient unchanged up to floating-point rounding. The runs
-are scheduled across GPUs by \texttt{phase4/run\_queue.py}.
+objective and its gradient unchanged up to floating-point rounding. Every
+run is one command of \texttt{phase4/p4\_yolo.py} or
+\texttt{phase4/p4\_florence.py}; the release lists them.
 
 \end{document}

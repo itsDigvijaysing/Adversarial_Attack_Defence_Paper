@@ -4,7 +4,49 @@
 > survey-scope reference. All numbers below are read from committed `summary.json` files unless
 > marked off-repo. **Last full update: 2026-10-26** (Phase-4 code ready, CPU rescore, novelty check;
 > 22 Oct: submission history, PDF audit, Phase-4 status,
-> revival plan).
+> revival plan). **Status refresh: 2026-11-17** (see "Status on 17 Nov 2026" below, which
+> overrides older lines where they disagree).
+
+## Status on 17 Nov 2026
+- **The paper is `docs/paper_draft/main.tex`** (plain `article` class, 17 pages, builds with 0
+  errors): a full rewrite of the rejected ECCV-W paper around RQ1 clean cost, RQ2 dependence with
+  intervals, RQ3 the adaptive attack. Its README traces every number and lists every open item.
+  `docs/paper_revision.md` (the errata kit for the old source) is superseded by it.
+- **RQ1 and RQ2 are written** from the committed rescore (N=1000, intervals) and the N=5000
+  tables. **RQ3 is entirely unfilled:** Table 5, checks (i) to (v), K / alpha / R, the full
+  clean-cost paragraph and the closing sentence of the abstract, introduction and conclusion are
+  red `\pending{}` (25 uses).
+- **No Phase-4 GPU run has started** (user, 17 Nov). `results/phase4/` holds the August smoke
+  tests and the CPU rescore only. The runs are planned on an **A5000 server** (not the A6000
+  mentioned below): `docs/HANDOFF_A5000.md` has setup (`scripts/setup_server.sh`), gates and jobs
+  J1 to J6 as plain commands. There is no launcher script; `phase4/run_queue.py` was never
+  written and is no longer named in the paper.
+- **Tests (16 Nov, CPU):** offline 38, stubbed flow 20, attack units 20, rescore 20, all passing.
+  The real YOLO-World model has still not run the current attack code.
+- **Done on 17 Nov (no new results):** Related Work now cites four papers read in full text
+  (`guesmi2025drift`, `raber2025keep`, `wang2026shared`, `liang2026unified`) and the APSCON 2026
+  paper in the third person (`rajput2026evaluating`: author list and content sentence still to be
+  confirmed against IEEE Xplore and the PDF); Figure 1 (pipeline, TikZ) and Figure 2
+  (`make_figures.py`, clean cost against the patch column) added.
+- **Still open, no GPU needed:** import the N=5000 YOLO and OCR summaries (not available now);
+  the Florence score-rule audit; a qualitative example figure; the venue template (kept plain
+  until RQ3 exists).
+- **17 Nov, second round (user's decisions; code written on the laptop, NOT run there):**
+  the deadline is 20 Nov 2026 (venue not disclosed; it is not a driving venue). The server is an
+  RTX 5000 Ada 32 GB, set up on 16 Nov; the YOLO attack passed there on the real model (budget
+  7/255 measured, adaptive below oblivious on every image; ~26 GPU-hours for the old plan at 50
+  steps, 3 jobs at once is the efficient setting; identical commands gave different attacked
+  numbers, hence `--deterministic`). The adaptive attack must cover both models: written for
+  Florence-2 detection in pixel space. A third, chat-style model is required: SmolVLM-256M on
+  yes/no presence questions (`p4_smolvlm.py`), 1,000 images. The N=5000 YOLO and
+  OCR summary files no longer exist anywhere (user): those tables stay as parsed from the earlier
+  paper. The ensemble is presented two-sided (helps against an unaware attacker; how much
+  survives an aware one), never by weakening the attack. Run order and commands:
+  `docs/HANDOFF_A5000.md` (rewritten). All four CPU suites pass (38 / 21 / 23 / 20) and both new
+  drivers ran end to end on fake models; none of the new code has met a real model yet.
+- **Scoop check, 17 Nov:** arXiv 2610.29196 (Liang et al., NeurIPS 2026 workshop) covers
+  YOLO-World under digitally applied patches with no defenses and no Florence-2: no overlap with
+  RQ1 to RQ3. Re-check it for new versions before submitting.
 
 ## Project State (2026-10-22)
 A **benchmark of input-transform adversarial defenses** for two open-vocabulary models,

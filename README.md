@@ -160,9 +160,9 @@ python phase4/p4_yolo.py --experiment adaptive_bpda --n 100 --eps 0.1 --seed 0 -
 # --- checks that need no GPU -------------------------------------------------
 python phase4/p4_yolo.py --preflight
 python phase4/p4_florence.py --experiment clean_control --smoke-test
-python tests/test_offline_logic.py      # 37 torch-free checks
-python tests/test_flow_stubbed.py       # 20 driver checks, model + attacks stubbed
-CUDA_VISIBLE_DEVICES='' python tests/test_attack_units.py   # 14 CPU-torch attack checks
+python tests/test_offline_logic.py      # 38 torch-free checks
+python tests/test_flow_stubbed.py       # 21 driver checks, model + attacks stubbed
+CUDA_VISIBLE_DEVICES='' python tests/test_attack_units.py   # 23 CPU-torch attack checks
 ```
 
 Shared flags: `--n/--num-images`, `--select {head,random}`, `--seed`, `--tracks`, `--gpu`,
@@ -196,7 +196,15 @@ production decode (`--num-beams 5`), not the reduced `--smoke-test` decode.
 and VRAM returned to idle after each run). **Do not run both entry points on the same 6 GB card at
 once** — run them in sequence. On a larger card they can share.
 
-### The two experiments
+### The experiments
+
+Added 17 Nov 2026 (written on the laptop, first real runs are on the server; see
+`docs/HANDOFF_A5000.md`): `p4_florence.py --experiment adaptive_bpda` (the adaptive attack on
+Florence-2 detection, pixel space, 7/255), `p4_smolvlm.py` (a third, chat-style model,
+SmolVLM-256M, scored on yes/no object-presence questions against the COCO annotations, oblivious
+PGD only), `--all-transforms` for `clean_control` (adds bit-depth, dithering, non-local means,
+anisotropic diffusion; OCR also BM3D and random resize-and-pad) and `--deterministic` (repeatable
+GPU runs, an execution flag).
 
 | Experiment | Model(s) | What it answers |
 |---|---|---|

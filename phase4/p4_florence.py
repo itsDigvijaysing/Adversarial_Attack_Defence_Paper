@@ -20,11 +20,11 @@
 # 2. The OCR metric is SELF-CONSISTENCY against the model's own clean output,
 #    not accuracy — COCO has no OCR ground truth.
 #
-# NOT IN THIS FILE (yet): the FGSM/PGD/Patch attacks. They live in
-# archive/Phase3/{FGSM,PGD,Patch}_Phase3_Florence_v2.py and
-# archive/Phase3/run_survey_florence_{detection,ocr}.py. Port them in when a
-# Phase-4 attack experiment is actually defined — copying them here now would
-# add several hundred lines of untested code with nothing calling it.
+# ATTACKS IN THIS FILE: only the adaptive experiment (`adaptive_bpda`, section
+# 2): oblivious PGD and PGD through the defense branches on the `<OD>` track,
+# in PIXEL space at native resolution, sharing p4_yolo's PGD loop, seeded
+# init, quantization and BPDA surrogates. The Phase-3 FGSM/PGD/Patch attacks
+# (normalized space) stay in archive/Phase3/ and are not ported.
 # ======================================================================
 
 from __future__ import annotations
@@ -35,9 +35,13 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import p4_core as core                                     # noqa: E402
+import p4_yolo as ya              # noqa: E402  (shared attack machinery only)
 from p4_core import rt                                     # noqa: E402
 
-EXPERIMENTS = ("clean_control",)
+EXPERIMENTS = ("clean_control", "adaptive_bpda")
+# Florence always attacks at native resolution, so `native` is its default
+# and never appears in a summary name.
+STEM_FLAG_DEFAULTS = dict(ya.STEM_FLAG_DEFAULTS, attack_space="native")
 ALL_TRACKS = ("florence_det", "florence_ocr")
 
 
@@ -299,10 +303,410 @@ class FlorenceAdapter:
 
 
 # ======================================================================
-# 2. Entry point.
+# 2. The adaptive white-box experiment on the <OD> track.
+#
+# OBJECTIVE. Florence-2 is attacked as in Phase 3, with self-labelled
+# token-level cross-entropy: the clean image is decoded once (the scored
+# decode settings), the resulting ids are the labels, and the attack
+# MAXIMIZES the teacher-forced cross-entropy of the perturbed image against
+# them. The shared PGD loop minimizes, so the objective here is J = -CE.
+#
+# WHAT DIFFERS FROM PHASE 3. The perturbation lives in PIXEL space [0,1] at
+# the image's native resolution (Phase 3 perturbed the normalized 768x768
+# tensor, where eps=0.03 is only ~1.7/255). So eps=0.03 here is the same
+# 7/255 budget as the YOLO experiment, every defense branch sees the image
+# at the scale at which it is deployed, and nothing resamples the result.
+# These numbers are therefore NOT comparable with the Phase-3 Florence runs.
+#
+# ENSEMBLES (--eot-loss). The NMS merge keeps a box if ANY branch keeps it,
+# so the attacker has to break every branch. `max` (default) raises the
+# cross-entropy of the LEAST damaged branch at each step, J = max_b(-CE_b);
+# `mean` averages the branch losses. Same flag and meaning as p4_yolo.
+# ======================================================================
+def processor_geometry(processor):
+    """(height, width, mean, std) of the processor's image preprocessing."""
+    ip = getattr(processor, "image_processor", processor)
+    size = getattr(ip, "size", None) or {}
+    h = int(size.get("height", 768))
+    w = int(size.get("width", 768))
+    mean = [float(v) for v in getattr(ip, "image_mean", (0.485, 0.456, 0.406))]
+    std = [float(v) for v in getattr(ip, "image_std", (0.229, 0.224, 0.225))]
+    return h, w, mean, std
+
+
+def preprocess_differentiable(x, geom):
+    """[1,3,H,W] in [0,1] -> the normalized [1,3,h,w] tensor Florence reads.
+
+    A differentiable stand-in for the processor (bicubic resize to the fixed
+    square, rescale, normalize). torch's antialiased bicubic and PIL's differ
+    by rounding; preprocess_gap() measures the difference on a real image.
+    Only the attacker's gradient path uses this: every scored inference goes
+    through the real processor.
+    """
+    torch, F = rt.torch, rt.torch.nn.functional
+    h, w, mean, std = geom
+    if tuple(x.shape[-2:]) != (h, w):
+        x = F.interpolate(x, size=(h, w), mode="bicubic",
+                          align_corners=False, antialias=True).clamp(0.0, 1.0)
+    m = torch.tensor(mean, device=x.device, dtype=x.dtype).view(1, 3, 1, 1)
+    sd = torch.tensor(std, device=x.device, dtype=x.dtype).view(1, 3, 1, 1)
+    return (x - m) / sd
+
+
+def preprocess_gap(adapter, pil_img, geom):
+    """max |processor(pil) - preprocess_differentiable(pil)| (normalized units)."""
+    torch = rt.torch
+    with torch.no_grad():
+        ref = adapter.processor(text="<OD>", images=pil_img,
+                                return_tensors="pt").pixel_values.float()
+        mine = preprocess_differentiable(
+            rt.pc.pil_to_tensor(pil_img, "cpu"), geom)
+        if tuple(ref.shape) != tuple(mine.shape):
+            raise RuntimeError(
+                f"the processor returns pixel_values {tuple(ref.shape)} but "
+                f"the differentiable preprocessing {tuple(mine.shape)}; the "
+                f"attack would not reach the model the way inference does.")
+        return float((ref - mine).abs().max())
+
+
+def clean_self_labels(adapter, pil_img):
+    """(input_ids, labels): the clean decode, used as the attack's labels."""
+    a, torch = adapter.args, rt.torch
+    inputs = adapter.processor(text="<OD>", images=pil_img,
+                               return_tensors="pt")
+    input_ids = inputs.input_ids.to(adapter.device)
+    pixel_values = inputs.pixel_values.to(device=adapter.device,
+                                          dtype=adapter.torch_dtype)
+    with torch.no_grad():
+        ids = adapter.model.generate(
+            input_ids=input_ids, pixel_values=pixel_values,
+            max_new_tokens=a.det_max_new_tokens, num_beams=a.num_beams,
+            do_sample=False, repetition_penalty=a.repetition_penalty,
+            length_penalty=a.length_penalty)
+    return input_ids, ids[:1, :512].contiguous()
+
+
+def _finite(t):
+    return rt.torch.nan_to_num(t, nan=0.0, posinf=0.0, neginf=0.0)
+
+
+def make_ce(adapter, geom, input_ids, labels):
+    """ce(x) -> scalar tensor: teacher-forced CE of image x vs the labels."""
+    def ce(x):
+        pv = preprocess_differentiable(x, geom).to(adapter.torch_dtype)
+        out = adapter.model(input_ids=input_ids, pixel_values=pv,
+                            labels=labels)
+        return _finite(out.loss.float())
+    return ce
+
+
+def oblivious_objective(ce):
+    """J = -CE of the bare model: the attacker ignores the defense."""
+    torch = rt.torch
+
+    def objective(adv, need_grad):
+        if not need_grad:
+            with torch.no_grad():
+                return -float(ce(adv)), None
+        x = adv.detach().requires_grad_(True)
+        loss = ce(x)
+        (g,) = torch.autograd.grad(-loss, x)
+        return -float(loss.detach()), _finite(g)
+
+    return objective
+
+
+def eot_objective(ce, branches, args):
+    """J through the defense branches (BPDA), aggregated by --eot-loss.
+
+    max : J = max_b(-CE_b) = -(CE of the least damaged branch); the gradient
+          is that branch's alone. One no-grad forward per branch picks it,
+          then one forward + backward.
+    mean: J = -(mean of the branch CEs); one forward + backward per branch.
+    Each branch forwards the deployed transform's exact value and
+    differentiates the surrogate (ya.bpda_branch), as in p4_yolo.
+    """
+    torch = rt.torch
+    use_max = args.eot_loss == "max" and len(branches) > 1
+
+    def objective(adv, need_grad):
+        adv = adv.detach()
+        values = ya.deployed_values(adv, branches, args)
+        if use_max or not need_grad:
+            with torch.no_grad():
+                losses = [float(ce(v)) for v in values]
+            j = -min(losses) if use_max else -sum(losses) / len(losses)
+            if not need_grad:
+                return j, None
+            picked = [min(range(len(losses)), key=losses.__getitem__)]
+        else:
+            picked, losses = list(range(len(branches))), []
+        grads = []
+        for i in picked:
+            x = adv.clone().requires_grad_(True)
+            loss = ce(ya.bpda_branch(x, branches[i], args, values[i]))
+            (g,) = torch.autograd.grad(-loss, x)
+            grads.append(_finite(g))
+            if not use_max:
+                losses.append(float(loss.detach()))
+        if not use_max:
+            j = -sum(losses) / len(losses)
+        return j, torch.stack(grads).mean(dim=0)
+
+    return objective
+
+
+def native_frame(pil_img, device):
+    """The attack variable: the native-resolution image in [0,1]."""
+    from types import SimpleNamespace
+    return SimpleNamespace(space="native",
+                           x0=rt.pc.pil_to_tensor(pil_img, device),
+                           to_model=lambda t: t,
+                           to_pil=lambda u8: rt.Image.fromarray(u8))
+
+
+def adaptive_signature(args, adapter, target, branches, files, image_ids):
+    return rt.pc.config_signature(
+        phase=4, experiment="adaptive_bpda", model=adapter.model_name,
+        objective="self-labelled token CE, pixel space, native resolution",
+        target=target, branches=sorted(branches), eps=args.eps,
+        iters=args.pgd_iters, alpha=args.alpha, seed=args.seed,
+        init=ya.PGD_INIT_SCHEME, surrogates=ya.SURROGATE_VERSION,
+        restarts=args.restarts, eot_loss=args.eot_loss,
+        median_surrogate=args.median_surrogate, quantize=args.quantize,
+        attack_space=args.attack_space, pgd_select=args.pgd_select,
+        jpeg_quality=args.jpeg_quality, median_kernel=args.median_kernel,
+        gaussian_sigma=args.gaussian_sigma, tvm_weight=args.tvm_weight,
+        tvm_iters=args.tvm_iters, nms_iou=args.nms_iou, n=len(files),
+        ids=core.ids_digest(image_ids), device=str(adapter.device),
+        **adapter.sig_fields(args))
+
+
+def adaptive_bpda(adapter, args, coco_gt, files, image_ids):
+    target = args.target
+    ensembles, branches, paper = ya.resolve_target(target)
+    is_ens = bool(ensembles)
+    device = adapter.device
+    infer = adapter.detection_fn("florence_det")
+    ya.check_surrogates(device, args, branches)
+    geom = processor_geometry(adapter.processor)
+    OBL, ADP, META = ya.OBLIVIOUS_TAG, ya.ADAPTIVE_TAG, ya.META_KEY
+
+    probe = rt.Image.open(os.path.join(args.image_dir, files[0])).convert("RGB")
+    gap = preprocess_gap(adapter, probe, geom)
+    print(f"[guard] differentiable preprocessing vs the processor on "
+          f"{files[0]}: max |diff| = {gap:.4f} (normalized units; "
+          f"1/255 is about 0.017)")
+
+    conditions = (["clean"] + [f"clean+{b}" for b in branches]
+                  + [OBL] + [f"{OBL}+{b}" for b in branches]
+                  + [ADP] + [f"{ADP}+{b}" for b in branches])
+    ckpt = core.make_checkpoint(args, "adaptive", adaptive_signature(
+        args, adapter, target, branches, files, image_ids))
+
+    rt.pc.print_banner(
+        f"ADAPTIVE WHITE-BOX (Florence-2 <OD>): BPDA vs {paper} | "
+        f"n={len(files)} | PGD eps={args.eps} x{args.pgd_iters} | "
+        f"R={args.restarts} | eot={args.eot_loss} | pixel space", width=80)
+
+    def defended(pil_img, tag, buckets, img_id):
+        for b, img in core.build_branches(pil_img, device, args,
+                                          branches).items():
+            core.record_dets(buckets, f"{tag}+{b}", infer(img), img_id)
+
+    def compute_one(pil_img, img_id):
+        buckets = {}
+        core.record_dets(buckets, "clean", infer(pil_img), img_id)
+        defended(pil_img, "clean", buckets, img_id)
+        input_ids, labels = clean_self_labels(adapter, pil_img)
+        ce = make_ce(adapter, geom, input_ids, labels)
+        frame = native_frame(pil_img, device)
+        through = eot_objective(ce, branches, args)
+        adv_obl, obl = ya.run_pgd(frame, oblivious_objective(ce), args, img_id)
+        core.record_dets(buckets, OBL, infer(adv_obl), img_id)
+        defended(adv_obl, OBL, buckets, img_id)
+        adv_adp, adp = ya.run_pgd(frame, through, args, img_id)
+        core.record_dets(buckets, ADP, infer(adv_adp), img_id)
+        defended(adv_adp, ADP, buckets, img_id)
+        buckets[META] = {
+            "target_objective": {
+                "clean": through(frame.x0, need_grad=False)[0],
+                "oblivious": through(obl["adv_q"], need_grad=False)[0],
+                "adaptive": adp["objective"]},
+            "oblivious_bare_objective": obl["objective"],
+            "label_tokens": int(labels.shape[1]),
+            "restart_chosen": {"oblivious": obl["restart"],
+                               "adaptive": adp["restart"]},
+        }
+        return buckets
+
+    elapsed, computed, failures = core.run_per_image(
+        args, "bpda", files, conditions, compute_one, ckpt,
+        log_every=min(getattr(args, "log_every", 100), 25))
+    ckpt.flush()
+    _, cond = core.score_detection(args, ckpt, branches, ensembles, coco_gt,
+                                   attack_tags=[OBL, ADP])
+
+    head = {
+        "clean_mAP": cond["clean"]["mAP"],
+        "clean_defended_mAP": cond[f"clean+{target}"]["mAP"],
+        "oblivious_attacked_undefended_mAP": cond[OBL]["mAP"],
+        "oblivious_attacked_defended_mAP": cond[f"{OBL}+{target}"]["mAP"],
+        "adaptive_attacked_undefended_mAP": cond[ADP]["mAP"],
+        "adaptive_attacked_defended_mAP": cond[f"{ADP}+{target}"]["mAP"],
+    }
+    head["defense_recovery_oblivious"] = (
+        head["oblivious_attacked_defended_mAP"]
+        - head["oblivious_attacked_undefended_mAP"])
+    head["defense_recovery_adaptive"] = (
+        head["adaptive_attacked_defended_mAP"]
+        - head["adaptive_attacked_undefended_mAP"])
+    head["adaptive_minus_oblivious_defended"] = (
+        head["adaptive_attacked_defended_mAP"]
+        - head["oblivious_attacked_defended_mAP"])
+
+    metas = [b[META] for b in ckpt.buckets.values() if META in b]
+    tj = {k: [m["target_objective"][k] for m in metas]
+          for k in ("clean", "oblivious", "adaptive")}
+    below = [a < o for a, o in zip(tj["adaptive"], tj["oblivious"])]
+    mean = lambda xs: sum(xs) / len(xs) if xs else None      # noqa: E731
+    surrogate = {
+        "definition": (f"J = -(teacher-forced cross-entropy against the "
+                       f"clean decode), measured THROUGH {paper} "
+                       f"(eot-loss {args.eot_loss}); lower = more damage. "
+                       f"The attacker's own view, not a detection metric."),
+        "images": len(metas), "mean_clean": mean(tj["clean"]),
+        "mean_oblivious_adv": mean(tj["oblivious"]),
+        "mean_adaptive_adv": mean(tj["adaptive"]),
+        "frac_images_adaptive_below_oblivious":
+            (sum(below) / len(below)) if below else None,
+    }
+    surrogates = {b: ya.surrogate_description(b, args) for b in branches}
+    notes = [
+        "Pixel space: the perturbation is added to the native-resolution "
+        f"image in [0,1] and the uint8 output is clipped to the clean image "
+        f"+/- {ya.uint8_budget(args.eps)}/255. Phase 3 attacked the "
+        f"normalized 768x768 tensor (eps=0.03 there is about 1.7/255), so "
+        f"these numbers are not comparable with the Phase-3 Florence runs.",
+        f"The attacker's preprocessing is a differentiable stand-in for the "
+        f"processor (antialiased bicubic resize, normalize); max difference "
+        f"{gap:.4f} in normalized units on the first image. Scored inference "
+        f"always uses the real processor.",
+        "Objective: token-level cross-entropy against the model's own clean "
+        "decode under teacher forcing; scored inference uses beam search, "
+        "which the attack does not differentiate through.",
+        "Detection scores are the geometric pseudo-scores of compute_score "
+        "(Florence <OD> emits no confidences), as in every Florence table.",
+        ("Ensemble objective 'max': each step raises the cross-entropy of "
+         "the least damaged branch. A proxy for the NMS merge, which keeps "
+         "a box if any branch keeps it." if is_ens and args.eot_loss == "max"
+         else "Ensemble objective 'mean': the average branch cross-entropy."
+         if is_ens else "Single transform: --eot-loss has no effect."),
+        "BPDA: " + "; ".join(f"{b}: {d}" for b, d in surrogates.items())
+        + ". Every forward is the deployed transform's exact value.",
+        "Half precision on GPU, as in every Florence run; non-finite "
+        "gradient entries are zeroed.",
+    ]
+    payload = {
+        "phase": 4, "experiment": "adaptive_bpda",
+        "model": adapter.model_name, "model_key": args.model_key,
+        "smoke_test": bool(args.smoke_test), "target": target,
+        "attack_flags": {k: getattr(args, k) for k in ya.ATTACK_FLAGS},
+        "defense": {"name": paper, "key": target,
+                    "kind": "ensemble" if is_ens else "solo",
+                    "branches": branches, "nms_iou": args.nms_iou},
+        "attack": {"type": "PGD", "eps": args.eps, "iters": args.pgd_iters,
+                   "alpha": args.alpha, "seed": args.seed,
+                   "restarts": args.restarts, "quantize": args.quantize,
+                   "iterate_selection": args.pgd_select,
+                   "init_scheme": ya.PGD_INIT_SCHEME,
+                   "pixel_space": "raw [0,1], native resolution",
+                   "objective": ("maximize the teacher-forced token "
+                                 "cross-entropy against the clean decode")},
+        "bpda": {"surrogates": surrogates, "eot_loss": args.eot_loss},
+        "preprocess_gap_normalized": gap,
+        "execution": {"deterministic": bool(getattr(args, "deterministic",
+                                                    False)),
+                      "dtype": str(adapter.torch_dtype),
+                      "log_name": args.log_name},
+        "config": {k: getattr(args, k) for k in
+                   ("jpeg_quality", "median_kernel", "tvm_weight",
+                    "tvm_iters", "gaussian_sigma", "nms_iou")},
+        "model_config": adapter.sig_fields(args),
+        "implementation_uncertainty": notes,
+        "num_images": len(ckpt.buckets),
+        "images_computed_this_run": computed,
+        "select": args.select, "seed": args.seed,
+        "image_ids": image_ids,
+        "image_ids_sha1_16": core.ids_digest(image_ids),
+        "device": str(device), "failures": failures, "seconds": elapsed,
+        "seconds_per_image": elapsed / computed if computed else None,
+        "headline": head, "surrogate_objective": surrogate,
+        "conditions": cond,
+    }
+    md = [f"# Adaptive white-box: BPDA vs {paper} ({adapter.model_name}, "
+          f"<OD>)\n"]
+    md += core.header_lines(args, image_ids, device=device, extra=[
+        f"- Target **{paper}** (`{target}`) = {' + '.join(branches)}",
+        f"- PGD eps={args.eps} (pixel space), {args.pgd_iters} iters, "
+        f"alpha={args.alpha:.5f}, {args.restarts} restart(s), seed "
+        f"{args.seed}; ensemble objective `{args.eot_loss}`; iterate "
+        f"selection `{args.pgd_select}`"])
+    md.append("## Headline (COCO mAP@[.5:.95], geometric pseudo-scores)\n")
+    md.append("| Condition | mAP |")
+    md.append("|---|---|")
+    for label, key in (
+            ("clean, undefended", "clean_mAP"),
+            (f"clean, {paper}", "clean_defended_mAP"),
+            ("oblivious attack, undefended",
+             "oblivious_attacked_undefended_mAP"),
+            (f"oblivious attack, {paper}", "oblivious_attacked_defended_mAP"),
+            ("adaptive attack, undefended", "adaptive_attacked_undefended_mAP"),
+            (f"adaptive attack, {paper}", "adaptive_attacked_defended_mAP")):
+        md.append(f"| {label} | {head[key]:.4f} |")
+    md.append("")
+    md.append(f"- Images where the adaptive J is below the oblivious J: "
+              f"**{core.fmt(surrogate['frac_images_adaptive_below_oblivious'], 3)}**"
+              f" of {surrogate['images']}\n")
+    md.append("## All conditions\n")
+    md.append("| Tag | mAP | AP50 |")
+    md.append("|---|---|---|")
+    for tag in sorted(cond):
+        md.append(f"| `{tag}` | {cond[tag]['mAP']:.4f} | "
+                  f"{cond[tag]['AP50']:.4f} |")
+    md.append("")
+    md.append("## Implementation notes\n")
+    md += [f"- {n}" for n in notes]
+    md.append("")
+    md += core.timing_lines(elapsed, computed, len(files), str(device),
+                            targets=(300, 1000, 5000))
+    stem = ya.summary_stem(args, STEM_FLAG_DEFAULTS)
+    core.write_per_image(args, stem, {
+        "note": "per-image detection counts and the attacker's objectives",
+        "counts": {str(i): {c: len(b.get(c, [])) for c in conditions}
+                   for i, b in ckpt.buckets.items()},
+        "attack_meta": {str(i): b.get(META)
+                        for i, b in ckpt.buckets.items()}})
+    core.write_summary(args, payload, stem)
+    core.write_markdown(args, "\n".join(md), stem)
+    print("\n" + "=" * 70)
+    print(f"RESULT DIGEST: adaptive vs {paper} (full table in the .md)")
+    print("=" * 70)
+    for key, val in head.items():
+        print(f"  {key:<38}: {val:+.4f}")
+    print(f"  adaptive J below oblivious J on "
+          f"{core.fmt(surrogate['frac_images_adaptive_below_oblivious'], 3)}"
+          f" of images")
+    core.print_runtime_estimate(elapsed, computed, str(device))
+    return payload
+
+
+# ======================================================================
+# 3. Entry point.
 # ======================================================================
 def parse_args(argv=None):
     p = core.base_parser("Phase-4 Florence-2-base runs.", EXPERIMENTS)
+    ya.add_attack_arguments(p, native_only=True)
     p.add_argument("--tracks", nargs="+", choices=list(ALL_TRACKS),
                    default=list(ALL_TRACKS),
                    help="Which Florence tracks to score (default: both, from "
@@ -322,6 +726,9 @@ def parse_args(argv=None):
 
     args = p.parse_args(argv)
     core.finalize_args(args, "florence")
+    ya.finalize_attack_args(args)
+    if args.experiment == "adaptive_bpda":
+        args.tracks = ["florence_det"]        # the attack is on <OD> only
     if args.smoke_test and not args.full_gen:
         # 5 beams x 512 tokens on CPU is minutes per image. The smoke test only
         # proves the plumbing, and its output is stamped smoke_test=true, so a
@@ -448,6 +855,8 @@ def main(argv=None):
 
         if args.experiment == "clean_control":
             core.clean_control(adapter, args, coco_gt, files, image_ids)
+        elif args.experiment == "adaptive_bpda":
+            adaptive_bpda(adapter, args, coco_gt, files, image_ids)
         else:  # pragma: no cover — argparse restricts the choices
             raise ValueError(f"unknown experiment {args.experiment}")
 

@@ -1,113 +1,113 @@
-# Handoff: Phase-4 runs on the A5000 server
+# Handoff: Phase-4 runs on the GPU server
 
-Written 16 Nov 2026 on the laptop. It covers the code state, setup, run order, exact commands and
-what to bring back. The paper-side map of every red `\pending{}` item is in
-`docs/paper_draft/README.md` ("What is still red in the PDF"). This file follows it, with one
-correction: `phase4/run_queue.py`, which that README and `main.tex` (line 736) name as the
-launcher, **was never written**. Run the plain commands below instead.
+Rewritten 17 Nov 2026 on the laptop. It replaces the 16 Nov version. The server is an RTX 5000 Ada
+(32 GB), repo at `~/m_work/Adversarial_Attack_Defence_Paper`, already set up on 16 Nov (environment,
+COCO val2017, YOLO-World, CLIP and Florence-2 weights; both preflights READY).
 
-## 1. State of the code (checked 16 Nov, CPU only)
+**Read this first.** Three things in this commit have never run on a real model or a GPU. They
+were written on the laptop, where only fake models are available:
 
-| Check | Result |
-|---|---|
-| `py_compile` of `phase4/*.py`, `phase3_common.py`, `tests/*.py` | OK |
-| `tests/test_offline_logic.py` | 38 / 38 |
-| `tests/test_flow_stubbed.py` | 20 / 20 |
-| `tests/test_attack_units.py` (vlm_ftune, CPU torch, fake detector) | 20 / 20 |
-| `tests/test_rescore.py` | 20 / 20 |
-| `--preflight`, both models | weights found; NOT READY only because the laptop has 20 of 5000 images (expected) |
-| `scripts/setup_server.sh` | `bash -n` OK; conda activation works under its `set -euo pipefail` |
+| New code | File | First real check |
+|---|---|---|
+| Adaptive attack on Florence-2 | `phase4/p4_florence.py --experiment adaptive_bpda` | Gate 0, command 2 |
+| Third model, SmolVLM-256M yes/no questions | `phase4/p4_smolvlm.py` | Gate 0, command 3 |
+| `--deterministic` (repeatable GPU runs) | all three scripts | Gate 1 |
 
-**Not yet verified:** the real YOLO-World model has not run the current attack code (union-max
-loss, native attack space, true median gradient, `--pgd-select best`, batched EOT). It has only run
-against the fake detector in the tests. The GPU smoke test in step 4 is that check: do not start
-long runs before it passes.
+Expect to fix small errors in them at Gate 0. Do not start a long run of a script before its Gate 0
+command exits 0. The YOLO-World attack is unchanged in what it computes and already passed on this
+server on 16 Nov.
 
-**Before pushing from the laptop:** `.gitignore` has an unstaged change (`downloads/`, where the
-setup script puts the ~1 GB of COCO zips). Stage it with this file:
+There is no launcher script. Every job is one plain command.
+
+## 1. Once, after `git pull`
 
 ```bash
-git add .gitignore docs/HANDOFF_A5000.md
+source ~/miniforge3/etc/profile.d/conda.sh && conda activate vlm_ftune
+cd ~/m_work/Adversarial_Attack_Defence_Paper && export HF_HOME=$PWD/weights/hf
+# the third model's weights (about 1 GB, needs internet; HF_HUB_OFFLINE must be unset here)
+python -c "from huggingface_hub import snapshot_download as d; print(d('HuggingFaceTB/SmolVLM-256M-Instruct'))"
+python tests/test_offline_logic.py | tail -2          # 38 passed
+python tests/test_flow_stubbed.py  | tail -2          # 21 passed
+CUDA_VISIBLE_DEVICES='' python tests/test_attack_units.py | tail -2   # 23 passed
+python phase4/p4_smolvlm.py --preflight
 ```
 
-## 2. The A5000
-
-- Ampere, sm_86, 24 GB. torch 2.6.0+cu118 supports it (sm_50 to sm_90); the driver needs CUDA 11.8
-  support (any driver from 520 on).
-- `--eot-batch auto` turns batching on here (24 GB is at least 16 GiB). Each run's summary records
-  the choice under `execution.eot_batch`. On an out-of-memory error it falls back to one branch at
-  a time for the rest of the run and records that in `eot_batch_oom_fallback`. The numbers are the
-  same either way.
-- Measured peaks on the 6 GB laptop GPU were ~2.3 GB (YOLO) and ~1.3 GB (Florence-2). So 2 or 3
-  jobs can share the card; see step 7.
-
-## 3. Setup (once, needs internet)
-
-```bash
-git clone git@github.com:itsDigvijaysing/Adversarial_Attack_Defence_Paper.git
-cd Adversarial_Attack_Defence_Paper
-bash scripts/setup_server.sh      # Miniforge if no conda, env, COCO val2017, weights, preflight, tests
-```
-
-- It is safe to re-run: each step skips what is already there.
-- Disk: ~10 GB (env ~7, COCO ~1.6, weights ~1).
-- It ends with both preflights and the three test suites. Every line should say READY or PASS.
+All of these passed on the laptop on 17 Nov with the same counts. If one fails here, the
+environment differs: fix that before anything else.
 
 In every new shell or tmux pane:
 
 ```bash
-conda activate vlm_ftune && cd <repo> && export HF_HOME=$PWD/weights/hf
-export HF_HUB_OFFLINE=1           # only if the GPU node has no internet
+source ~/miniforge3/etc/profile.d/conda.sh && conda activate vlm_ftune
+cd ~/m_work/Adversarial_Attack_Defence_Paper && export HF_HOME=$PWD/weights/hf
+export HF_HUB_OFFLINE=1      # after the SmolVLM download: keeps Florence-2's remote code fixed
 ```
 
-## 4. Gate 0: GPU smoke tests (2 images each, a few minutes)
+## 2. Gate 0: smoke tests (2 images each, minutes)
 
 ```bash
 python phase4/p4_yolo.py --experiment adaptive_bpda --attack-space native --pgd-select best \
-    --smoke-test --device cuda --gpu 0
-python phase4/p4_yolo.py --experiment clean_control --smoke-test --device cuda --gpu 0
-python phase4/p4_florence.py --experiment clean_control --smoke-test --device cuda --gpu 0
+    --deterministic --smoke-test --device cuda --gpu 0
+python phase4/p4_florence.py --experiment adaptive_bpda --pgd-select best \
+    --deterministic --smoke-test --full-gen --device cuda --gpu 0
+python phase4/p4_smolvlm.py --deterministic --smoke-test --device cuda --gpu 0
+python phase4/p4_yolo.py --experiment clean_control --all-transforms --smoke-test --device cuda --gpu 0
+python phase4/p4_florence.py --experiment clean_control --all-transforms --smoke-test --device cuda --gpu 0
 ```
 
-Pass means:
+Pass means: exit 0, a `[out] .../smoke_test/summary_..._latest.json` line, no NaN in the summary.
+Also check:
 
-- all three exit 0;
-- each prints `[out] .../smoke_test/summary_..._latest.json`;
-- no NaN appears in the summaries;
-- the adaptive one shows `execution.eot_batch` = on.
+- Florence-2: the `[guard] differentiable preprocessing vs the processor` line. A value under
+  about 0.1 is fine (it is in normalized units; 1/255 is about 0.017). The smoke test uses 2
+  attack steps, so `surrogate_objective.frac_images_adaptive_below_oblivious` means nothing
+  there. Judge it on Job 3: if it is well below 1.0 after 50 steps with the default
+  `--eot-loss max` (which moves one branch per step), compare with `--eot-loss mean` on 100
+  images and use whichever gives the lower defended mAP, stating which in the paper.
+- SmolVLM: the `[guard] processor == normalize` line must print. If the script stops there with
+  "Refusing to run", the processor still resizes or splits the image: fix `SmolAdapter.load`
+  (the `size` / `do_image_splitting` arguments) before going on. Clean accuracy on 2 images means
+  nothing; only check that it runs.
 
-The smoke numbers are not results and are never committed: `smoke_test/` is gitignored.
+## 3. Gate 1: are repeated runs identical?
 
-## 5. Gate 1: timing pilot (~10 min to an hour)
-
-The image count is part of the checkpoint signature, so a pilot cannot be resumed by the real run.
-Give it its own folder:
+On 16 Nov the same 10-image YOLO command gave different attacked mAP twice (0.095 against 0.064
+undefended). `--deterministic` asks torch for deterministic kernels; operations that have none
+only warn. Measure it:
 
 ```bash
-A="--experiment adaptive_bpda --attack-space native --pgd-select best"
-python phase4/p4_yolo.py $A --n 100 --pgd-iters 50 --alpha 0.002 \
-    --target ens_jpeg_median_gaussian --seed 1 --gpu 0 \
-    --output-dir results/phase4/pilot_timing
+A="--experiment adaptive_bpda --attack-space native --pgd-select best --deterministic"
+for R in a b; do
+  python phase4/p4_yolo.py $A --n 10 --pgd-iters 50 --alpha 0.002 --seed 1 --gpu 0 \
+      --target ens_jpeg_median_gaussian --output-dir results/phase4/pilot_determinism_$R
+done
+grep -h '"oblivious_attacked\|"adaptive_attacked' results/phase4/pilot_determinism_*/summary_*_latest.json
 ```
 
-The heartbeat prints `s/img`. Multiply it by the image counts below to plan the queue.
+- **Identical:** keep `--deterministic` on every job below. Also compare the `s/img` line with the
+  16 Nov rate (6.6 s per image for this target); if it is much slower, weigh that.
+- **Still different:** drop the flag (it only costs time), and tell the paper side: the sentence
+  on repeatability in the appendix is already worded for this case.
 
-| Job | Images | Relative cost per image |
-|---|---|---|
-| Median | 1,000 | 1 defense branch, cheapest |
-| EnsJMG | 1,000 | 3 branches |
-| Ens4W | 1,000 | 4 branches including TVM (200 inner iterations per forward), slowest |
+Delete both `pilot_determinism_*` folders afterwards, or leave them uncommitted.
 
-**Unmeasured guess, for booking only:** 10 to 15 s per image for a 50-step EnsJMG job on an
-A5000. That is ~3 to 4 h per 1,000-image job, and ~40 to 50 GPU-hours for the whole plan run one
-job at a time. Trust the pilot over this. Delete `results/phase4/pilot_timing/` afterwards, or
-leave it uncommitted.
+## 4. The jobs
 
-## 6. The runs, in order
+Measured on this server on 16 Nov (50 steps, one job alone): Median 4.3 s per image, the
+three-filter ensemble 6.6, the four-filter ensemble 11.8, YOLO clean cost 0.6, Florence clean cost
+3.6. **Run 3 jobs at once** in separate tmux panes, all with `--gpu 0`: 1.77 times the throughput
+of one job; a fourth adds nothing. The Florence-2 adaptive job and the SmolVLM job have **not**
+been timed: read their first heartbeat line (`s/img`) and multiply.
 
-Common flags: `A` as above. `K=50` and `alpha=0.002` are an untested suggestion; J1 decides K.
+Common flags for the adaptive jobs (`D` is `--deterministic` or empty, from Gate 1):
 
-**J1: convergence (decides K).** n=300, EnsJMG, seed 1.
+```bash
+D="--deterministic"
+A="--experiment adaptive_bpda --attack-space native --pgd-select best $D"
+F="--experiment adaptive_bpda --pgd-select best $D"       # Florence-2 (always native)
+```
+
+**Job 1, step-count check (YOLO-World, 300 images).** Decides `ITERS` for every later job.
 
 ```bash
 python phase4/p4_yolo.py $A --n 300 --target ens_jpeg_median_gaussian --seed 1 \
@@ -116,17 +116,15 @@ python phase4/p4_yolo.py $A --n 300 --target ens_jpeg_median_gaussian --seed 1 \
     --pgd-iters 100 --alpha 0.002 --gpu 0 --output-dir results/phase4/adaptive_bpda_yolo_iters100_n300
 ```
 
-Compare `headline.adaptive_attacked_defended_mAP` in the two `_latest` summaries.
+Compare `headline.adaptive_attacked_defended_mAP`. If 100 steps is lower by more than about 0.005
+mAP use `ITERS=100`, otherwise `ITERS=50`.
 
-- If 100 steps gives a noticeably lower value, use `ITERS=100` for J2 to J5. "Noticeably" is a
-  judgement call; my suggestion is more than 0.005 mAP.
-- Otherwise use `ITERS=50`.
-
-**J2: main adaptive runs (9 jobs, Table 5).**
+**Job 2, main YOLO-World table (9 runs, 1,000 images each).** Start the three-filter ensemble
+and Median first; the four-filter ensemble is the slowest.
 
 ```bash
-ITERS=50     # or 100, from J1
-for T in median ens_jpeg_median_gaussian ens_4way; do
+ITERS=50
+for T in ens_jpeg_median_gaussian median ens_4way; do
   for S in 1 2 3; do
     python phase4/p4_yolo.py $A --n 1000 --pgd-iters $ITERS --alpha 0.002 \
         --target $T --seed $S --gpu 0 --log-name run_${T}_s${S}.log
@@ -134,98 +132,108 @@ for T in median ens_jpeg_median_gaussian ens_4way; do
 done
 ```
 
-All 9 jobs share `results/phase4/adaptive_bpda_yolo/`. Each keeps its own checkpoint and its own
-`summary_adaptive_bpda_yolo_<target>_seed<S>..._latest.json`. Table 5's five columns are the
-`headline` fields, averaged over the 3 seeds:
-
-- `clean_defended_mAP`
-- `oblivious_attacked_undefended_mAP`
-- `oblivious_attacked_defended_mAP`
-- `adaptive_attacked_undefended_mAP`
-- `adaptive_attacked_defended_mAP`
-
-Check (i) is `surrogate_objective.frac_images_adaptive_below_oblivious`.
-
-**J3: larger budget, check (iii).** Alpha is scaled with eps.
+**Job 3, main Florence-2 table (new code).** Seed 1 for both targets first; seeds 2 and 3 only
+if time allows.
 
 ```bash
+for T in ens_jpeg_median_gaussian median; do
+  python phase4/p4_florence.py $F --n 1000 --pgd-iters $ITERS --alpha 0.002 \
+      --target $T --seed 1 --gpu 0 --log-name run_${T}_s1.log
+done
+```
+
+**Job 4, clean cost of every transform.** Independent of Job 1; start it at any time.
+
+```bash
+python phase4/p4_yolo.py     --experiment clean_control --all-transforms --n 5000 --gpu 0
+python phase4/p4_florence.py --experiment clean_control --all-transforms --n 1000 --gpu 0
+```
+
+Non-local means and BM3D run on the CPU and add seconds per image.
+
+**Job 5, the third model.** 1,000 images (user, 17 Nov). A different `--n` is a new run, it
+does not extend the old one.
+
+```bash
+python phase4/p4_smolvlm.py $D --n 1000 --gpu 0
+```
+
+Look at the clean accuracy in the first summary. If it is close to 0.5 (guessing), the 256M model
+cannot do the task: run the same command with `--model HuggingFaceTB/SmolVLM-500M-Instruct
+--output-dir results/phase4/presence_qa_smolvlm500` (download it first) and report both.
+
+**Job 6, the three attack checks (YOLO-World).**
+
+```bash
+# a much larger budget should drive the defended score towards zero
 python phase4/p4_yolo.py $A --n 300 --target ens_jpeg_median_gaussian --seed 1 \
-    --pgd-iters $ITERS --eps 0.1 --alpha 0.0067 --gpu 0 \
-    --output-dir results/phase4/adaptive_bpda_yolo_eps0.1
-```
-
-**J4: max vs mean objective, check (iv).** J5: true median gradient vs identity, check (v).
-These write to the same folder as J2 under their own summary names.
-
-```bash
+    --pgd-iters $ITERS --eps 0.1 --alpha 0.0067 --gpu 0 --output-dir results/phase4/adaptive_bpda_yolo_eps0.1
+# attack the most confident branch (default) against the average over branches
 python phase4/p4_yolo.py $A --n 1000 --pgd-iters $ITERS --alpha 0.002 \
-    --target ens_jpeg_median_gaussian --seed 1 --eot-loss mean --gpu 0 --log-name run_j4_mean.log
+    --target ens_jpeg_median_gaussian --seed 1 --eot-loss mean --gpu 0 --log-name run_mean.log
+# true median gradient (default) against a pass-through
 python phase4/p4_yolo.py $A --n 1000 --pgd-iters $ITERS --alpha 0.002 \
-    --target median --seed 1 --median-surrogate identity --gpu 0 --log-name run_j5_identity.log
+    --target median --seed 1 --median-surrogate identity --gpu 0 --log-name run_identity.log
 ```
 
-**J6: clean cost of every transform (Sec. 4.2).** This does not depend on J1, so it can run at
-any time, e.g. in a second pane.
+**If time runs short, this is the order of importance:** Job 2 (three-filter ensemble and Median,
+seed 1, then seeds 2 and 3), Job 4, Job 5, Job 3, Job 2's four-filter ensemble, Job 6, Job 1's
+100-step run.
+
+A suggested split over three panes: pane 1 Job 1 then Job 2; pane 2 Job 4 then Job 3; pane 3
+Job 5 then Job 6.
+
+## 5. Rules while running
+
+- Check the first heartbeat of every job (it prints after 25 or 50 images) before leaving it.
+- Every concurrent job in the same folder needs its own `--log-name` (given above).
+- Never run the same command twice at once: identical flags write the same checkpoint file.
+- After a crash, re-run the identical command: it resumes. Changing any flag starts a new run.
+- Out of memory: batching falls back by itself; otherwise run fewer jobs at once.
+- A suspicious mAP: add `--verbose-eval`.
+
+## 6. What to bring back
 
 ```bash
-python phase4/p4_yolo.py     --experiment clean_control --n 5000 --gpu 0
-python phase4/p4_florence.py --experiment clean_control --n 1000 --gpu 0   # detection + OCR
+rsync -av <server>:~/m_work/Adversarial_Attack_Defence_Paper/results/phase4/ results/phase4/
 ```
 
-## 7. Running side by side on one card
-
-- Run 2 or 3 jobs at once in separate tmux panes, all with `--gpu 0`. Watch `nvidia-smi`. If
-  utilisation is already near 100 % with one job, more jobs add nothing.
-- Every concurrent job in the same folder needs its own `--log-name` (the commands above have
-  one).
-- **Never run the same command twice at once:** identical flags write the same checkpoint file.
-- A natural split:
-  - pane 1: J1, then J2;
-  - pane 2: J6, then J4, J5 and J3 once K is known.
-
-## 8. Crashes and resume
-
-- Re-run the identical command. The checkpoint is keyed by the full config, so the job continues
-  where it stopped.
-- `seconds_per_image` counts only images computed in that session, so a resumed run's rate is
-  honest.
-- Never resume after changing a flag: that starts a new config, by design.
-
-Troubleshooting:
-
-| Symptom | Fix |
-|---|---|
-| Out of memory | Batching falls back automatically. If it persists, use `--eot-batch off` or run fewer jobs at once |
-| `NOT READY ... SHORT` | `val2017/` has fewer than 5000 images: re-run `setup_server.sh` |
-| Hub errors on a node with no internet | `export HF_HUB_OFFLINE=1`; the weights are already in `weights/hf/` |
-| A suspicious mAP | Re-run with `--verbose-eval` for the full pycocotools output |
-
-## 9. What to bring back
-
-Copy the whole `results/phase4/` folder, not just what git tracks. From the laptop:
+Copy the whole folder, including the gitignored `per_image_*.json` and `checkpoint_*.pkl` (needed
+for intervals later). Do not commit `pilot_*` or any `smoke_test/` folder. Then, on the paper
+side:
 
 ```bash
-rsync -av <server>:<repo>/results/phase4/ results/phase4/
+python docs/paper_draft/make_adaptive_table.py --n 1000 --iters $ITERS   # tab_adaptive_{yolo,florence}.tex
 ```
 
-| File | In git? | Keep it? |
-|---|---|---|
-| `summary_*.json`, `summary_*.md` (`_latest` + timestamped) | yes | these are the citable results |
-| `run*.log` | yes | |
-| `per_image_*.json` | no | keep |
-| `checkpoint_*.pkl` | no | keep: per-image results, needed later for seed/restart worst-case aggregation or paired intervals on Table 5 |
+It prints which summaries it used and skipped. The remaining red items in `main.tex` are filled by
+hand from the summaries; `docs/paper_draft/README.md` maps each one to its job.
 
-Do not commit `pilot_timing/` or any `smoke_test/` folder. The COCO dumps are deleted
-automatically by the artifact policy; that is intended.
+## 7. State of the code (17 Nov, laptop)
 
-## 10. Known gaps (none block the runs)
+- All four suites pass on the laptop (processor only): offline 38, stubbed flow 21, attack units
+  23, rescore 20. Every file compiles.
+- Both new drivers (`p4_florence.adaptive_bpda`, `p4_smolvlm.presence_qa`) also ran end to end
+  against FAKE models in a scratch script, including their summaries and tables. That proves the
+  plumbing, not the behaviour on the real models: the real processors, half precision, beam
+  search and the SmolVLM image layout are first exercised at Gate 0.
+- `make_adaptive_table.py` was checked on synthetic summaries only.
+- **Real-model check on the laptop GPU (RTX 3060, 17 Nov):** the Gate 0 YOLO-World command
+  (`--attack-space native --pgd-select best --deterministic --smoke-test --device cuda`) ran
+  twice, exit 0 both times, and all six headline mAP values were identical to 6 decimals
+  (2 images, 2 attack steps). So the refactored command-line block and `--deterministic` work on
+  the real model. torch warned that two operations have no deterministic kernel (the median with
+  indices, and the backward of reflection padding), so a 50-step run can still drift: Gate 1 on
+  the server remains the real test. Florence-2 and SmolVLM are not on the laptop and were not
+  run on a real model.
+- The scored defenses, the YOLO-World objective and its attack loop are untouched. In
+  `p4_yolo.py` only the command-line block was moved into `add_attack_arguments` so Florence-2 can
+  share it.
 
-- **The launcher does not exist.** `phase4/run_queue.py` is named in `docs/paper_draft/README.md`
-  (lines 74, 82, 103) and in `main.tex` line 736 ("scheduled across GPUs by
-  phase4/run_queue.py"). Fix that sentence before the paper goes out, or write the launcher.
-- **Stale test counts.** README "Phase 4, how to run" still says 37 offline and 14 attack checks.
-  Now 38 and 20.
-- **Adaptive attack is YOLO only.** Adaptive Florence-2 is not implemented. If it is not added,
-  scope the title to YOLO-World.
-- **N=5000 summaries missing.** The YOLO (Digvijay) and OCR (Ankush) N=5000 summaries are still
-  not in the repo.
+## 8. Known gaps
+
+- No adaptive attack on the third model or on the Florence-2 OCR track.
+- The Florence-2 adaptive numbers use a pixel-space budget (7/255), so they are not comparable
+  with the older Florence-2 tables (about 1.7/255); the paper says so.
+- The 5,000-image YOLO-World and OCR summary files do not exist any more (user, 17 Nov); those
+  two tables stay as parsed from the earlier paper.

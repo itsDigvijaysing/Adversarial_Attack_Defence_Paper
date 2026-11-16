@@ -225,17 +225,60 @@
   year      = {2025}
 }
 
-% ======================================================================
-% NOT YET IN THE TEXT. Found by web search on 2026-11-13, read only as search
-% summaries. Open each PDF, confirm the claim, then cite in Related Work:
-%   arXiv 2509.24359  DRIFT: reports JPEG at ~0% robust accuracy under
-%                     BPDA+EOT PGD on classifiers.
-%   arXiv 2508.05489  "Keep It Real": compression-based purification under
-%                     adaptive attack (NeurIPS 2025 workshop).
-%   arXiv 2607.18339  reports that BPDA's identity approximation works well on
-%                     near-identity filters (mean, Gaussian, JPEG).
-%   arXiv 2610.29196  YOLO-World under physical patches, no defenses: the
-%                     nearest overlapping work, re-check before submitting.
-%   APSCON 2026       the authors' own earlier paper: cite in the third
-%                     person, fill the entry from IEEE Xplore.
-% ======================================================================
+% ----------------------------------------------------------------------
+% Added 2026-11-17. Each arXiv record and its full text (HTML) was read on
+% that date; the claim made in main.tex is noted with each entry.
+% ----------------------------------------------------------------------
+% VERIFIED. Tab. 2: JPEG 0% robust accuracy under BPDA+EOT PGD (ImageNet,
+% eps 4/255, 40 steps, 5 EOT samples) on ResNet-v2, Inception-v3, DeiT-S,
+% ViT-B/16; BaRT 5.2 to 11.23%. No venue on the arXiv record: a preprint.
+@article{guesmi2025drift,
+  title   = {{DRIFT}: Divergent Response in Filtered Transformations for Robust Adversarial Defense},
+  author  = {Guesmi, Amira and Shafique, Muhammad},
+  journal = {arXiv preprint arXiv:2509.24359},
+  year    = {2025}
+}
+% VERIFIED. Tab. 3, ResNet-50, ImageNet, eps 4/255: JPEG (quality 25) clean
+% 70.30%, 18.72% under white-box PGD, 18.70% under straight-through BPDA,
+% 15.19% under a U-Net surrogate. High-realism codecs are harder to attack.
+@inproceedings{raber2025keep,
+  title     = {Keep It Real: Challenges in Attacking Compression-Based Adversarial Purification},
+  author    = {R{\"a}ber, Samuel and Aczel, Till and Plesner, Andreas and Wattenhofer, Roger},
+  booktitle = {NeurIPS 2025 Workshop on Reliable ML from Unreliable Data},
+  year      = {2025},
+  note      = {arXiv:2508.05489}
+}
+% VERIFIED. Sec. VI-B: filtering and compression purifiers stay close to the
+% identity, which makes BPDA's identity approximation relatively effective
+% (argued from response maps, not a quantitative test). Tab. XI: BPDA+EOT
+% success 77.6% (mean), 81.8% (Gaussian), 54.2% (JPEG). No median filter.
+% No venue on the arXiv record: a preprint.
+@article{wang2026shared,
+  title   = {Shared Vulnerabilities in Robustness-Optimized Defenses: One Breach Exposes the Family},
+  author  = {Wang, Hanrui and Zheng, Ruihao and Wang, Shuo and Echizen, Isao and Dong, Xingbo and Jin, Zhe},
+  journal = {arXiv preprint arXiv:2607.18339},
+  year    = {2026}
+}
+% VERIFIED. 11 models: YOLO11s, YOLO26s, RT-DETRv2, YOLO-World, GDINO-Tiny,
+% GDINO-Base and five small VLMs; no Florence-2. Patches are applied
+% digitally ("physical" is the threat model). No defense is evaluated.
+% The nearest overlapping work: re-check for a new version before submitting.
+@inproceedings{liang2026unified,
+  title     = {A Unified Evaluation Framework of Physical Adversarial Robustness in the Edge {VLM} Era},
+  author    = {Liang, Eric and Luo, Alan and Yuan, Kaiwen},
+  booktitle = {NeurIPS 2026 Workshop on Grounded and Faithful Vision-Language Models for Real-World Deployment},
+  year      = {2026},
+  note      = {arXiv:2610.29196}
+}
+% PARTLY VERIFIED. Title, the single listed author and the dates are from
+% the APSCON 2026 programme (paper 6145, New Delhi, 23-25 February 2026).
+% The programme prints one name per paper slot here: confirm the author list
+% and add pages / DOI from IEEE Xplore. The sentence in main.tex describing
+% its content was written from docs/memory.md, not from the PDF: check it.
+% Cited in the third person; under double-blind review keep it that way.
+@inproceedings{rajput2026evaluating,
+  title     = {Evaluating and Mitigating Adversarial Vulnerabilities in Vision Foundation Models},
+  author    = {Rajput, Digvijaysing},
+  booktitle = {IEEE Applied Sensing Conference (APSCON)},
+  year      = {2026}
+}

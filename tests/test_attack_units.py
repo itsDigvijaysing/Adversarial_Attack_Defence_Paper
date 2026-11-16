@@ -830,6 +830,118 @@ check("--eot-batch auto: on for CPU or >= 16 GiB, else off; resolved once",
       t_eot_batch_resolution)
 
 
+# ----------------------------------------------------------------------
+# Florence-2 adaptive objectives and the chat-model helpers (fake models).
+# ----------------------------------------------------------------------
+import p4_florence as flo                                   # noqa: E402
+import p4_smolvlm as smol                                   # noqa: E402
+
+
+class _FakeSeq2Seq(torch.nn.Module):
+    """Stand-in for Florence-2: a smooth 'cross-entropy' of the pixels."""
+
+    def __init__(self):
+        super().__init__()
+        g = torch.Generator().manual_seed(3)
+        self.w = torch.nn.Parameter(torch.randn(1, 3, 8, 8, generator=g))
+
+    def forward(self, input_ids=None, pixel_values=None, labels=None):
+        feat = torch.nn.functional.adaptive_avg_pool2d(pixel_values.float(), 8)
+        return types.SimpleNamespace(loss=((feat * self.w).mean() - 0.3) ** 2)
+
+
+def _florence_setup(extra=()):
+    a = flo.parse_args(["--experiment", "adaptive_bpda", "--pgd-iters", "6",
+                        "--pgd-select", "best", *extra])
+    rng = np.random.default_rng(5)
+    pil = Image.fromarray(rng.integers(0, 256, (40, 56, 3), dtype=np.uint8))
+    adapter = types.SimpleNamespace(model=_FakeSeq2Seq().eval(),
+                                    torch_dtype=torch.float32)
+    geom = (32, 32, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ce = flo.make_ce(adapter, geom, None, None)
+    return a, pil, flo.native_frame(pil, CPU), ce, geom
+
+
+def t_florence_preprocess():
+    _, pil, frame, _, geom = _florence_setup()
+    out = flo.preprocess_differentiable(frame.x0, geom)
+    assert tuple(out.shape) == (1, 3, 32, 32)
+    same = torch.rand(1, 3, 32, 32)
+    m = torch.tensor(geom[2]).view(1, 3, 1, 1)
+    sd = torch.tensor(geom[3]).view(1, 3, 1, 1)
+    assert torch.allclose(flo.preprocess_differentiable(same, geom),
+                          (same - m) / sd)
+    x = frame.x0.clone().requires_grad_(True)
+    flo.preprocess_differentiable(x, geom).sum().backward()
+    assert x.grad is not None and float(x.grad.abs().sum()) > 0
+
+
+check("Florence: differentiable preprocessing has the processor's shape, is "
+      "exact without a resize, and passes gradients", t_florence_preprocess)
+
+
+def t_florence_attacks():
+    a, pil, frame, ce, _ = _florence_setup(
+        ["--target", "ens_jpeg_median_gaussian"])
+    _, branches, _ = yolo.resolve_target(a.target)
+    clean = np.asarray(pil).astype(np.int16)
+    obl_fn = flo.oblivious_objective(ce)
+    adv_o, obl = yolo.run_pgd(frame, obl_fn, a, 139)
+    assert obl["objective"] <= obl_fn(frame.x0, False)[0] + 1e-9   # CE went up
+    through = flo.eot_objective(ce, branches, a)
+    adv_a, adp = yolo.run_pgd(frame, through, a, 139)
+    assert adp["objective"] <= through(frame.x0, False)[0] + 1e-9
+    for adv in (adv_o, adv_a):          # the image the defense receives
+        d = np.abs(np.asarray(adv).astype(np.int16) - clean)
+        assert adv.size == pil.size and d.max() <= 7, d.max()
+    # max = minus the smallest branch CE; mean = minus the average
+    vals = yolo.deployed_values(frame.x0, branches, a)
+    with torch.no_grad():
+        ces = [float(ce(v)) for v in vals]
+    j_max, g_max = through(frame.x0, True)
+    assert abs(j_max + min(ces)) < 1e-6 and g_max.shape == frame.x0.shape
+    a.eot_loss = "mean"
+    j_mean, g_mean = flo.eot_objective(ce, branches, a)(frame.x0, True)
+    assert abs(j_mean + sum(ces) / len(ces)) < 1e-6
+    assert abs(flo.eot_objective(ce, branches, a)(frame.x0, False)[0]
+               - j_mean) < 1e-6
+    assert torch.isfinite(g_max).all() and torch.isfinite(g_mean).all()
+
+
+check("Florence: oblivious and through-the-defense PGD raise the "
+      "cross-entropy, stay within 7/255, and max / mean aggregate as "
+      "documented", t_florence_attacks)
+
+
+def t_smol_helpers():
+    core.rt.np = np
+    qs = smol.pick_questions([1, 1, 3, 17], list(range(1, 21)), 4, 42, 139)
+    assert qs == smol.pick_questions([3, 17, 1], list(range(1, 21)), 4, 42, 139)
+    assert [y for _, y in qs] == [1, 1, 0, 0]
+    assert all((c in (1, 3, 17)) == bool(y) for c, y in qs)
+    assert len({c for c, _ in qs}) == 4
+    none = smol.pick_questions([], list(range(1, 21)), 2, 42, 7)
+    assert [y for _, y in none] == [0, 0]
+    ens = smol.ensemble_probs({"a": [0.9, 0.2], "b": [0.5, 0.4]}, ["a", "b"])
+    assert all(abs(x - y) < 1e-12 for x, y in zip(ens, [0.7, 0.3]))
+    buckets = {1: {smol.Q_KEY: [[5, 1], [6, 0]], "x": [0.9, 0.8],
+                   "y": [0.9, 0.1]},
+               2: {smol.Q_KEY: [[5, 0], [6, 1]], "x": [0.2, 0.3],
+                   "y": [0.2, 0.7]}}
+    acc = smol.accuracy_table(buckets, ["x", "y"])
+    assert acc["x"][0] == 0.5 and acc["y"][0] == 1.0
+    assert acc["x"][1] == {1: 1, 2: 1}
+    ci = smol.paired_ci(acc["y"][1], acc["x"][1], {1: 2, 2: 2})
+    assert abs(ci["point"] - 0.5) < 1e-12 and ci["lo"] <= 0.5 <= ci["hi"]
+    a = smol.parse_args(["--n", "7"])
+    assert (a.eps, a.pgd_iters, a.restarts, a.side) == (0.03, 10, 1, 512)
+    assert a.output_dir.endswith("presence_qa_smolvlm")
+
+
+check("chat model: seeded balanced questions, mean-probability ensembles, "
+      "accuracy and its paired interval", t_smol_helpers)
+
+
 print("\n" + "=" * 60)
 print(f"Phase-4 attack unit tests: {len(PASS)} passed, {len(FAIL)} failed, "
       f"{len(SKIP)} skipped")

@@ -1,4 +1,4 @@
-\begin{thebibliography}{32}
+\begin{thebibliography}{37}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -89,6 +89,12 @@ Ian~J. Goodfellow, Jonathon Shlens, and Christian Szegedy.
 \newblock In \emph{International Conference on Learning Representations
   (ICLR)}, 2015.
 
+\bibitem[Guesmi and Shafique(2025)]{guesmi2025drift}
+Amira Guesmi and Muhammad Shafique.
+\newblock {DRIFT}: Divergent response in filtered transformations for robust
+  adversarial defense.
+\newblock \emph{arXiv preprint arXiv:2509.24359}, 2025.
+
 \bibitem[Guo et~al.(2018)Guo, Rana, Cisse, and van~der
   Maaten]{guo2018countering}
 Chuan Guo, Mayank Rana, Moustapha Cisse, and Laurens van~der Maaten.
@@ -102,6 +108,14 @@ Alexey Kurakin, Ian Goodfellow, and Samy Bengio.
 \newblock Adversarial machine learning at scale.
 \newblock In \emph{International Conference on Learning Representations
   (ICLR)}, 2017.
+
+\bibitem[Liang et~al.(2026)Liang, Luo, and Yuan]{liang2026unified}
+Eric Liang, Alan Luo, and Kaiwen Yuan.
+\newblock A unified evaluation framework of physical adversarial robustness in
+  the edge {VLM} era.
+\newblock In \emph{NeurIPS 2026 Workshop on Grounded and Faithful
+  Vision-Language Models for Real-World Deployment}, 2026.
+\newblock arXiv:2610.29196.
 
 \bibitem[Lin et~al.(2014)Lin, Maire, Belongie, Hays, Perona, Ramanan,
   Doll{\'a}r, and Zitnick]{lin2014microsoft}
@@ -140,12 +154,27 @@ Pietro Perona and Jitendra Malik.
 \newblock \emph{IEEE Transactions on Pattern Analysis and Machine
   Intelligence}, 12\penalty0 (7):\penalty0 629--639, 1990.
 
+\bibitem[R{\"a}ber et~al.(2025)R{\"a}ber, Aczel, Plesner, and
+  Wattenhofer]{raber2025keep}
+Samuel R{\"a}ber, Till Aczel, Andreas Plesner, and Roger Wattenhofer.
+\newblock Keep it real: Challenges in attacking compression-based adversarial
+  purification.
+\newblock In \emph{NeurIPS 2025 Workshop on Reliable ML from Unreliable Data},
+  2025.
+\newblock arXiv:2508.05489.
+
 \bibitem[Raff et~al.(2019)Raff, Sylvester, Forsyth, and
   McLean]{raff2019barrage}
 Edward Raff, Jared Sylvester, Steven Forsyth, and Mark McLean.
 \newblock Barrage of random transforms for adversarially robust defense.
 \newblock In \emph{Proceedings of the IEEE/CVF Conference on Computer Vision
   and Pattern Recognition (CVPR)}, 2019.
+
+\bibitem[Rajput(2026)]{rajput2026evaluating}
+Digvijaysing Rajput.
+\newblock Evaluating and mitigating adversarial vulnerabilities in vision
+  foundation models.
+\newblock In \emph{IEEE Applied Sensing Conference (APSCON)}, 2026.
 
 \bibitem[Sitawarin et~al.(2022)Sitawarin, Golan-Strieb, and
   Wagner]{sitawarin2022demystifying}
@@ -181,6 +210,13 @@ Andreas Veit, Tomas Matera, Lukas Neumann, Jiri Matas, and Serge Belongie.
 \newblock {COCO-Text}: Dataset and benchmark for text detection and recognition
   in natural images.
 \newblock \emph{arXiv preprint arXiv:1601.07140}, 2016.
+
+\bibitem[Wang et~al.(2026)Wang, Zheng, Wang, Echizen, Dong, and
+  Jin]{wang2026shared}
+Hanrui Wang, Ruihao Zheng, Shuo Wang, Isao Echizen, Xingbo Dong, and Zhe Jin.
+\newblock Shared vulnerabilities in robustness-optimized defenses: One breach
+  exposes the family.
+\newblock \emph{arXiv preprint arXiv:2607.18339}, 2026.
 
 \bibitem[Xiang et~al.(2021)Xiang, Bhagoji, Sehwag, and
   Mittal]{xiang2021patchguard}

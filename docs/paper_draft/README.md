@@ -1,18 +1,20 @@
-# Paper draft (written 2026-11-13, numbers re-checked 2026-11-15)
+# Paper draft (written 2026-11-13, numbers re-checked 2026-11-15, updated 2026-11-17)
 
 `main.tex` is a full rewrite of the rejected ECCV-W paper as an evaluation paper built on three
 questions: clean cost (RQ1), dependence with confidence intervals (RQ2), and the adaptive attack
 (RQ3). It uses the plain `article` class: move it into the venue template once a venue is chosen.
 
 Build (pdfLaTeX + BibTeX; run inside `docs/paper_draft/`):
-`pdflatex main && bibtex main && pdflatex main && pdflatex main`. On 15 Nov 2026: 0 errors,
-0 warnings, 0 overfull boxes, 15 pages.
+`pdflatex main && bibtex main && pdflatex main && pdflatex main`. On 17 Nov 2026: 0 errors,
+0 undefined references, 0 overfull boxes, 17 pages (15 before the two figures and the new
+Related Work text).
 
 | File | What it is |
 |---|---|
 | `main.tex`, `refs.bib` | the paper |
 | `tab_*.tex` | table bodies, pulled in by `\tabinput` (plain `\input` broke `\bottomrule`) |
 | `make_tables.py` | regenerates `tab_ci_*.tex` from the committed rescore summary (stdlib only) |
+| `make_figures.py`, `fig_cost_vs_patch.pdf` | Figure 2 (clean cost against the patch column), drawn from the same rescore summary; needs matplotlib. Figure 1 (the pipeline) is TikZ inside `main.tex` |
 | `make_overleaf_zip.sh` | builds `overleaf_upload.zip`; `--check` compiles the zip in a temp dir |
 | `main.pdf`, `main.bbl` | build outputs, kept for reading without a TeX install |
 
@@ -70,18 +72,62 @@ Corrected on 15 Nov 2026:
   best-seen iterate, compared after the 8-bit conversion; best restart across restarts); with
   `--attack-space native` the oblivious attack also runs at native resolution, so Table 5's
   oblivious columns are not Table 3's; the patch is bounded by the pixel range, not unbounded;
-  the bias-corrected interval used for one claim is now defined; the `--eot-batch` and
-  `run_queue.py` sentence was added to the Reproducibility appendix.
+  the bias-corrected interval used for one claim is now defined; the `--eot-batch`
+  sentence was added to the Reproducibility appendix.
+
+## Update of 17 Nov 2026 (no new results: the A5000 runs have not started)
+- **Nothing red was filled.** `results/phase4/` still holds only the August smoke tests and the
+  CPU rescore, so all 25 `\pending{}` uses stand as they were.
+- **Launcher sentence removed.** The appendix said the runs "are scheduled across GPUs by
+  `phase4/run_queue.py`", a script that was never written. It now says every run is one command
+  of `p4_yolo.py` or `p4_florence.py`. The run table below uses the plain commands
+  (`docs/HANDOFF_A5000.md` has them in full).
+- **Related Work, four papers read in full text (arXiv HTML) and cited:**
+  - `guesmi2025drift` (arXiv 2509.24359, preprint): Tab. 2, JPEG at 0 % and BaRT at 5 to 11 %
+    robust accuracy under BPDA+EOT PGD, ImageNet, eps 4/255, four classifiers. Confirmed.
+  - `raber2025keep` (arXiv 2508.05489, NeurIPS 2025 workshop): Tab. 3, JPEG 70.30 % clean,
+    18.70 % under straight-through BPDA, 18.72 % under white-box PGD (ResNet-50, 4/255).
+  - `wang2026shared` (arXiv 2607.18339, preprint): the 13 Nov search summary was right that it
+    calls the identity approximation effective on near-identity filters, but that is an argument
+    from response maps (Sec. VI-B), and its Tab. XI has BPDA+EOT weakest on JPEG (54.2 % success
+    against 77.6 % mean, 81.8 % Gaussian). The text says both, and names the JPEG branch as the
+    part of our attack most likely to be too weak.
+  - `liang2026unified` (arXiv 2610.29196, NeurIPS 2026 workshop): 11 models including YOLO-World
+    and Grounding DINO, no Florence-2, no defenses. Its patches are applied digitally, so the text
+    does not call them physical.
+- **APSCON 2026 paper cited in the third person** (`rajput2026evaluating`). The introduction no
+  longer says no measurement of input transforms exists on either model: it says the one we know
+  of covers Florence-2 alone, without an adaptive attacker. **Two things to confirm by hand:**
+  the author list (the conference programme prints one name for paper 6145) and the sentence
+  describing its content, which was written from `docs/memory.md`, not from the PDF.
+- **Two figures added.** Figure 1: the scored defense and the two attackers' gradient paths
+  (TikZ). Figure 2: clean cost against patch recovery with intervals, both models; all 16 points
+  lie on or above the equal-loss line (checked in the data), which is the claim of Sec. 4.3's
+  first paragraph. A qualitative example is still missing (it needs the images and a model run).
+
+## Update of 17 Nov 2026, second round
+`main.pdf` and `overleaf_upload.zip` were rebuilt with these changes: 0 errors, 0 undefined
+references, 0 overfull boxes, 17 pages; the zip compiles standalone.
+- Sec. 3.6: a paragraph on the Florence-2 adaptive attack (pixel space, same 7/255 budget as
+  YOLO-World, the least-damaged-branch objective), matching `phase4/p4_florence.py`.
+- Sec. 4.4: the "YOLO-World only" scope paragraph became a red item for the Florence-2 table.
+- New Sec. 4.5, "A third model": SmolVLM-256M-Instruct on yes/no object-presence questions
+  scored against the COCO annotations (`phase4/p4_smolvlm.py`). The model was fixed before any
+  run. Results are a red item.
+- Limitations and the reproducibility appendix follow; the claim "any run can be repeated" is now
+  a red item, because identical commands gave different attacked numbers on the server on 16 Nov.
+- "8-bit rounding" became "8-bit conversion" (the deployed pipeline truncates).
+- `make_adaptive_table.py` (new) writes `tab_adaptive_{yolo,florence}.tex` from the summaries.
+  `main.tex` does not read them yet: Table 5 still has hand-placed red cells, to be replaced by
+  `\tabinput{tab_adaptive_yolo}` once the file exists.
+- The jobs below are superseded by `docs/HANDOFF_A5000.md` (rewritten 17 Nov): clean cost now
+  runs with `--all-transforms`, and there are new jobs for Florence-2 and the third model.
 
 ## What is still red in the PDF, and the run that fills each item
 Everything inside `\pending{...}` is a result that has not been run. Nothing red is a number.
 
-All of these runs are queued by one command from the repo root, which spreads them over the
-server's GPUs and adds `--gpu` and `--log-name` to each job itself:
-
-    python phase4/run_queue.py --plan paper
-
-The table is the reference list of what that plan contains (jobs J1 to J6). Every command runs
+There is no launcher: run the jobs as plain commands, as written out in `docs/HANDOFF_A5000.md`
+(which adds `--gpu` and a `--log-name` per job). The table lists jobs J1 to J6. Every command runs
 from the repo root and leaves `--eot-batch` at its default `auto`, which changes speed and
 memory only, never the numbers. `A` stands for the adaptive flags
 `--experiment adaptive_bpda --attack-space native --pgd-select best`.
@@ -98,9 +144,8 @@ memory only, never the numbers. `A` stands for the adaptive flags
 K = 50 and alpha = 0.002 are a suggestion that has not been tested: 50 steps of 0.002 move a
 pixel at most 0.1 in total, about 3.3 eps (Madry et al.'s rule of thumb, 2.5 eps / K, would give
 0.0015). J1 decides: if the 100-step run lowers defended mAP noticeably, raise K in J2 to J5
-(in the launcher's plan) before running them. Eps and iteration diagnostics share the summary stem
-of a normal run, which is why J1 and J3 have their own `--output-dir`. If the plan in
-`phase4/run_queue.py` and this table ever disagree, fix whichever is wrong before running: the
+before running them. Eps and iteration diagnostics share the summary stem
+of a normal run, which is why J1 and J3 have their own `--output-dir`. The
 paper text describes `--attack-space native`, `--pgd-select best`, `--eot-loss max` and the true
 median gradient, so J2 must keep those.
 
@@ -112,8 +157,9 @@ manual step. Build the package first, from the repo root:
 
 It writes `docs/paper_draft/overleaf_upload.zip` with `main.tex`, `refs.bib` and the five
 `tab_*.tex` files (7 files, no PDFs, no `.aux`/`.log`/`.bbl`), then unzips it into a fresh
-temporary directory and compiles it with pdflatex, bibtex, pdflatex, pdflatex. On 15 Nov 2026:
-0 errors, 0 undefined references, 0 undefined citations, 0 overfull boxes, 15 pages. Add
+temporary directory and compiles it with pdflatex, bibtex, pdflatex, pdflatex. On 17 Nov 2026:
+8 files (the seven below plus `fig_cost_vs_patch.pdf`), 0 errors, 0 undefined references,
+0 undefined citations, 0 overfull boxes, 17 pages. Add
 `--with-bbl` to ship `main.bbl` too (only needed for a site that will not run BibTeX, such as
 arXiv). Figures are picked up automatically once `main.tex` has `\includegraphics` lines.
 
@@ -138,10 +184,11 @@ bibliography; keep `\tabinput` (plain `\input` breaks the `\bottomrule` after it
 
 ## Before submitting
 - Import the YOLO and OCR N=5000 summaries and rebuild their tables from the files.
-- Read the four papers listed at the end of `refs.bib` and add them to Related Work; add the
-  APSCON 2026 paper in the third person.
+- Confirm the APSCON 2026 entry against IEEE Xplore (authors, pages, DOI) and its one-sentence
+  description in Related Work against the PDF.
+- Re-check arXiv 2610.29196 for a new version (the nearest overlapping work).
 - Re-check the reference entries not marked VERIFIED in `refs.bib`.
-- Add figures (the pipeline diagram and one qualitative example): the draft has none.
+- Add one qualitative example figure (needs the images and a model run).
 - Fill every red item from J1 to J6. `grep -n 'pending{' main.tex` should then list only the
   two comment lines of the header, and the header's source list needs the adaptive summaries
   added.

@@ -25,12 +25,12 @@ results** and **novel 2025–2026 methods**.
   paths, seeded selection + the short-image-dir error, the matching `--preflight` image count, the
   BPDA surrogate table, OCR helpers, artifact policy, and AST checks that p4's 7 ensembles and the
   `--target` member lists come from `phase3_common`) **and**
-  `python tests/test_flow_stubbed.py` (20 checks: the real `clean_control` / `adaptive_bpda`
+  `python tests/test_flow_stubbed.py` (21 checks: the real `clean_control` / `adaptive_bpda`
   drivers with stubbed model + attacks, incl. "every adaptive flag changes the checkpoint
   signature"). After any edit to the attack math also run
   `CUDA_VISIBLE_DEVICES='' /home/king/miniconda3/envs/vlm_ftune/bin/python tests/test_attack_units.py`
-  (20 CPU-torch checks on a fake detector, incl. batched vs sequential EOT, no weights or COCO; prints SKIP and exits 0 without
-  torch).
+  (23 CPU-torch checks on fake models, incl. batched vs sequential EOT, the Florence-2 objectives
+  and the chat-model helpers, no weights or COCO; prints SKIP and exits 0 without torch).
 
 ## Layout (restructured for Phase 4 on 2026-08-17)
 - **`phase3_common.py`** — shared core, **stays at the repo root**: GPU defenses (`tvm_gpu`,
@@ -55,12 +55,20 @@ results** and **novel 2025–2026 methods**.
     from the now-seeded init; the adaptive defaults differ from the earlier pilot in
     `--eot-loss max` and the true median gradient (pilot: `mean`, `identity`).
   - `p4_florence.py` — ENTRY POINT. Florence-2 loaded ONCE serving both `<OD>` and `<OCR>`;
-    `FLORENCE_TO_COCO`, the fabricated `compute_score`, NMS. Attacks NOT ported yet (they live in
-    `archive/Phase3/`) — port them only when a Phase-4 attack experiment is defined.
+    `FLORENCE_TO_COCO`, the fabricated `compute_score`, NMS. Since 17 Nov also `adaptive_bpda`
+    on `<OD>`: self-labelled token cross-entropy, in PIXEL space at native resolution (7/255,
+    unlike Phase 3's normalized space), reusing `p4_yolo`'s PGD loop and surrogates;
+    `--eot-loss max` = raise the least-damaged branch's loss. The Phase-3 FGSM/PGD/Patch attacks
+    are still not ported.
+  - `p4_smolvlm.py` — ENTRY POINT (17 Nov). Third model, SmolVLM-256M-Instruct, fixed before any
+    run: yes/no object-presence questions from the COCO annotations, accuracy against ground
+    truth, oblivious PGD only, all solo transforms + the 7 ensembles (mean yes-probability).
+    Images are resized to a 512 square in every condition; a startup guard refuses to run if
+    the processor is not an identity resize on it.
   - `p4_logging.py` — the run-artifact policy: `run_log` (tee to `run.log`), `eval_dump_dir`
     (COCO dumps to a temp dir, deleted), `artifact_report` (committed vs local split).
-- **`tests/`**: `test_offline_logic.py` (38 torch-free checks) and `test_flow_stubbed.py` (20
-  stubbed end-to-end checks): run both after any `phase4/` edit. `test_attack_units.py` (20 checks,
+- **`tests/`**: `test_offline_logic.py` (38 torch-free checks) and `test_flow_stubbed.py` (21
+  stubbed end-to-end checks): run both after any `phase4/` edit. `test_attack_units.py` (23 checks,
   vlm_ftune python, CPU only): run after touching the attack math.
 - **`docs/`** — report + presentation PDFs, `memory.md`, `memory_phase2_archive.md`, `GPU`,
   `tmux.txt`. **`figures/`** — result images. **`results/`** — Phase-3 output dirs plus
@@ -151,9 +159,13 @@ results** and **novel 2025–2026 methods**.
   is). Cite preprints as preprints; see the table in `docs/memory.md`.
 
 ## Git
-- **New and untracked since a6fab0e (15 Nov 2026):** `scripts/setup_server.sh`,
-  `docs/paper_draft/make_overleaf_zip.sh` (+ its `overleaf_upload.zip`). A commit of this round
-  must `git add` them.
+- **New and untracked since fc8c330 (17 Nov 2026):** `phase4/p4_smolvlm.py`,
+  `docs/paper_draft/make_adaptive_table.py`, `docs/paper_draft/make_figures.py` and its output
+  `docs/paper_draft/fig_cost_vs_patch.pdf` (Figure 2 of the draft; `main.tex` will not build
+  without it). A commit of this round must `git add` them.
+- **`--deterministic` and `--all-transforms`** (17 Nov): the first is an execution flag (out of
+  the signature and the stem, recorded in the summary); the second adds the other survey
+  transforms to `clean_control` under its own checkpoint and an `_alltransforms` summary name.
 - **Do not commit unless explicitly asked.** Per the user's global preference, **never add
   `Co-Authored-By` or any AI/assistant attribution** to commits/PRs.
 - Only `summary*.json`, `run.log`, `.png`, code, and docs are tracked under `results/`; dump JSONs,

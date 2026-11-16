@@ -82,10 +82,16 @@ print('[setup] YOLO-World + CLIP ok')"
 from huggingface_hub import snapshot_download
 p = snapshot_download('microsoft/Florence-2-base', revision='refs/pr/26')
 print('[setup] Florence-2-base @ refs/pr/26 ->', p)"
+# The third, chat-style model (phase4/p4_smolvlm.py).
+"$PY" -c "
+from huggingface_hub import snapshot_download
+p = snapshot_download('HuggingFaceTB/SmolVLM-256M-Instruct')
+print('[setup] SmolVLM-256M-Instruct ->', p)"
 
 # --- 6. checks -------------------------------------------------------------
 "$PY" phase4/p4_yolo.py --preflight
 "$PY" phase4/p4_florence.py --preflight
+"$PY" phase4/p4_smolvlm.py --preflight
 "$PY" tests/test_offline_logic.py | tail -2
 "$PY" tests/test_flow_stubbed.py | tail -2
 CUDA_VISIBLE_DEVICES='' "$PY" tests/test_attack_units.py | tail -2

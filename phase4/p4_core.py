@@ -80,6 +80,22 @@ SOLO_PAPER_NAMES = {
     # branch, and reported because the row is then free.
     "svd": "SVD (ensemble member)",
 }
+# --all-transforms (clean_control only): the remaining survey transforms of the
+# paper's Table 1, so the clean cost exists for every transform whose recovery
+# the paper reports. They are phase3_common's own CPU primitives with their
+# Phase-3 defaults, exactly as pc.apply_survey_defenses calls them. None is an
+# ensemble member. OCR_ONLY mirrors the paper: BM3D and random resize-and-pad
+# are reported for OCR only (random resize never maps boxes back, so its
+# detection score is a misalignment artefact; BM3D was not run on detection).
+EXTRA_PAPER_NAMES = {
+    "bit_depth": "Bit-depth",
+    "dithering": "Ordered dithering",
+    "nlm": "Non-local means",
+    "anisotropic": "Anisotropic diffusion",
+    "bm3d": "BM3D",
+    "random_resize": "Random resize-and-pad",
+}
+EXTRA_OCR_ONLY = ("bm3d", "random_resize")
 ENSEMBLE_PAPER_NAMES = {
     "ens_jpeg_median_gaussian": "EnsJMG",
     "ens_jpeg_median_tvm": "EnsJMT",
@@ -178,6 +194,22 @@ def base_parser(description, experiments):
                    help="OCR: skip the second undefended clean pass (the "
                         "decode-determinism check) and record 1.0 for it. "
                         "Saves ~11%% of the OCR track's runtime.")
+    p.add_argument("--deterministic", action="store_true",
+                   help="Ask torch for deterministic GPU kernels (cuDNN "
+                        "deterministic, benchmark off, "
+                        "use_deterministic_algorithms with warn_only), so a "
+                        "repeated command can reproduce attacked numbers. An "
+                        "EXECUTION flag: not in the checkpoint signature or "
+                        "the summary name, recorded in the summary. Ops with "
+                        "no deterministic kernel only warn, so verify by "
+                        "running one small job twice.")
+    p.add_argument("--all-transforms", action="store_true",
+                   help="clean_control: also score the other survey transforms "
+                        "of the paper (bit-depth, ordered dithering, non-local "
+                        "means, anisotropic diffusion; OCR track also BM3D "
+                        "and random resize-and-pad). CPU transforms: NLM and "
+                        "BM3D add seconds per image. A separate checkpoint "
+                        "and summary name (..._alltransforms).")
     p.add_argument("--smoke-test", action="store_true",
                    help="2 images (CPU unless --device is given) into "
                         "<output-dir>/smoke_test, stamped smoke_test=true. "
@@ -528,6 +560,9 @@ def load_runtime(args):
             how = (f"freest of the preset list {preset!r}" if args.gpu < 0
                    else f"entry {args.gpu} of the preset list {preset!r}")
         print(f"[GPU] CUDA_VISIBLE_DEVICES={entry} ({how}, --gpu {args.gpu})")
+    if getattr(args, "deterministic", False):
+        # cuBLAS needs this before the first CUDA call to be reproducible.
+        os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
     try:
         import numpy as _np
         import torch as _torch
@@ -541,6 +576,12 @@ def load_runtime(args):
             f"        phase3_common.py must be at the repo root: {REPO_ROOT}"
         ) from exc
     rt.np, rt.torch, rt.Image, rt.pc = _np, _torch, _Image, _pc
+    if getattr(args, "deterministic", False):
+        _torch.backends.cudnn.deterministic = True
+        _torch.backends.cudnn.benchmark = False
+        _torch.use_deterministic_algorithms(True, warn_only=True)
+        print("[GPU] --deterministic: cuDNN deterministic, benchmark off, "
+              "deterministic algorithms (warn only)")
     if args.device == "cpu":
         return rt.torch.device("cpu")
     assert rt.torch.cuda.is_available(), (
@@ -570,6 +611,51 @@ def branch_names(ensembles):
             assert m in names, (
                 f"ensemble member '{m}' is not a Phase-4 branch; branches={names}")
     return names
+
+
+def paper_label(name):
+    """Paper label of any branch or ensemble key."""
+    return (ENSEMBLE_PAPER_NAMES.get(name) or SOLO_PAPER_NAMES.get(name)
+            or EXTRA_PAPER_NAMES.get(name, name))
+
+
+def extra_branch_names(args, track):
+    """The --all-transforms branches of one track ([] without the flag).
+
+    BM3D is an optional dependency: when it cannot be imported the row is
+    dropped with a warning, never replaced by another filter (Phase-3 rule).
+    """
+    if not getattr(args, "all_transforms", False):
+        return []
+    is_ocr = track.endswith("ocr")
+    names = [n for n in EXTRA_PAPER_NAMES
+             if is_ocr or n not in EXTRA_OCR_ONLY]
+    if "bm3d" in names:
+        import importlib.util
+        if importlib.util.find_spec("bm3d") is None:
+            print("[clean_control] bm3d is not installed: dropping the BM3D "
+                  "row (pip install bm3d to include it).")
+            names.remove("bm3d")
+    return names
+
+
+def build_extra_branches(pil_img, names, seed=None):
+    """{branch: PIL} for the --all-transforms branches.
+
+    The same calls, with the same defaults, as pc.apply_survey_defenses
+    (phase3_common.py:416-422); `seed` is the image id, as in Phase 3, so
+    random resize-and-pad is reproducible per image.
+    """
+    pc = rt.pc
+    makers = {
+        "bit_depth": lambda: pc.bit_depth_cpu(pil_img),
+        "dithering": lambda: pc.dithering_cpu(pil_img),
+        "nlm": lambda: pc.nlm_cpu(pil_img),
+        "anisotropic": lambda: pc.anisotropic_diffusion_cpu(pil_img),
+        "bm3d": lambda: pc.bm3d_cpu(pil_img),
+        "random_resize": lambda: pc.random_resize_pad_cpu(pil_img, seed=seed),
+    }
+    return {n: makers[n]() for n in names}
 
 
 def build_branches(pil_img, device, args, names):
@@ -996,11 +1082,11 @@ def print_result_digest(results, names, ensembles, top=3):
         rows = sorted(r["defenses"].items(),
                       key=lambda kv: kv[1]["delta_vs_measured"], reverse=True)
         for name, d in rows[:top]:
-            label = ENSEMBLE_PAPER_NAMES.get(name) or SOLO_PAPER_NAMES.get(name, name)
+            label = paper_label(name)
             print(f"      best  {label:<24} {d['value']:.4f} "
                   f"({d['delta_vs_measured']:+.4f})")
         for name, d in rows[-1:]:
-            label = ENSEMBLE_PAPER_NAMES.get(name) or SOLO_PAPER_NAMES.get(name, name)
+            label = paper_label(name)
             print(f"      worst {label:<24} {d['value']:.4f} "
                   f"({d['delta_vs_measured']:+.4f})")
 
@@ -1020,12 +1106,19 @@ def finish(args):
 # ======================================================================
 def clean_control(adapter, args, coco_gt, files, image_ids):
     ensembles = load_ensembles()
-    names = branch_names(ensembles)
+    base_names = branch_names(ensembles)
     device = adapter.device
     results = {}
 
     for track in adapter.tracks:
         is_ocr = track.endswith("ocr")
+        extra = extra_branch_names(args, track)
+        names = base_names + extra
+
+        def defend(pil_img, img_id, _extra=extra):
+            out = build_branches(pil_img, device, args, base_names)
+            out.update(build_extra_branches(pil_img, _extra, seed=img_id))
+            return out
         sig = rt.pc.config_signature(
             phase=4, experiment="clean_control", track=track,
             model=adapter.model_name, branches=sorted(names),
@@ -1057,8 +1150,8 @@ def clean_control(adapter, args, coco_gt, files, image_ids):
                 texts["clean_repeat"] = (
                     texts["clean_ref"] if args.skip_clean_consistency
                     else _ocr(pil_img))
-                defended = build_branches(pil_img, device, args, names)
-                for bn in names:
+                defended = defend(pil_img, img_id)
+                for bn in defended:
                     texts[f"clean+{bn}"] = _ocr(defended[bn])
                 return texts
         else:
@@ -1068,8 +1161,8 @@ def clean_control(adapter, args, coco_gt, files, image_ids):
             def compute_one(pil_img, img_id, _infer=infer):
                 buckets = {}
                 record_dets(buckets, "clean", _infer(pil_img), img_id)
-                defended = build_branches(pil_img, device, args, names)
-                for bn in names:
+                defended = defend(pil_img, img_id)
+                for bn in defended:
                     record_dets(buckets, f"clean+{bn}",
                                 _infer(defended[bn]), img_id)
                 return buckets
@@ -1111,7 +1204,8 @@ def clean_control(adapter, args, coco_gt, files, image_ids):
                 "counts": {str(i): {c: len(b.get(c, [])) for c in conditions}
                            for i, b in ckpt.buckets.items()}})
 
-        entry.update({"num_images": len(ckpt.buckets),
+        entry.update({"branches": names,
+                      "num_images": len(ckpt.buckets),
                       "images_computed_this_run": computed,
                       "failures": failures, "seconds": elapsed,
                       "seconds_per_image": elapsed / computed if computed else None})
@@ -1148,13 +1242,16 @@ def clean_control(adapter, args, coco_gt, files, image_ids):
     md.append("| Defense | Kind | "
               + " | ".join(f"{t} | Δ" for t in tracks) + " |")
     md.append("|---|---|" + "---|" * (2 * len(tracks)))
-    for name in names + list(ensembles):
-        label = ENSEMBLE_PAPER_NAMES.get(name) or SOLO_PAPER_NAMES.get(name, name)
+    all_names = base_names + [n for n in EXTRA_PAPER_NAMES if any(
+        n in results[t]["defenses"] for t in tracks)]
+    for name in all_names + list(ensembles):
+        label = paper_label(name)
         kind = "ENSEMBLE" if name in ensembles else "solo"
         cells = []
         for t in tracks:
-            d = results[t]["defenses"][name]
-            cells += [fmt(d["value"]), fmt_delta(d["delta_vs_measured"])]
+            d = results[t]["defenses"].get(name)
+            cells += (["not run", "n/a"] if d is None else
+                      [fmt(d["value"]), fmt_delta(d["delta_vs_measured"])])
         md.append(f"| {label} (`{name}`) | {kind} | " + " | ".join(cells) + " |")
     md.append("")
     md += timing_table(results, adapter.device)
@@ -1176,7 +1273,10 @@ def clean_control(adapter, args, coco_gt, files, image_ids):
         "image_ids": image_ids,
         "image_ids_sha1_16": ids_digest(image_ids),
         "device": str(adapter.device),
-        "branches": names,
+        "branches": base_names,
+        "all_transforms": bool(getattr(args, "all_transforms", False)),
+        "extra_branches": {t: [n for n in results[t]["branches"]
+                               if n not in base_names] for t in tracks},
         "ensembles": ensembles,
         "ensemble_paper_names": ENSEMBLE_PAPER_NAMES,
         "published_baselines": {
@@ -1192,11 +1292,12 @@ def clean_control(adapter, args, coco_gt, files, image_ids):
         "model_config": adapter.sig_fields(args),
         "tracks": results,
     }
-    stem = f"clean_control_{args.model_key}"
+    stem = f"clean_control_{args.model_key}" + (
+        "_alltransforms" if getattr(args, "all_transforms", False) else "")
     write_summary(args, payload, stem)
     write_markdown(args, md_text, stem)
     # The full table is already in the .md written above; repeating it here
     # would double it inside the committed run.log for no benefit.
-    print_result_digest(results, names, ensembles)
+    print_result_digest(results, all_names, ensembles)
     print_timing(results, adapter.device)
     return payload

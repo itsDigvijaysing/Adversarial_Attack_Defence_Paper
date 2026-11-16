@@ -295,6 +295,54 @@ check("clean_control(florence) scores det + OCR from one adapter",
       t_clean_control_florence)
 
 
+def t_clean_control_all_transforms():
+    import importlib.util
+    # The real builder on a real image: phase3_common's own CPU primitives.
+    pil = Image.open(os.path.join(img_dir, f"{IMAGE_IDS[0]:012d}.jpg"))
+    cheap = ["bit_depth", "dithering", "anisotropic", "random_resize"]
+    out = core.build_extra_branches(pil, cheap, seed=7)
+    assert list(out) == cheap and all(o.size == pil.size for o in out.values())
+    again = core.build_extra_branches(pil, ["random_resize"], seed=7)
+    assert again["random_resize"].tobytes() == out["random_resize"].tobytes()
+    assert core.extra_branch_names(make_args(flo), "florence_ocr") == []
+
+    args = make_args(flo, ["--all-transforms", "--output-dir",
+                           os.path.join(tmp, "out_alltransforms")])
+    os.makedirs(args.output_dir, exist_ok=True)
+    has_bm3d = importlib.util.find_spec("bm3d") is not None
+    det = core.extra_branch_names(args, "florence_det")
+    ocr = core.extra_branch_names(args, "florence_ocr")
+    assert det == ["bit_depth", "dithering", "nlm", "anisotropic"], det
+    assert "random_resize" in ocr and ("bm3d" in ocr) == has_bm3d, ocr
+    real = core.build_extra_branches
+    core.build_extra_branches = lambda pil, names, seed=None: {
+        n: pil for n in names}                    # identity, like fake #1
+    try:
+        adapter = FakeAdapter(["florence_det", "florence_ocr"], "fake")
+        payload = core.clean_control(adapter, args, coco_gt=None,
+                                     files=sorted(os.listdir(img_dir)),
+                                     image_ids=IMAGE_IDS)
+    finally:
+        core.build_extra_branches = real
+    tr = payload["tracks"]
+    assert len(tr["florence_det"]["defenses"]) == 14 + 4
+    assert len(tr["florence_ocr"]["defenses"]) == 14 + len(ocr)
+    assert "random_resize" not in tr["florence_det"]["defenses"]
+    assert payload["all_transforms"] and payload["extra_branches"] == {
+        "florence_det": det, "florence_ocr": ocr}
+    assert len(payload["branches"]) == 7          # the base set is unchanged
+    md = open(os.path.join(
+        args.output_dir,
+        "summary_clean_control_florence_alltransforms_latest.md")).read()
+    assert "Random resize-and-pad" in md and "not run" in md
+    assert not os.path.exists(os.path.join(
+        args.output_dir, "summary_clean_control_florence_latest.md"))
+
+
+check("clean_control --all-transforms adds the other survey transforms "
+      "per track", t_clean_control_all_transforms)
+
+
 print("\n[4] adaptive_bpda driver runs end to end")
 
 

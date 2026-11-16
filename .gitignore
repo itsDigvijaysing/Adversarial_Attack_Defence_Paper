@@ -9,6 +9,8 @@ annotations/
 # any non-.pt file the download drops there (configs, partial .tmp files) cannot
 # creep into a commit either.
 weights/
+# COCO zips fetched by scripts/setup_server.sh
+downloads/
 __pycache__/
 *.pyc
 *.pkl

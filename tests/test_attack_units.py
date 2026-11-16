@@ -18,6 +18,7 @@ stops its import-time DNS probe) and is skipped if ultralytics is missing.
 import os
 import sys
 import traceback
+import types
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""          # CPU only, always
 os.environ.setdefault("YOLO_OFFLINE", "1")       # no DNS probe from ultralytics
@@ -293,37 +294,96 @@ def t_eot_gradient_equals_single_backward():
     pil = rand_pil(40, 30, 11)
     tier1 = pc.TIER1_ENSEMBLES
     cases = 0
-    for target in ("ens_jpeg_median_gaussian", "ens_4way"):
-        for loss in ("max", "mean"):
-            for med in ("true", "identity"):
-                args = make_args("--target", target, "--eot-loss", loss,
-                                 "--median-surrogate", med)
-                _, branches, _ = yolo.resolve_target(target)
-                assert branches == tier1[target]
-                frame = yolo.attack_frame(pil, CPU, args, MODEL)
-                adv = (frame.x0 + yolo.pgd_init_noise(frame.x0, 0.03, 0, 1)
-                       ).clamp(0, 1)
-                val, g = yolo.eot_objective(MODEL, frame, branches, args)(
-                    adv, need_grad=True)
-                ref_val, ref_g, S = _eot_reference(MODEL, frame, branches,
-                                                   args, adv)
-                assert abs(val - ref_val) < 1e-4 * max(1.0, abs(ref_val)), \
-                    (target, loss, med, val, ref_val)
-                assert torch.allclose(g, ref_g, atol=1e-6, rtol=1e-4), \
-                    (target, loss, med, (g - ref_g).abs().max().item())
-                if loss == "max":
-                    won = set(yolo.union_weights(S).argmax(0).flatten().tolist())
-                    assert len(won) >= 2, f"degenerate: one branch won all {won}"
-                nograd, none = yolo.eot_objective(MODEL, frame, branches,
-                                                  args)(adv, need_grad=False)
-                assert none is None and abs(nograd - ref_val) < 1e-4 * abs(ref_val)
-                cases += 1
-    assert cases == 8
+    combos = [(t, lo, m, e)
+              for t in ("ens_jpeg_median_gaussian", "ens_4way")
+              for lo in ("max", "mean") for m in ("true", "identity")
+              for e in ("on", "off")]
+    for target, loss, med, mode in combos:
+        args = make_args("--target", target, "--eot-loss", loss,
+                         "--median-surrogate", med, "--eot-batch", mode)
+        _, branches, _ = yolo.resolve_target(target)
+        assert branches == tier1[target]
+        frame = yolo.attack_frame(pil, CPU, args, MODEL)
+        adv = (frame.x0 + yolo.pgd_init_noise(frame.x0, 0.03, 0, 1)
+               ).clamp(0, 1)
+        val, g = yolo.eot_objective(MODEL, frame, branches, args)(
+            adv, need_grad=True)
+        ref_val, ref_g, S = _eot_reference(MODEL, frame, branches, args, adv)
+        case = (target, loss, med, mode)
+        assert abs(val - ref_val) < 1e-4 * max(1.0, abs(ref_val)), \
+            (case, val, ref_val)
+        assert torch.allclose(g, ref_g, atol=1e-6, rtol=1e-4), \
+            (case, (g - ref_g).abs().max().item())
+        if loss == "max":
+            won = set(yolo.union_weights(S).argmax(0).flatten().tolist())
+            assert len(won) >= 2, f"degenerate: one branch won all {won}"
+        nograd, none = yolo.eot_objective(MODEL, frame, branches,
+                                          args)(adv, need_grad=False)
+        assert none is None and abs(nograd - ref_val) < 1e-4 * abs(ref_val)
+        cases += 1
+    assert cases == 16
 
 
-check("eot_objective (branch by branch) == one backward over stacked graphs "
-      "(EnsJMG/Ens4W x max/mean x median true/identity)",
+check("eot_objective (batched and branch by branch) == one backward over "
+      "stacked graphs (EnsJMG/Ens4W x max/mean x median true/identity x "
+      "--eot-batch on/off)",
       t_eot_gradient_equals_single_backward)
+
+
+def _old_deployed_value(x, branch, args):
+    """deployed_value as it was before the shared round trip (verbatim)."""
+    q = yolo._quantize_uint8
+    with torch.no_grad():
+        if branch == "jpeg":
+            return pc.pil_to_tensor(
+                pc.jpeg_cpu(pc.tensor_to_pil(x), args.jpeg_quality), x.device)
+        if branch == "median":
+            return q(pc.median_gpu(q(x), args.median_kernel))
+        if branch == "gaussian":
+            return q(pc.gaussian_gpu(q(x), sigma=args.gaussian_sigma))
+        if branch == "tvm":
+            return q(pc.tvm_gpu(q(x), weight=args.tvm_weight,
+                                n_iter=args.tvm_iters))
+        if branch == "blur_tvm":
+            return q(pc.tvm_gpu(pc.gaussian_gpu(q(x), sigma=args.gaussian_sigma),
+                                weight=args.tvm_weight, n_iter=args.tvm_iters))
+    raise ValueError(branch)
+
+
+def t_deployed_values_shared_round_trip():
+    """Sharing the input's uint8 round trip changes no bit of any branch."""
+    names = list(yolo.SURROGATE_BRANCHES)
+    checked = 0
+    for space in ("letterbox", "native"):
+        args = make_args("--attack-space", space)
+        for seed in (21, 22):
+            pil = rand_pil(45, 37, seed)
+            frame = yolo.attack_frame(pil, CPU, args, MODEL)
+            # an off-grid (non-uint8) input, as every PGD iterate is
+            adv = (frame.x0 + yolo.pgd_init_noise(frame.x0, 0.03, seed, 5)
+                   ).clamp(0, 1)
+            for x in (frame.x0, adv):
+                shared = yolo.deployed_values(x, names, args)
+                for b, v in zip(names, shared):
+                    assert torch.equal(v, _old_deployed_value(x, b, args)), \
+                        (space, seed, b)
+                    assert torch.equal(v, yolo.deployed_value(x, b, args)), b
+                    checked += 1
+                # any branch order / subset gives the same tensors
+                sub = yolo.deployed_values(x, ["gaussian", "jpeg"], args)
+                assert torch.equal(sub[0], shared[names.index("gaussian")])
+                assert torch.equal(sub[1], shared[names.index("jpeg")])
+    assert checked == 2 * 2 * 2 * len(names)
+    try:
+        yolo.deployed_values(frame.x0, ["svd"], args)
+    except ValueError:
+        return
+    raise AssertionError("a branch without a surrogate must raise")
+
+
+check("deployed_values (one shared uint8 round trip) == the pre-change "
+      "deployed_value, bit for bit, letterbox + native, clean + off-grid",
+      t_deployed_values_shared_round_trip)
 
 print("\n[3] seeded init, restarts, quantization, PGD")
 
@@ -517,6 +577,257 @@ def t_native_frame_and_attack():
 
 check("native frame: rect letterbox into the model, attack output at native "
       "size within eps (7/255 at eps 0.03)", t_native_frame_and_attack)
+
+
+print("\n[5] --eot-batch: one batched forward + backward == branch by branch")
+
+
+def _k_branches():
+    """k = 1..4 branch lists; 3 and 4 are EnsJMG / Ens4W from phase3_common."""
+    return {1: ["median"], 2: ["jpeg", "gaussian"],
+            3: yolo.resolve_target("ens_jpeg_median_gaussian")[1],
+            4: yolo.resolve_target("ens_4way")[1]}
+
+
+class _CountingDetector(_FakeDetector):
+    """The fake detector (same weights) recording each forward's batch size;
+    optionally raising CUDA OOM for batches larger than `oom_above`."""
+
+    def __init__(self, oom_above=None):
+        super().__init__()
+        self.batches, self.oom_above = [], oom_above
+
+    def forward(self, x):
+        self.batches.append(int(x.shape[0]))
+        if self.oom_above is not None and x.shape[0] > self.oom_above:
+            raise torch.cuda.OutOfMemoryError("CUDA out of memory (simulated)")
+        return super().forward(x)
+
+
+class _CountingYolo:
+    def __init__(self, oom_above=None):
+        self.model = _CountingDetector(oom_above).eval()
+
+
+def _scores_both_ways(frame, branches, args, adv):
+    """(S from k separate forwards, S from one batched forward), no grad."""
+    vals = yolo.deployed_values(adv, branches, args)
+    with torch.no_grad():
+        s_seq = torch.stack([yolo.yolo_anchor_scores(MODEL, frame.to_model(v))
+                             for v in vals])
+        s_bat = yolo.yolo_anchor_scores(
+            MODEL, torch.cat([frame.to_model(v) for v in vals])
+        ).view(len(branches), 1, -1)
+    return s_seq, s_bat
+
+
+def _near_tie_flip(s_seq, s_bat, tol=1e-6):
+    """True if the winner masks differ only at anchors whose two best branch
+    scores are within `tol`: a float-rounding tie, not a bug."""
+    w_seq = yolo.union_weights(s_seq).argmax(0)
+    w_bat = yolo.union_weights(s_bat).argmax(0)
+    flipped = (w_seq != w_bat)
+    if not flipped.any():
+        return False
+    top2 = s_seq.topk(2, dim=0).values                  # [2, B, A]
+    gap = (top2[0] - top2[1])[flipped]
+    return bool((gap <= tol).all())
+
+
+def t_eot_batch_matches_sequential():
+    """Same J and gradient, k = 1..4, mean and max, letterbox and native."""
+    cases, ties = 0, 0
+    for k, branches in _k_branches().items():
+        for loss in ("mean", "max"):
+            for space in ("letterbox", "native"):
+                on = make_args("--eot-loss", loss, "--attack-space", space,
+                               "--eot-batch", "on")
+                off = make_args("--eot-loss", loss, "--attack-space", space,
+                                "--eot-batch", "off")
+                pil = rand_pil(40, 30, 30 + k)
+                frame = yolo.attack_frame(pil, CPU, on, MODEL)
+                adv = (frame.x0 + yolo.pgd_init_noise(frame.x0, 0.03, k, 3)
+                       ).clamp(0, 1)
+                case = (k, loss, space)
+                v_on, g_on = yolo.eot_objective(MODEL, frame, branches, on)(
+                    adv, True)
+                v_off, g_off = yolo.eot_objective(MODEL, frame, branches,
+                                                  off)(adv, True)
+                n_on, _ = yolo.eot_objective(MODEL, frame, branches, on)(
+                    adv, False)
+                n_off, _ = yolo.eot_objective(MODEL, frame, branches, off)(
+                    adv, False)
+                for a, b in ((v_on, v_off), (n_on, n_off), (v_on, n_off)):
+                    assert abs(a - b) <= 1e-5 * abs(b), (case, a, b)
+                if k == 1:            # nothing to batch: the same code path
+                    assert torch.equal(g_on, g_off) and v_on == v_off, case
+                if loss == "max" and k > 1 and _near_tie_flip(
+                        *_scores_both_ways(frame, branches, on, adv)):
+                    ties += 1         # a different, equally exact subgradient
+                    continue
+                assert torch.allclose(g_on, g_off, rtol=1e-4, atol=1e-6), \
+                    (case, (g_on - g_off).abs().max().item())
+                big = g_off.abs() > 1e-6
+                assert big.sum() > 100, (case, "degenerate gradient")
+                assert torch.equal(g_on.sign()[big], g_off.sign()[big]), case
+                cases += 1
+    assert cases + ties == 16 and ties <= 2, (cases, ties)
+
+
+check("--eot-batch on == off: J within 1e-5, gradients allclose, same signs "
+      "where |g| > 1e-6 (k = 1..4 x mean/max x letterbox/native)",
+      t_eot_batch_matches_sequential)
+
+
+def t_eot_batch_forward_count():
+    """on = ONE batched forward per call, and no separate no-grad pass."""
+    branches = _k_branches()[3]
+    pil = rand_pil(40, 30, 40)
+    for loss in ("max", "mean"):
+        for mode in ("on", "off"):
+            args = make_args("--eot-loss", loss, "--eot-batch", mode)
+            model = _CountingYolo()
+            frame = yolo.attack_frame(pil, CPU, args, model)
+            adv = (frame.x0 + yolo.pgd_init_noise(frame.x0, 0.03, 0, 9)
+                   ).clamp(0, 1)
+            obj = yolo.eot_objective(model, frame, branches, args)
+            obj(adv, True)
+            grad_calls = list(model.model.batches)
+            model.model.batches.clear()
+            obj(adv, False)
+            value_calls = list(model.model.batches)
+            if mode == "on":
+                assert grad_calls == [3] and value_calls == [3], \
+                    (loss, grad_calls, value_calls)
+            else:
+                assert value_calls == [1, 1, 1], value_calls
+                assert set(grad_calls) == {1}
+                # max: k no-grad winner passes + one graph per winning branch
+                assert len(grad_calls) == (3 + 3 if loss == "max" else 3), \
+                    (loss, grad_calls)
+
+
+check("--eot-batch on: one [k,3,H,W] forward per call (max: no extra no-grad "
+      "pass); off: branch by branch", t_eot_batch_forward_count)
+
+
+def t_eot_batch_pgd_same_image():
+    """A full PGD run gives the same quantized image on vs off, except where a
+    float-rounding tie flips the max loss's winning branch (explained)."""
+    same, explained = 0, 0
+    for k, branches in _k_branches().items():
+        for loss in ("mean", "max"):
+            for space in ("letterbox", "native"):
+                common = ["--eot-loss", loss, "--attack-space", space,
+                          "--pgd-iters", "10"]
+                on = make_args(*common, "--eot-batch", "on")
+                off = make_args(*common, "--eot-batch", "off")
+                pil = rand_pil(40, 30, 11)
+                _, i_on = yolo.pgd_adaptive_bpda_eot(pil, MODEL, CPU, on,
+                                                     branches, 139)
+                _, i_off = yolo.pgd_adaptive_bpda_eot(pil, MODEL, CPU, off,
+                                                      branches, 139)
+                case = (k, loss, space)
+                assert abs(i_on["objective"] - i_off["objective"]) <= \
+                    1e-5 * abs(i_off["objective"]), case
+                if torch.equal(i_on["adv_q"], i_off["adv_q"]):
+                    same += 1
+                    continue
+                # Replay both trajectories in lockstep (run_pgd's step) to the
+                # first step whose gradient signs differ on the SAME input,
+                # and require the reason to be a winner flip at a near tie
+                # (both are exact subgradients of max at a tie) or sum-order
+                # rounding of components that are ~0 (|g| <= 1e-6).
+                assert k > 1, case
+                frame = yolo.attack_frame(pil, CPU, on, MODEL)
+                x0 = frame.x0
+                adv = (x0 + yolo.pgd_init_noise(x0, on.eps, on.seed, 139)
+                       ).clamp(0, 1)
+                o_on = yolo.eot_objective(MODEL, frame, branches, on)
+                o_off = yolo.eot_objective(MODEL, frame, branches, off)
+                for _ in range(on.pgd_iters):
+                    _, g1 = o_on(adv, True)
+                    _, g2 = o_off(adv, True)
+                    diff = g1.sign() != g2.sign()
+                    if diff.any():
+                        tiny = bool((g2.abs()[diff] <= 1e-6).all())
+                        tie = loss == "max" and _near_tie_flip(
+                            *_scores_both_ways(frame, branches, on, adv))
+                        assert tiny or tie, (case, "unexplained divergence")
+                        explained += 1
+                        break
+                    with torch.no_grad():
+                        adv = adv - on.alpha * g1.sign()
+                        adv = torch.clamp(x0 + torch.clamp(
+                            adv - x0, -on.eps, on.eps), 0.0, 1.0)
+                else:
+                    raise AssertionError((case, "images differ, steps agree"))
+    print(f"        (identical quantized image in {same}/16 runs; "
+          f"{explained} explained near-tie / ~0-gradient divergence(s))")
+    assert same + explained == 16 and same >= 12, (same, explained)
+
+
+check("--eot-batch on vs off: full PGD gives the same quantized image (any "
+      "difference traced to a near-tie winner flip)", t_eot_batch_pgd_same_image)
+
+
+def t_eot_batch_oom_fallback():
+    """A CUDA OOM in the batched path switches the run to branch by branch."""
+    branches = _k_branches()[3]
+    pil = rand_pil(40, 30, 41)
+    args = make_args("--eot-batch", "on")
+    ref_args = make_args("--eot-batch", "off")
+    model = _CountingYolo(oom_above=1)              # any batch > 1 "OOMs"
+    frame = yolo.attack_frame(pil, CPU, args, model)
+    adv = (frame.x0 + yolo.pgd_init_noise(frame.x0, 0.03, 0, 4)).clamp(0, 1)
+    v, g = yolo.eot_objective(model, frame, branches, args)(adv, True)
+    v_ref, g_ref = yolo.eot_objective(MODEL, frame, branches, ref_args)(
+        adv, True)
+    assert v == v_ref and torch.equal(g, g_ref), "fallback is the off path"
+    assert args.eot_batch_oom_fallback is True and args.eot_batch_mode == "on"
+    assert yolo.ensure_eot_batch(args, CPU) == "off", "stays off for the run"
+    model.model.batches.clear()
+    yolo.eot_objective(model, frame, branches, args)(adv, False)
+    assert model.model.batches == [1, 1, 1], model.model.batches
+    rec = yolo.execution_record(args, branches)
+    assert rec["eot_batch"] == "on" and rec["eot_batch_oom_fallback"] is True
+    # a non-OOM error is NOT swallowed
+    bad = make_args("--eot-batch", "on")
+
+    class _Broken(_CountingDetector):
+        def forward(self, x):
+            raise RuntimeError("shape mismatch in conv")
+
+    broken = types.SimpleNamespace(model=_Broken().eval())
+    try:
+        yolo.eot_objective(broken, frame, branches, bad)(adv, True)
+    except RuntimeError as exc:
+        assert "shape mismatch" in str(exc)
+    else:
+        raise AssertionError("a non-OOM RuntimeError must propagate")
+
+
+check("--eot-batch: CUDA OOM falls back to the sequential path for the rest "
+      "of the run (recorded); other errors propagate", t_eot_batch_oom_fallback)
+
+
+def t_eot_batch_resolution():
+    assert yolo.resolve_eot_batch("auto", CPU)[0] == "on"
+    gib = 2 ** 30
+    cuda = torch.device("cuda", 0)            # only a label: no CUDA call
+    assert yolo.resolve_eot_batch("auto", cuda, 48 * gib)[0] == "on"
+    assert yolo.resolve_eot_batch("auto", cuda, 16 * gib)[0] == "on"
+    assert yolo.resolve_eot_batch("auto", cuda, 6 * gib)[0] == "off"
+    assert yolo.resolve_eot_batch("off", CPU)[0] == "off"
+    assert yolo.resolve_eot_batch("on", cuda, 1)[0] == "on"
+    a = make_args()
+    assert a.eot_batch == "auto" and not hasattr(a, "eot_batch_mode")
+    assert yolo.ensure_eot_batch(a, CPU) == "on"
+    assert a.eot_batch_reason.startswith("auto")
+
+
+check("--eot-batch auto: on for CPU or >= 16 GiB, else off; resolved once",
+      t_eot_batch_resolution)
 
 
 print("\n" + "=" * 60)

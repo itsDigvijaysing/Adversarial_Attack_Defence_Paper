@@ -749,6 +749,39 @@ def t_new_flags():
 check("--keep-eval-dumps / --no-per-image exist and default off", t_new_flags)
 
 
+def t_server_flags():
+    # --log-name: a bare run*.log name, default run.log, on both entry points
+    for a in (yolo.parse_args([]), flo.parse_args([])):
+        assert a.log_name == "run.log"
+    assert yolo.parse_args(["--log-name", "run_yolo_s1.log"]).log_name == \
+        "run_yolo_s1.log"
+    for bad in ("../run.log", "foo.txt", "run.txt", "x/run.log"):
+        assert not rl.valid_log_name(bad), bad
+    # --eot-batch: execution flag, outside the signature-bearing attack flags
+    assert yolo.parse_args([]).eot_batch == "auto"
+    assert "eot_batch" not in yolo.ATTACK_FLAGS
+    assert "eot_batch" not in yolo.STEM_FLAG_DEFAULTS
+    # --gpu under a preset CUDA_VISIBLE_DEVICES (SLURM / tmux per GPU)
+    r = core.resolve_visible_device
+    assert r(None, 2, lambda v: "9") == "2"
+    assert r(None, -1, lambda v: "9") == "9"
+    assert r("3,5", 1, lambda v: "x") == "5"
+    assert r("3,5", -1, lambda v: v[-1]) == "5"
+    assert r("7", -1, lambda v: "x") == "7"
+    assert r("GPU-aa,GPU-bb", 0, lambda v: "x") == "GPU-aa"
+    for preset, gpu in (("3,5", 2), ("", 0)):
+        try:
+            r(preset, gpu, lambda v: "x")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError((preset, gpu))
+
+
+check("--log-name / --eot-batch / --gpu with a preset CUDA_VISIBLE_DEVICES",
+      t_server_flags)
+
+
 print("\n[8] report helpers")
 
 

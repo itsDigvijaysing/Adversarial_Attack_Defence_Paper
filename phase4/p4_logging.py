@@ -15,6 +15,8 @@ This module makes every run produce exactly THREE kinds of artifact:
     summary*.json   the numbers            — committed, a few KB
     *.md            the readable table     — committed, a few KB
     run.log         the console transcript — committed, tens of KB
+                    (or run<suffix>.log via --log-name, so concurrent jobs
+                    sharing one run directory never interleave their logs)
 
 plus, on disk only (gitignored, never shared):
 
@@ -43,6 +45,7 @@ from __future__ import annotations
 import contextlib
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -53,6 +56,18 @@ import time
 # block there: `!results/**/summary*.json`, `!results/**/run.log`, and *.md is
 # never ignored). Kept in sync by test_offline_logic.py.
 COMMITTED_PATTERNS = ("summary", ".md", "run.log")
+# --log-name: the tee'd run log's file name inside --output-dir. A bare file
+# name (no path separators, no '..'), starting with "run" and ending in ".log",
+# so the policy below can recognise it and .gitignore (which ignores no *.log
+# under results/) keeps it: run.log, run_yolo_ens4w_s1.log, ...
+DEFAULT_LOG_NAME = "run.log"
+RUN_LOG_RE = re.compile(r"^run[A-Za-z0-9_.-]*\.log$")
+
+
+def valid_log_name(name) -> bool:
+    """True if `name` is an acceptable --log-name (see RUN_LOG_RE)."""
+    return (isinstance(name, str) and bool(RUN_LOG_RE.match(name))
+            and ".." not in name)
 # Anything bigger than this is flagged: GitHub warns at 50 MB and blocks at
 # 100 MB, and a shared run should be nowhere near either.
 LARGE_FILE_MB = 5.0
@@ -169,8 +184,13 @@ def eval_dump_dir(output_dir, keep=False):
 
 
 def is_committed(name) -> bool:
-    """True if .gitignore's results/ rules keep this filename."""
-    return any(p in name for p in COMMITTED_PATTERNS)
+    """True if .gitignore's results/ rules keep this filename.
+
+    Run logs written under a custom --log-name (run_<job>.log) count as well:
+    .gitignore ignores no *.log under results/, so git keeps them too.
+    """
+    return (any(p in name for p in COMMITTED_PATTERNS)
+            or bool(RUN_LOG_RE.match(os.path.basename(name))))
 
 
 def artifact_report(output_dir) -> dict:

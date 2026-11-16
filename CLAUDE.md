@@ -21,7 +21,7 @@ results** and **novel 2025–2026 methods**.
   `PYTHONPATH=.`).
 - **Do NOT execute training/eval scripts unless explicitly asked** — they need GPU + model + COCO.
   For code changes, verify with `python -m py_compile <file>` **and**
-  `python tests/test_offline_logic.py` (37 torch-free checks: CLI incl. the adaptive flags, output
+  `python tests/test_offline_logic.py` (38 torch-free checks: CLI incl. the adaptive flags, --log-name/--eot-batch/--gpu mapping, output
   paths, seeded selection + the short-image-dir error, the matching `--preflight` image count, the
   BPDA surrogate table, OCR helpers, artifact policy, and AST checks that p4's 7 ensembles and the
   `--target` member lists come from `phase3_common`) **and**
@@ -29,7 +29,7 @@ results** and **novel 2025–2026 methods**.
   drivers with stubbed model + attacks, incl. "every adaptive flag changes the checkpoint
   signature"). After any edit to the attack math also run
   `CUDA_VISIBLE_DEVICES='' /home/king/miniconda3/envs/vlm_ftune/bin/python tests/test_attack_units.py`
-  (14 CPU-torch checks on a fake detector, no weights or COCO; prints SKIP and exits 0 without
+  (20 CPU-torch checks on a fake detector, incl. batched vs sequential EOT, no weights or COCO; prints SKIP and exits 0 without
   torch).
 
 ## Layout (restructured for Phase 4 on 2026-08-17)
@@ -59,8 +59,8 @@ results** and **novel 2025–2026 methods**.
     `archive/Phase3/`) — port them only when a Phase-4 attack experiment is defined.
   - `p4_logging.py` — the run-artifact policy: `run_log` (tee to `run.log`), `eval_dump_dir`
     (COCO dumps to a temp dir, deleted), `artifact_report` (committed vs local split).
-- **`tests/`**: `test_offline_logic.py` (37 torch-free checks) and `test_flow_stubbed.py` (20
-  stubbed end-to-end checks): run both after any `phase4/` edit. `test_attack_units.py` (14 checks,
+- **`tests/`**: `test_offline_logic.py` (38 torch-free checks) and `test_flow_stubbed.py` (20
+  stubbed end-to-end checks): run both after any `phase4/` edit. `test_attack_units.py` (20 checks,
   vlm_ftune python, CPU only): run after touching the attack math.
 - **`docs/`** — report + presentation PDFs, `memory.md`, `memory_phase2_archive.md`, `GPU`,
   `tmux.txt`. **`figures/`** — result images. **`results/`** — Phase-3 output dirs plus
@@ -112,6 +112,12 @@ results** and **novel 2025–2026 methods**.
   one row of `SURROGATES`; `bpda_branch`, `surrogate_description`, `is_identity_surrogate` and
   `check_surrogates` all read it via `surrogate_spec`, so edit that table, not the helpers.
 
+- **Fresh server:** `bash scripts/setup_server.sh` (README "Environment Setup"). Runs need
+  `HF_HOME=<repo>/weights/hf`. `--gpu N` indexes into a preset `CUDA_VISIBLE_DEVICES` (SLURM);
+  concurrent jobs in one run dir take `--log-name run_<job>.log`. `--eot-batch {auto,on,off}` is an
+  EXECUTION flag (batched branch forward, same objective/gradient): kept out of ATTACK_FLAGS, the
+  checkpoint signature and the stem, recorded in the payload.
+
 ## Critical conventions & gotchas
 - **Never modify the frozen v2 files or `pc.SOLO_DEFENSES`/`pc.ENSEMBLES`.** v2 scripts iterate
   those 5 solos / 3 ensembles and `apply_all_defenses_gpu` produces exactly those keys — adding a
@@ -145,9 +151,9 @@ results** and **novel 2025–2026 methods**.
   is). Cite preprints as preprints; see the table in `docs/memory.md`.
 
 ## Git
-- **Three files the code and docs depend on are untracked:** `tests/test_attack_units.py`,
-  `tests/test_rescore.py`, `phase4/p4_rescore.py`. Any commit of the `phase4/` changes must `git add`
-  them too, or the cited checks (and `p4_yolo.py`'s summary text) point at nothing.
+- **New and untracked since a6fab0e (15 Nov 2026):** `scripts/setup_server.sh`,
+  `docs/paper_draft/make_overleaf_zip.sh` (+ its `overleaf_upload.zip`). A commit of this round
+  must `git add` them.
 - **Do not commit unless explicitly asked.** Per the user's global preference, **never add
   `Co-Authored-By` or any AI/assistant attribution** to commits/PRs.
 - Only `summary*.json`, `run.log`, `.png`, code, and docs are tracked under `results/`; dump JSONs,

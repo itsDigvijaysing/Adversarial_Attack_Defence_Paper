@@ -1,10 +1,10 @@
 name: vlm_ftune
 channels:
+  # conda-forge only: the Anaconda 'defaults' channel now needs an interactive
+  # Terms-of-Service acceptance, which breaks a scripted env create.
   - conda-forge
-  - defaults
 dependencies:
   - python=3.9.7
-  - cudatoolkit=11.8
   - pip
   - ipykernel
   - pip:
@@ -28,6 +28,11 @@ dependencies:
       # called, and that downloads ViT-B-32.pt (338 MB) into ./weights/clip/
       # (gitignored). Expect that one-off download on a new machine.
       - ultralytics==8.4.127
+      # Pinned so ultralytics does not pip-install CLIP mid-run (that fails on
+      # compute nodes without internet). Same commit as the working env.
+      - git+https://github.com/ultralytics/CLIP.git@68dce32140994dfcb645a1320c4ebdc034fc19fd
+      - ftfy==6.3.1
+      - regex==2026.1.15
       - timm==1.0.15
       - safetensors==0.5.3
       # Data & evaluation
@@ -42,7 +47,7 @@ dependencies:
       - scikit-image==0.24.0
       - diffusers==0.36.0
       # Optional: enables the real BM3D survey-defense row (else it is dropped
-      # with a warning — never reported as a mislabeled Gaussian fallback).
+      # with a warning, never reported as a mislabeled Gaussian fallback).
       - bm3d==4.0.3
       # Visualization & utilities
       - matplotlib==3.9.4

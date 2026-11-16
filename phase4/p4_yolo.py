@@ -149,12 +149,17 @@ class YoloAdapter:
                       key=lambda c: c["id"])
         names = [c["name"] for c in cats]
         self._yolo_to_coco_id = {i: c["id"] for i, c in enumerate(cats)}
-        self.model = YOLO(self.args.yolo_model)
+        # Open the repo-root copy when the relative name is not under cwd;
+        # args.yolo_model (the signature field) stays the string as given.
+        path = core.resolve_repo_file(self.args.yolo_model)
+        self.model = YOLO(path)
         self.model.set_classes(names)
         self.model.to(self.device)
         self.model.model.eval()
-        print(f"[yolo] loaded {self.args.yolo_model}: {len(names)} COCO "
-              f"classes | imgsz={self.args.yolo_imgsz} | device={self.device}")
+        print(f"[yolo] loaded {self.args.yolo_model}"
+              + (f" (from {path})" if path != self.args.yolo_model else "")
+              + f": {len(names)} COCO classes | imgsz={self.args.yolo_imgsz} "
+                f"| device={self.device}")
 
     def _parse(self, res):
         dets = []
@@ -468,6 +473,55 @@ def _quantize_uint8(t):
     return rt.pc.pil_to_tensor(rt.pc.tensor_to_pil(t), t.device)
 
 
+def _deployed_from(branch, args, pil_x, qx, device):
+    """One branch's deployed transform from the shared input conversions.
+
+    pil_x = pc.tensor_to_pil(x) (what the deployed pipeline receives) and
+    qx() = its tensor on `device`, i.e. the uint8 round trip q(x); every
+    branch starts from one of the two, so they are computed once per input,
+    not per branch (deployed_values).
+    """
+    pc, q = rt.pc, _quantize_uint8
+    if branch == "jpeg":
+        return pc.pil_to_tensor(pc.jpeg_cpu(pil_x, args.jpeg_quality), device)
+    if branch == "median":
+        return q(pc.median_gpu(qx(), args.median_kernel))
+    if branch == "gaussian":
+        return q(pc.gaussian_gpu(qx(), sigma=args.gaussian_sigma))
+    if branch == "tvm":
+        return q(pc.tvm_gpu(qx(), weight=args.tvm_weight,
+                            n_iter=args.tvm_iters))
+    if branch == "blur_tvm":
+        return q(pc.tvm_gpu(pc.gaussian_gpu(qx(), sigma=args.gaussian_sigma),
+                            weight=args.tvm_weight, n_iter=args.tvm_iters))
+    raise ValueError(f"no BPDA surrogate for branch '{branch}'")
+
+
+def deployed_values(x, branches, args):
+    """[deployed_value(x, b, args) for b in branches], bit for bit.
+
+    Mirrors build_branches / pc.apply_all_defenses_gpu op for op, including
+    where the deployed pipeline quantizes (PIL in, PIL out) and where it does
+    not (blur_tvm feeds the UNquantized Gaussian into TVM). The input's
+    uint8 round trip (one GPU->CPU->PIL->GPU copy) is identical for every
+    branch, so it is done once here instead of once per branch: same
+    deterministic ops on the same values, hence the same tensors
+    (tests/test_attack_units.py checks torch.equal against deployed_value).
+    """
+    pc = rt.pc
+    with rt.torch.no_grad():
+        pil_x = pc.tensor_to_pil(x)
+        held = []
+
+        def qx():
+            if not held:
+                held.append(pc.pil_to_tensor(pil_x, x.device))
+            return held[0]
+
+        return [_deployed_from(b, args, pil_x, qx, x.device)
+                for b in branches]
+
+
 def deployed_value(x, branch, args):
     """The deployed transform of a [1,3,H,W] tensor, no gradient.
 
@@ -475,22 +529,7 @@ def deployed_value(x, branch, args):
     where the deployed pipeline quantizes (PIL in, PIL out) and where it does
     not (blur_tvm feeds the UNquantized Gaussian into TVM).
     """
-    pc, q = rt.pc, _quantize_uint8
-    with rt.torch.no_grad():
-        if branch == "jpeg":
-            return pc.pil_to_tensor(
-                pc.jpeg_cpu(pc.tensor_to_pil(x), args.jpeg_quality), x.device)
-        if branch == "median":
-            return q(pc.median_gpu(q(x), args.median_kernel))
-        if branch == "gaussian":
-            return q(pc.gaussian_gpu(q(x), sigma=args.gaussian_sigma))
-        if branch == "tvm":
-            return q(pc.tvm_gpu(q(x), weight=args.tvm_weight,
-                                n_iter=args.tvm_iters))
-        if branch == "blur_tvm":
-            return q(pc.tvm_gpu(pc.gaussian_gpu(q(x), sigma=args.gaussian_sigma),
-                                weight=args.tvm_weight, n_iter=args.tvm_iters))
-    raise ValueError(f"no BPDA surrogate for branch '{branch}'")
+    return deployed_values(x, [branch], args)[0]
 
 
 def bpda_branch(adv, branch, args, value=None):
@@ -542,29 +581,155 @@ def oblivious_objective(model, frame):
     return objective
 
 
+# --eot-batch: an EXECUTION flag (how the k branches reach the model), not an
+# attack flag. It is in neither ATTACK_FLAGS, STEM_FLAG_DEFAULTS, the summary
+# stem nor the checkpoint signature: both modes optimise the same objective
+# and differ only by float rounding (tests/test_attack_units.py).
+EOT_BATCH_CHOICES = ("auto", "on", "off")
+EOT_BATCH_MIN_GIB = 16.0      # auto: batch on a CUDA device with >= this much
+
+
+def _device_type(device):
+    return getattr(device, "type", None) or str(device).split(":")[0]
+
+
+def resolve_eot_batch(choice, device, total_bytes=None):
+    """(mode 'on'|'off', reason) for --eot-batch on `device`.
+
+    on/off are taken as given. auto = on for CPU (no memory pressure) and for
+    a CUDA device with >= EOT_BATCH_MIN_GIB total memory, else off (the
+    6 GB laptop card keeps one graph alive at a time). `total_bytes` lets the
+    torch-free tests skip the CUDA query; otherwise it is read from
+    torch.cuda.get_device_properties (device 0 of the pinned visible set).
+    """
+    if choice in ("on", "off"):
+        return choice, f"forced by --eot-batch {choice}"
+    if choice != "auto":
+        raise ValueError(f"unknown --eot-batch '{choice}'")
+    if _device_type(device) != "cuda":
+        return "on", "auto: CPU, no device-memory limit"
+    if total_bytes is None:
+        idx = getattr(device, "index", None) or 0
+        total_bytes = rt.torch.cuda.get_device_properties(idx).total_memory
+    gib = total_bytes / 2 ** 30
+    if gib >= EOT_BATCH_MIN_GIB:
+        return "on", f"auto: {gib:.1f} GiB >= {EOT_BATCH_MIN_GIB:g} GiB"
+    return "off", f"auto: {gib:.1f} GiB < {EOT_BATCH_MIN_GIB:g} GiB"
+
+
+def ensure_eot_batch(args, device):
+    """Resolve --eot-batch ONCE per run onto args; the mode in force now.
+
+    Sets args.eot_batch_mode / eot_batch_reason (the resolution, recorded in
+    the summary) and args.eot_batch_oom_fallback (True once a CUDA OOM has
+    switched the run to the sequential path, which then stays in force).
+    """
+    if getattr(args, "eot_batch_mode", None) is None:
+        args.eot_batch_mode, args.eot_batch_reason = resolve_eot_batch(
+            getattr(args, "eot_batch", "auto"), device)
+        args.eot_batch_oom_fallback = False
+    return "off" if args.eot_batch_oom_fallback else args.eot_batch_mode
+
+
+def _is_oom(exc):
+    oom = getattr(getattr(rt.torch, "cuda", None), "OutOfMemoryError", None)
+    return (oom is not None and isinstance(exc, oom)) or \
+        "out of memory" in str(exc).lower()
+
+
 def eot_objective(model, frame, branches, args):
     """J through the defense branches, aggregated by --eot-loss.
 
-    The deployed transform of each branch is computed ONCE per call and reused
-    by the gradient pass. For `max` with k > 1 branches a no-grad pass first
-    picks the winning branch per anchor; each branch's graph is then built and
-    freed in turn with that branch's anchors as the mask. The gradient equals
-    the single-backward autograd of union_objective(max) over the k stacked
-    graphs (tests/test_attack_units.py checks this), but only one YOLOv8x
-    graph is alive at a time instead of k. That is a memory choice for the
-    6 GB card; it costs one extra no-grad forward per branch per step.
+    The deployed transform of each branch is computed ONCE per call (sharing
+    the input's uint8 round trip, deployed_values) and reused by the gradient
+    pass. Two execution paths, chosen by --eot-batch (resolved once per run,
+    ensure_eot_batch); both return the same J and gradient up to float
+    rounding (tests/test_attack_units.py):
+
+    on  (batched): the k branch inputs are stacked into ONE [k, 3, H, W]
+        model call and ONE backward; for `max` the winner mask
+        union_weights(S) comes from that same forward, so no separate
+        no-grad pass is needed. k YOLOv8x graphs are alive at once.
+    off (sequential, the original path): for `max` with k > 1 branches a
+        no-grad pass first picks the winning branch per anchor; each
+        branch's graph is then built and freed in turn with that branch's
+        anchors as the mask. The gradient equals the single-backward
+        autograd of union_objective(max) over the k stacked graphs, but only
+        one graph is alive at a time instead of k: the memory choice for the
+        6 GB card, at one extra no-grad forward per branch per step.
+    A single branch has nothing to batch and always takes the sequential
+    path. A CUDA out-of-memory in the batched path switches the rest of the
+    run to the sequential one (once, with a warning, recorded in the
+    summary); so does a branch whose model input has a different shape.
     """
     torch = rt.torch
     use_max = args.eot_loss == "max" and len(branches) > 1
+    k = len(branches)
+    state = {"batched": k > 1 and ensure_eot_batch(
+        args, frame.x0.device) == "on"}
 
     def scores_of(values):
         with torch.no_grad():
             return torch.stack([yolo_anchor_scores(model, frame.to_model(v))
                                 for v in values])
 
+    def stacked(inputs):
+        """torch.cat of the k model inputs, or None if their shapes differ."""
+        shapes = {tuple(t.shape) for t in inputs}
+        if len(shapes) != 1:
+            if not getattr(args, "eot_batch_shape_warned", False):
+                args.eot_batch_shape_warned = True
+                print(f"[eot] branch inputs differ in shape {sorted(shapes)}"
+                      f"; --eot-batch uses the sequential path for them.")
+            state["batched"] = False
+            return None
+        return torch.cat(inputs, dim=0)
+
+    def batched(adv, values, need_grad):
+        B = adv.shape[0]
+        if not need_grad:
+            with torch.no_grad():
+                X = stacked([frame.to_model(v) for v in values])
+                if X is None:
+                    return None
+                S = yolo_anchor_scores(model, X).view(k, B, -1)
+            return float(union_objective(S, args.eot_loss)), None
+        x = adv.clone().requires_grad_(True)
+        X = stacked([frame.to_model(bpda_branch(x, b, args, values[i]))
+                     for i, b in enumerate(branches)])
+        if X is None:
+            return None
+        S = yolo_anchor_scores(model, X).view(k, B, -1)
+        if use_max:        # d(sum of per-anchor max)/dS is the winner mask
+            J = (S * union_weights(S.detach())).sum()
+        else:              # mean over the k branch objectives
+            J = S.sum(dim=(1, 2)).mean()
+        (g,) = torch.autograd.grad(J, x)
+        return float(union_objective(S.detach(), args.eot_loss)), g.detach()
+
     def objective(adv, need_grad):
         adv = adv.detach()
-        values = [deployed_value(adv, b, args) for b in branches]
+        values = deployed_values(adv, branches, args)
+        if state["batched"]:
+            try:
+                out = batched(adv, values, need_grad)
+            except RuntimeError as exc:
+                if not _is_oom(exc):
+                    raise
+                out = None
+                state["batched"] = False
+                args.eot_batch_oom_fallback = True
+                print(f"[eot] CUDA out of memory with {k} branches batched; "
+                      f"--eot-batch falls back to the sequential path for "
+                      f"the rest of this run (same objective, one graph at "
+                      f"a time).")
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            if out is not None:
+                return out
+        return sequential(adv, values, need_grad)
+
+    def sequential(adv, values, need_grad):
         weights = None
         if not need_grad or use_max:
             S = scores_of(values)
@@ -750,6 +915,16 @@ def summary_stem(args):
     return stem
 
 
+def execution_record(args, branches):
+    """payload["execution"]: how the run was executed (not what it measured)."""
+    return {"eot_batch_requested": getattr(args, "eot_batch", "auto"),
+            "eot_batch": args.eot_batch_mode,
+            "eot_batch_reason": args.eot_batch_reason,
+            "eot_batch_oom_fallback": bool(args.eot_batch_oom_fallback),
+            "eot_batch_applies": len(branches) > 1,
+            "log_name": getattr(args, "log_name", "run.log")}
+
+
 def eot_description(args, branches):
     if len(branches) == 1:
         return ("single branch: EOT is trivial and --eot-loss has no effect")
@@ -840,8 +1015,9 @@ def implementation_uncertainty(args, paper, branches):
             "branch keeps it) by suppressing the most confident branch per "
             "anchor. It is still a proxy: the real merge matches "
             "post-threshold boxes across branches by IoU, not anchors by "
-            "index. Its gradient is exact but taken branch by branch (winner "
-            "per anchor picked in a no-grad pass).")
+            "index. Its gradient is exact: per anchor, only the winning "
+            "branch's gradient counts (computed in one batched pass or "
+            "branch by branch, per --eot-batch, equal up to float rounding).")
     elif len(branches) > 1:
         items.append(
             f"EOT loss 'mean' averages the {len(branches)} branch objectives; "
@@ -919,11 +1095,14 @@ def adaptive_bpda(adapter, args, coco_gt, files, image_ids):
     sig = adaptive_signature(args, adapter, target, branches, files, image_ids,
                              device)
     ckpt = core.make_checkpoint(args, "adaptive", sig)
+    ensure_eot_batch(args, device)     # once per run; main() may have done it
 
     rt.pc.print_banner(
         f"ADAPTIVE WHITE-BOX: BPDA+EOT vs {paper} | n={len(files)} | PGD "
         f"eps={args.eps} x{args.pgd_iters} | R={args.restarts} | "
         f"eot={args.eot_loss} | {args.attack_space}", width=80)
+    print(f"  eot batch : {args.eot_batch_mode} ({args.eot_batch_reason})"
+          + ("" if len(branches) > 1 else "; one branch, nothing to batch"))
 
     def compute_one(pil_img, img_id):
         buckets = {}
@@ -1050,6 +1229,10 @@ def adaptive_bpda(adapter, args, coco_gt, files, image_ids):
                    ("jpeg_quality", "median_kernel", "tvm_weight", "tvm_iters",
                     "gaussian_sigma", "nms_iou")},
         "model_config": adapter.sig_fields(args),
+        # How the attack was EXECUTED. Not part of the checkpoint signature
+        # or the summary stem: both --eot-batch modes optimise the same
+        # objective and agree up to float rounding.
+        "execution": execution_record(args, branches),
         "implementation_uncertainty": uncertainty,
         "num_images": len(ckpt.buckets),
         "images_computed_this_run": computed,
@@ -1089,6 +1272,12 @@ def adaptive_bpda(adapter, args, coco_gt, files, image_ids):
         f"`{args.quantize}` · median surrogate `{args.median_surrogate}` · "
         f"iterate selection `{args.pgd_select}`",
         f"- EOT loss `{args.eot_loss}`: {eot_description(args, branches)}",
+        f"- Execution: EOT batch `{args.eot_batch_mode}` "
+        f"({args.eot_batch_reason})"
+        + ("; fell back to sequential after a CUDA out-of-memory"
+           if args.eot_batch_oom_fallback else "")
+        + " (an execution choice: same objective, equal up to float "
+          "rounding)",
         "- BPDA surrogates (backward only; every forward is the deployed "
         "value): " + "; ".join(f"{b}: {d}" for b, d in surrogates.items()),
         "- All headline numbers come from the SAME image subset.",
@@ -1147,7 +1336,7 @@ def adaptive_bpda(adapter, args, coco_gt, files, image_ids):
     core.write_summary(args, payload, stem)
     core.write_markdown(args, md_text, stem)
     # Headline only: the full table and the uncertainty list are in the .md
-    # written above, so repeating them would double them inside run.log.
+    # written above, so repeating them would double them inside the run log.
     print("\n" + "=" * 70)
     print(f"RESULT DIGEST: BPDA+EOT vs {paper} (full table in the .md)")
     print("=" * 70)
@@ -1226,6 +1415,18 @@ def parse_args(argv=None):
                         "last = Phase-3 compatible. best = the lower-objective "
                         "of the last and the best-seen iterate, compared "
                         "after quantization.")
+    x = p.add_argument_group("execution (adaptive_bpda; does not change what "
+                             "is measured)")
+    x.add_argument("--eot-batch", choices=list(EOT_BATCH_CHOICES),
+                   default="auto",
+                   help="on = the k defense branches go through YOLO as ONE "
+                        "batched forward + backward per PGD step (same "
+                        "objective and gradient up to float rounding, k "
+                        "graphs in memory). off = one branch at a time "
+                        "(lowest memory). auto (default) = on for CPU or a "
+                        f"CUDA device with >= {EOT_BATCH_MIN_GIB:g} GiB, else "
+                        "off. Not part of the checkpoint signature or the "
+                        "summary name.")
     m = p.add_argument_group("model (Phase-3 values)")
     m.add_argument("--yolo-model", default="yolov8x-worldv2.pt")
     m.add_argument("--yolo-imgsz", type=int, default=640)
@@ -1241,6 +1442,46 @@ def parse_args(argv=None):
     return args
 
 
+CLIP_FILE = "ViT-B-32.pt"     # what YOLO-World's set_classes() loads
+
+
+def ultralytics_weights_dir():
+    """Where ultralytics 8.4.127 looks for CLIP: SETTINGS["weights_dir"].
+
+    Read from its settings.json (YOLO_CONFIG_DIR, else XDG_CONFIG_HOME or
+    ~/.config, then /Ultralytics/settings.json) without importing it (that
+    would import torch). The default is the RELATIVE "weights", which it
+    resolves against the cwd at load time: ./weights/clip/ under the repo
+    root when the run starts there (ultralytics/utils/__init__.py
+    SettingsManager; nn/text_model.py clip.load(download_root=
+    WEIGHTS_DIR / "clip")).
+    """
+    import json
+    base = os.environ.get("YOLO_CONFIG_DIR")
+    if base:
+        cfg = os.path.join(os.path.expanduser(base), "Ultralytics")
+    else:
+        cfg = os.path.join(os.environ.get("XDG_CONFIG_HOME")
+                           or os.path.expanduser("~/.config"), "Ultralytics")
+    try:
+        with open(os.path.join(cfg, "settings.json")) as f:
+            wdir = json.load(f).get("weights_dir") or "weights"
+    except (OSError, ValueError):
+        wdir = "weights"
+    return os.path.abspath(wdir)
+
+
+def preflight_weights(args):
+    """[(label, present, path checked, offline reason)] for core.preflight."""
+    offline = ("YOLO_OFFLINE=1 is set" if core.env_flag("YOLO_OFFLINE")
+               else None)
+    model = os.path.abspath(core.resolve_repo_file(args.yolo_model))
+    clip = os.path.join(ultralytics_weights_dir(), "clip", CLIP_FILE)
+    return [(args.yolo_model, os.path.isfile(model), model, offline),
+            (f"CLIP {CLIP_FILE} (set_classes)", os.path.isfile(clip), clip,
+             offline)]
+
+
 def main(argv=None):
     args = parse_args(argv)
     if args.preflight:
@@ -1249,13 +1490,17 @@ def main(argv=None):
             modules=[("numpy", "all"), ("PIL", "all"), ("torch", "all"),
                      ("ultralytics", "yolo inference"),
                      ("pycocotools", "COCO mAP")],
-            weights=[(args.yolo_model, os.path.isfile(args.yolo_model))])
+            weights=preflight_weights(args))
 
     device = core.load_runtime(args)
+    if args.experiment == "adaptive_bpda":
+        ensure_eot_batch(args, device)          # resolved once per run
     os.makedirs(args.output_dir, exist_ok=True)
-    with core.run_log(os.path.join(args.output_dir, "run.log"), argv=sys.argv,
+    with core.run_log(core.log_path(args), argv=sys.argv,
                       extra={"experiment": args.experiment, "n": args.n,
                              "device": str(device),
+                             "visible": os.environ.get(
+                                 "CUDA_VISIBLE_DEVICES"),
                              "smoke_test": args.smoke_test}):
         args.image_dir = core.resolve_image_dir(args.image_dir)
         args.ann_file = core.resolve_ann_file(args.ann_file)
@@ -1273,7 +1518,11 @@ def main(argv=None):
               f"(--select {args.select}, seed {args.seed})")
         print(f"  id digest : {core.ids_digest(image_ids)}")
         print(f"  device    : {device}")
+        if args.experiment == "adaptive_bpda":
+            print(f"  eot batch : {args.eot_batch_mode} "
+                  f"({args.eot_batch_reason})")
         print(f"  output    : {args.output_dir}")
+        print(f"  log       : {args.log_name}")
 
         from pycocotools.coco import COCO
         coco_gt = COCO(args.ann_file)

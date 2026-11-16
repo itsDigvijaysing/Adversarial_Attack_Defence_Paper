@@ -33,6 +33,8 @@
 #       summary_<experiment>_<model>[_<track>]_n<N>_<timestamp>.json   immutable
 #       summary_..._latest.json / .md      overwritten mirror, stable to cite
 #       run.log                            appended, one stamped block per run
+#                                          (--log-name run_<job>.log for
+#                                          concurrent jobs in one directory)
 #       checkpoint_<track>_<sig8>.pkl      config-keyed, so resume still works
 #   Timestamped summaries never overwrite each other; the directory is stable so
 #   a crashed run resumes instead of restarting. The per-condition COCO dumps go
@@ -59,7 +61,8 @@ for _p in (PHASE4_DIR, REPO_ROOT):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from p4_logging import artifact_report, eval_dump_dir, run_log  # noqa: E402
+from p4_logging import (DEFAULT_LOG_NAME, artifact_report,  # noqa: E402
+                        eval_dump_dir, run_log, valid_log_name)
 
 DEFAULT_RESULTS_ROOT = os.path.join(REPO_ROOT, "results", "phase4")
 
@@ -138,8 +141,18 @@ def base_parser(description, experiments):
                         "./Dataset/val2017, ...")
     p.add_argument("--ann-file", default=None,
                    help="COCO instances_val2017.json. Default: auto-resolve.")
-    p.add_argument("--gpu", type=int, default=0,
-                   help="GPU index; <0 picks the freest via nvidia-smi.")
+    p.add_argument("--gpu", type=int, default=-1,
+                   help="The N-th device of the VISIBLE set. If "
+                        "CUDA_VISIBLE_DEVICES is already set (SLURM, a "
+                        "launcher), N indexes into that list and the process "
+                        "pins itself to that entry (UUIDs kept as is); if it "
+                        "is unset, N is the physical nvidia-smi index. -1 "
+                        "(default) = the freest visible GPU.")
+    p.add_argument("--log-name", type=_log_name_arg, default=DEFAULT_LOG_NAME,
+                   help="File name of the tee'd run log inside --output-dir "
+                        "(default run.log). Give concurrent jobs that share "
+                        "a directory their own, e.g. run_yolo_s1.log. Must "
+                        "match run[A-Za-z0-9_.-]*.log (no path).")
     p.add_argument("--device", choices=["auto", "cuda", "cpu"], default=None,
                    help="Default auto (cuda when available). --smoke-test "
                    "falls back to cpu ONLY if you do not set this, so "
@@ -187,9 +200,28 @@ def base_parser(description, experiments):
     return p
 
 
+def _log_name_arg(text):
+    """argparse type for --log-name: a bare run*.log file name, no path."""
+    if not valid_log_name(text):
+        raise argparse.ArgumentTypeError(
+            f"{text!r} is not a valid log name: it must be a bare file name "
+            f"matching run[A-Za-z0-9_.-]*.log (e.g. run.log, "
+            f"run_yolo_s1.log), with no directory part")
+    return text
+
+
+def log_path(args):
+    """Where this run tees its console: <output-dir>/<--log-name>."""
+    return os.path.join(args.output_dir, args.log_name)
+
+
 def finalize_args(args, model_key):
     """Resolve the run id, the output dir and the --smoke-test overrides."""
     args.model_key = model_key
+    log_name = getattr(args, "log_name", DEFAULT_LOG_NAME)
+    if not valid_log_name(log_name):          # argparse already checks it
+        raise SystemExit(f"[fatal] invalid --log-name {log_name!r}")
+    args.log_name = log_name
     # Timestamp fixed once per process and stamped into every filename it writes.
     args.run_id = time.strftime("%Y%m%d-%H%M%S")
     if args.output_dir is None:
@@ -239,8 +271,36 @@ def resolve_ann_file(primary):
                        + ", ".join(str(c) for c in candidates))
 
 
+def resolve_repo_file(path):
+    """The file to OPEN for a relative asset path such as `yolov8x-worldv2.pt`.
+
+    cwd first (what the library itself would do), then the repo root, so a run
+    started from another directory still finds the repo-root copy instead of
+    downloading a second one into its cwd. Only the file that is opened
+    changes: callers keep the original string for signatures and summaries.
+    Absolute paths and paths found nowhere are returned unchanged.
+    """
+    if not path or os.path.isabs(path) or os.path.isfile(path):
+        return path
+    at_root = os.path.join(REPO_ROOT, path)
+    return at_root if os.path.isfile(at_root) else path
+
+
+def env_flag(name):
+    """True if an environment flag such as HF_HUB_OFFLINE / YOLO_OFFLINE is on."""
+    return os.environ.get(name, "").strip().lower() in (
+        "1", "true", "yes", "on", "y", "t")
+
+
 def preflight(args, modules, weights):
-    """Shared preflight. `modules` = [(name, needed_by)], `weights` = [(label, present_bool_fn)]."""
+    """Shared preflight.
+
+    `modules` = [(name, needed_by)]. `weights` = [(label, present[, where
+    [, offline]])]: `where` is the path that was checked (printed), and
+    `offline` is a reason string when downloading is impossible (an
+    HF_HUB_OFFLINE / YOLO_OFFLINE flag), which turns a missing weight file
+    into NOT READY instead of "will download".
+    """
     import importlib.util
     print("=" * 70)
     print(f"Phase-4 preflight — {args.model_key} / {args.experiment}".center(70))
@@ -275,14 +335,40 @@ def preflight(args, modules, weights):
         else:
             print(f"  {label:<14} OK       {path} ({k} images)")
     print("\n[weights]")
-    for label, present in weights:
-        print(f"  {label:<26} {'present/cached' if present else 'will download'}")
+    for item in weights:
+        label, present = item[0], item[1]
+        where = item[2] if len(item) > 2 else None
+        offline = item[3] if len(item) > 3 else None
+        if present:
+            state = "present/cached"
+        elif offline:
+            ok = False
+            state = f"MISSING  {offline}; no download is possible"
+        else:
+            state = "will download (needs internet on this node)"
+        print(f"  {label:<26} {state}")
+        if where:
+            print(f"  {'':<26} checked: {where}")
     print("\n[shared core]")
     core = os.path.join(REPO_ROOT, "phase3_common.py")
     if not os.path.isfile(core):
         ok = False
     print(f"  phase3_common.py {'OK' if os.path.isfile(core) else 'MISSING'}"
           f"       {core}")
+    print("\n[gpu]")
+    cvd = os.environ.get("CUDA_VISIBLE_DEVICES")
+    print(f"  CUDA_VISIBLE_DEVICES={cvd!r} --gpu {args.gpu} --device "
+          f"{args.device}: " + (
+              "CPU run" if args.device == "cpu" else
+              "--gpu indexes into this list" if cvd is not None else
+              "--gpu is a physical nvidia-smi index"))
+    if args.device != "cpu" and cvd is not None:
+        try:      # range check only; the freest pick needs nvidia-smi
+            resolve_visible_device(cvd, args.gpu, lambda vis: vis[0])
+        except ValueError as exc:
+            ok = False
+            print(f"  MISSING  {exc}")
+    print(f"  run log: {log_path(args)}")
     print("\n[verdict] " + ("READY" if ok else "NOT READY: see MISSING / SHORT above"))
     print("=" * 70)
     return 0 if ok else 1
@@ -340,23 +426,88 @@ def ids_digest(ids) -> str:
 # ======================================================================
 # 3. Runtime import (CUDA_VISIBLE_DEVICES must be set before torch).
 # ======================================================================
-def _pick_freest_gpu() -> str:
+def _query_gpus():
+    """[(physical index, uuid, free MiB)] from nvidia-smi; [] if it fails.
+
+    nvidia-smi ignores CUDA_VISIBLE_DEVICES and lists every GPU it can see,
+    so the caller restricts the pick to the visible set itself.
+    """
     import subprocess
     try:
         smi = subprocess.run(
-            ["nvidia-smi", "--query-gpu=index,memory.free",
+            ["nvidia-smi", "--query-gpu=index,uuid,memory.free",
              "--format=csv,noheader,nounits"],
             capture_output=True, text=True, timeout=10)
-        gpu_free = []
+        gpus = []
         for line in smi.stdout.strip().split("\n"):
-            idx, free = line.split(",")
-            gpu_free.append((int(idx.strip()), int(free.strip())))
-        gpu_free.sort(key=lambda x: x[1], reverse=True)
-        if gpu_free:
-            return str(gpu_free[0][0])
+            idx, uuid, free = (s.strip() for s in line.split(","))
+            gpus.append((int(idx), uuid, int(free)))
+        return gpus
     except Exception as exc:  # noqa: BLE001
-        print(f"[GPU] nvidia-smi failed ({exc}); using device 0.")
-    return "0"
+        print(f"[GPU] nvidia-smi failed ({exc}).")
+        return []
+
+
+def _pick_freest_gpu(visible=None, gpus=None) -> str:
+    """The freest GPU, as a CUDA_VISIBLE_DEVICES entry.
+
+    visible=None: among every GPU nvidia-smi lists (returns its physical
+    index, the old behaviour). visible=[entries of a preset
+    CUDA_VISIBLE_DEVICES]: only among those, matched by physical index or
+    by UUID (GPU-...), and the matching ENTRY is returned as written. An
+    entry nvidia-smi cannot match (a MIG-... device, or indices that are
+    relative to a SLURM cgroup) falls back to the first visible entry.
+    `gpus` lets tests pass nvidia-smi's rows instead of running it.
+    """
+    gpus = _query_gpus() if gpus is None else gpus
+    if visible is None:
+        if not gpus:
+            print("[GPU] no nvidia-smi data; using device 0.")
+            return "0"
+        return str(max(gpus, key=lambda g: g[2])[0])  # first on ties
+    by_index = {str(i): free for i, _, free in gpus}
+    by_uuid = {uuid: free for _, uuid, free in gpus}
+    scored = []
+    for entry in visible:
+        free = by_index.get(entry) if entry.isdigit() else by_uuid.get(entry)
+        if free is None:
+            print(f"[GPU] cannot match visible entry {entry!r} to nvidia-smi; "
+                  f"using the first visible entry {visible[0]!r}.")
+            return visible[0]
+        scored.append((free, entry))
+    return max(scored, key=lambda s: s[0])[1]
+
+
+def resolve_visible_device(preset_cvd, gpu, freest_fn=_pick_freest_gpu):
+    """The single CUDA_VISIBLE_DEVICES entry this process pins itself to.
+
+    Pure and torch-free (tested in tests/test_offline_logic.py).
+    preset_cvd : CUDA_VISIBLE_DEVICES as found in the environment, None if
+                 unset (SLURM and the launcher set it; a shell usually not).
+    gpu        : --gpu. N >= 0 is the N-th entry of the preset list, or the
+                 physical nvidia-smi index when nothing is preset (the old
+                 behaviour). N < 0 picks the freest, among the preset list
+                 only when there is one.
+    freest_fn  : freest_fn(None | [entries]) -> entry (nvidia-smi based).
+    Entries are kept as written, so a UUID (GPU-..., MIG-...) stays a UUID.
+    Raises ValueError for an out-of-range N or a preset list with no entry.
+    """
+    if preset_cvd is None:
+        return freest_fn(None) if gpu < 0 else str(gpu)
+    visible = [e.strip() for e in preset_cvd.split(",") if e.strip()]
+    if not visible:
+        raise ValueError(
+            f"CUDA_VISIBLE_DEVICES={preset_cvd!r} is set but lists no GPU, so "
+            f"no GPU is visible to this process. Unset it, or use --device "
+            f"cpu.")
+    if gpu < 0:
+        return visible[0] if len(visible) == 1 else freest_fn(visible)
+    if gpu >= len(visible):
+        raise ValueError(
+            f"--gpu {gpu} is out of range: CUDA_VISIBLE_DEVICES="
+            f"{preset_cvd!r} exposes {len(visible)} device(s), so --gpu takes "
+            f"0..{len(visible) - 1}, or -1 for the freest of them.")
+    return visible[gpu]
 
 
 def load_runtime(args):
@@ -364,9 +515,19 @@ def load_runtime(args):
         os.environ["CUDA_VISIBLE_DEVICES"] = ""
         print("[GPU] CUDA_VISIBLE_DEVICES='' (CPU run)")
     else:
-        os.environ["CUDA_VISIBLE_DEVICES"] = (
-            _pick_freest_gpu() if args.gpu < 0 else str(args.gpu))
-        print(f"[GPU] CUDA_VISIBLE_DEVICES={os.environ['CUDA_VISIBLE_DEVICES']}")
+        preset = os.environ.get("CUDA_VISIBLE_DEVICES")
+        try:
+            entry = resolve_visible_device(preset, args.gpu)
+        except ValueError as exc:
+            raise SystemExit(f"[fatal] {exc}") from exc
+        os.environ["CUDA_VISIBLE_DEVICES"] = entry
+        if preset is None:
+            how = ("freest by nvidia-smi" if args.gpu < 0
+                   else "physical nvidia-smi index")
+        else:
+            how = (f"freest of the preset list {preset!r}" if args.gpu < 0
+                   else f"entry {args.gpu} of the preset list {preset!r}")
+        print(f"[GPU] CUDA_VISIBLE_DEVICES={entry} ({how}, --gpu {args.gpu})")
     try:
         import numpy as _np
         import torch as _torch

@@ -332,11 +332,73 @@ def parse_args(argv=None):
     return args
 
 
+def hf_hub_cache():
+    """(hub cache dir, how it was found), the dir transformers will use.
+
+    huggingface_hub.constants.HF_HUB_CACHE when importable (it honours
+    HF_HUB_CACHE and HF_HOME, e.g. ./weights/hf from scripts/env.sh); else
+    the same rules by hand: $HF_HUB_CACHE, $HF_HOME/hub, then
+    ~/.cache/huggingface/hub.
+    """
+    try:
+        from huggingface_hub import constants
+        return constants.HF_HUB_CACHE, "huggingface_hub.constants.HF_HUB_CACHE"
+    except Exception:  # noqa: BLE001 (not installed, or a broken install)
+        pass
+    if os.environ.get("HF_HUB_CACHE"):
+        return os.path.expanduser(os.environ["HF_HUB_CACHE"]), "$HF_HUB_CACHE"
+    if os.environ.get("HF_HOME"):
+        return (os.path.join(os.path.expanduser(os.environ["HF_HOME"]), "hub"),
+                "$HF_HOME/hub")
+    return os.path.expanduser("~/.cache/huggingface/hub"), "default"
+
+
+def hf_offline():
+    """True when HF_HUB_OFFLINE (or the older TRANSFORMERS_OFFLINE) is on."""
+    return core.env_flag("HF_HUB_OFFLINE") or core.env_flag(
+        "TRANSFORMERS_OFFLINE")
+
+
+def hf_cached(hub, model, revision):
+    """(cached at `revision`?, repo dir, detail) from the hub cache layout.
+
+    models--<org>--<name>/refs/<revision> holds the commit hash and
+    snapshots/<hash>/ the files; an offline load needs both. A 40-hex
+    revision is a commit hash and is looked up in snapshots/ directly.
+    """
+    repo = os.path.join(hub, "models--" + model.replace("/", "--"))
+    if not os.path.isdir(repo):
+        return False, repo, "not in the cache"
+    commit = revision if (len(revision) == 40 and all(
+        c in "0123456789abcdef" for c in revision)) else None
+    if commit is None:
+        ref = os.path.join(repo, "refs", *revision.split("/"))
+        try:
+            with open(ref) as f:
+                commit = f.read().strip()
+        except OSError:
+            return False, repo, f"cached, but not at revision {revision}"
+    snap = os.path.join(repo, "snapshots", commit)
+    if not os.path.isfile(os.path.join(snap, "config.json")):
+        return False, repo, (f"revision {revision} -> {commit[:12]} has no "
+                             f"complete snapshot")
+    return True, repo, f"revision {revision} -> {commit[:12]}"
+
+
+def preflight_weights(args):
+    """[(label, present, path checked, offline reason)] for core.preflight."""
+    hub, how = hf_hub_cache()
+    present, repo, detail = hf_cached(hub, args.florence_model,
+                                      args.florence_revision)
+    offline = (f"HF_HUB_OFFLINE is set and {detail}: fill the cache on a "
+               f"machine with internet (same HF_HOME), or unset "
+               f"HF_HUB_OFFLINE" if hf_offline() else None)
+    return [(f"{args.florence_model}@{args.florence_revision}", present,
+             f"{repo} ({how}; {detail})", offline)]
+
+
 def main(argv=None):
     args = parse_args(argv)
-    hub = os.path.expanduser("~/.cache/huggingface/hub")
-    cached = os.path.isdir(os.path.join(
-        hub, "models--" + args.florence_model.replace("/", "--")))
     if args.preflight:
         needs_coco = "florence_det" in args.tracks
         return core.preflight(
@@ -345,14 +407,16 @@ def main(argv=None):
                      ("transformers", "Florence-2"),
                      ("pycocotools", "COCO mAP"
                       if needs_coco else "not needed for the OCR track")],
-            weights=[(args.florence_model, cached)])
+            weights=preflight_weights(args))
 
     device = core.load_runtime(args)
     os.makedirs(args.output_dir, exist_ok=True)
-    with core.run_log(os.path.join(args.output_dir, "run.log"), argv=sys.argv,
+    with core.run_log(core.log_path(args), argv=sys.argv,
                       extra={"experiment": args.experiment, "n": args.n,
                              "tracks": ",".join(args.tracks),
                              "device": str(device),
+                             "visible": os.environ.get(
+                                 "CUDA_VISIBLE_DEVICES"),
                              "smoke_test": args.smoke_test}):
         args.image_dir = core.resolve_image_dir(args.image_dir)
         args.ann_file = core.resolve_ann_file(args.ann_file)
@@ -372,6 +436,7 @@ def main(argv=None):
         print(f"  tracks    : {args.tracks}")
         print(f"  device    : {device}")
         print(f"  output    : {args.output_dir}")
+        print(f"  log       : {args.log_name}")
 
         coco_gt = None
         if "florence_det" in args.tracks:

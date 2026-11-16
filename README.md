@@ -8,7 +8,7 @@ Attacks: FGSM, PGD, Patch
 
 Defenses: solo transforms + detection-level transform ensembles merged by class-aware NMS.
 
-Primary report: `docs/CS24MTECH14020_CVPR_Project_Report.pdf`
+Primary report: `docs/CV_Research_Paper___CVPR_Format.pdf`; paper rewrite in `docs/paper_draft/`
 
 ## Current Status (Important)
 
@@ -75,13 +75,42 @@ one tmux pane per process.
 Data/model assets used by runs (gitignored, fetched separately): `val2017/`,
 `annotations/instances_val2017.json`, `yolov8x-worldv2.pt` (auto-downloaded by ultralytics).
 
-## Environment Setup
+## Environment Setup (fresh server)
 
 ```bash
-conda env create -f environment.yml
-conda activate vlm_ftune
-python -m ipykernel install --user --name=vlm_ftune --display-name "Python (vlm_ftune)"
+git clone <repo> && cd Adversarial_Attack_Defence_Paper
+bash scripts/setup_server.sh     # Miniforge if no conda, env, COCO val2017, all weights, preflight, tests
 ```
+
+It is re-runnable (each step skips what exists) and needs internet, so on a cluster run it on the
+login node. Everything lands inside the repo: `val2017/`, `annotations/`, `yolov8x-worldv2.pt`,
+`weights/clip/`, the Florence-2 cache in `weights/hf/` (all gitignored). torch 2.6.0+cu118 covers
+sm_50 to sm_90 (A100, A6000, L40S, H100); the script warns on Blackwell GPUs, which need a cu128
+torch. In every new shell, tmux pane or SLURM job:
+
+```bash
+conda activate vlm_ftune && cd <repo> && export HF_HOME=$PWD/weights/hf
+export HF_HUB_OFFLINE=1          # only on GPU nodes without internet
+```
+
+**Running faster.** Use one process per GPU and run them side by side; with a
+`CUDA_VISIBLE_DEVICES` already set (SLURM), `--gpu N` picks the N-th visible GPU. Jobs sharing
+`results/phase4/adaptive_bpda_yolo/` are safe (checkpoints are keyed by config, summary stems by
+target/seed/flags), but give each its own `--log-name run_<job>.log` so the logs do not interleave:
+
+```bash
+for s in 1 2 3; do   # e.g. 3 GPUs, one seed each, in tmux panes or with nohup
+  nohup python phase4/p4_yolo.py --experiment adaptive_bpda --target ens_4way --n 1000 \
+    --attack-space native --pgd-select best --pgd-iters 50 --alpha 0.002 --seed $s \
+    --gpu $((s-1)) --log-name run_ens4way_s$s.log > /dev/null 2>&1 &
+done
+```
+
+`--eot-batch auto` (default) sends all defense branches of a PGD step through YOLO as one batch
+when the GPU has at least 16 GiB (same objective and gradient up to float rounding; it falls back
+to one branch at a time on an out-of-memory error). Force it with `--eot-batch on|off`. It is not
+part of the checkpoint signature or the summary name. First measure the rate with `--n 100` (the
+heartbeat prints s/image and an ETA) before booking long runs.
 
 ## Dataset Layout
 

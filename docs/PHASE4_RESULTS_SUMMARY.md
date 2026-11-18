@@ -35,7 +35,7 @@ All values are COCO mAP@[.5:.95] on 1,000 images.
 
 | Defense | Clean + defense | Oblivious PGD + defense | Adaptive, max objective | Adaptive, mean objective | Worst case |
 |---|---|---|---|---|---|
-| Median | 0.458 | 0.366 | 0.018 (3 seeds, sd 0.001) | same (one branch) | **0.017** |
+| Median | 0.458 | 0.366 | 0.018 (3 seeds, sd 0.001) | same (one branch) | **0.016** |
 | EnsJMG (JPEG + Median + Gaussian) | 0.466 | 0.407 | 0.073 (3 seeds, sd 0.002) | 0.048 | **0.048** |
 | Ens4W (JPEG + Median + TVM + Gaussian) | 0.468 | 0.431 | 0.108 | 0.069 | **0.069** |
 
@@ -47,7 +47,7 @@ Column notes:
 
 **What the table shows:**
 - An oblivious attack leaves the defended model at 0.37–0.43 mAP.
-- An adaptive attack with the same 7/255 budget brings it down to 0.017–0.069.
+- An adaptive attack with the same 7/255 budget brings it down to 0.016–0.069.
 - Median ends at the undefended level, and the ensembles end just above it.
 
 ## 3. Florence-2 under the adaptive attack
@@ -76,7 +76,7 @@ These are YOLO values on the same 1,000 images.
 |---|---|---|---|
 | Attack | PGD, 10 steps, alpha 0.0075, letterbox space | PGD, 50 steps, alpha 0.002, native resolution | BPDA+EOT through the defense, 50 steps |
 | No defense | 0.074 | 0.015 | 0.015 |
-| Median | 0.364 | 0.366 | 0.017 |
+| Median | 0.364 | 0.366 | 0.016 |
 | EnsJMG | 0.405 | 0.407 | 0.048 |
 
 **What is different:**
@@ -93,8 +93,8 @@ These are YOLO values on the same 1,000 images.
 | Adaptive vs oblivious objective | all 1,000-image runs | adaptive objective lower on 999–1,000 of 1,000 images | the optimizer does what it should |
 | More steps | EnsJMG, 300 images | 50 steps 0.086 → 100 steps 0.054 | not converged at 50 steps; our numbers are an upper bound |
 | Larger budget | EnsJMG, eps 0.1, 300 images | 0.023 | mAP keeps falling as the budget grows; no sign of gradient masking |
-| Max vs mean objective | YOLO EnsJMG and Ens4W; Florence EnsJMG | YOLO: mean is stronger (0.071 → 0.048, 0.108 → 0.069). Florence: equal | report the worst case over both |
-| Median gradient | true vs identity (BPDA) | 0.017 vs 0.042 | the true median gradient is the stronger attack |
+| Max vs mean objective | YOLO EnsJMG and Ens4W; Florence EnsJMG | YOLO: mean is stronger (0.071 → 0.048, 0.108 → 0.069). Florence: within 0.002 (0.199 max, 0.201 mean) | report the worst case over both |
+| Median gradient | true vs identity (BPDA) | 0.016 vs 0.042 | the true median gradient is the stronger attack |
 | Repeatability | `--deterministic`, same seed | YOLO bit-identical; Florence varies about 0.005 mAP | state repeatability per model |
 
 ## 6. Clean cost of every defense (5,000 images, no attack)
@@ -134,7 +134,7 @@ The OCR value is self-consistency: how closely the defended OCR text matches the
 
 - Clean accuracy: **0.856**.
 - Under a 10-step oblivious PGD attack (eps 0.03): **0.439**.
-- Questions are half yes and half no.
+- Two questions per image; 992 of the 2,000 have the answer yes.
 
 | Defense | Clean accuracy | Attacked accuracy | Share of damage recovered |
 |---|---|---|---|
@@ -154,7 +154,7 @@ The OCR value is self-consistency: how closely the defended OCR text matches the
 | EnsJTS | 0.846 | 0.470 | 8% |
 | Anisotropic diffusion | 0.846 | 0.465 | 6% |
 | Bilateral | 0.842 | 0.453 | 3% |
-| NLM, dithering, SVD, bit depth | 0.850–0.855 | 0.438–0.441 | 0% |
+| NLM, dithering, SVD, bit depth | 0.850–0.855 | 0.438–0.441 | 0–1% |
 
 On SmolVLM the strongest smoothing transforms work best against an oblivious attack, and the ensembles recover only 8–24% of the damage. We did not run an adaptive attack on SmolVLM. Given sections 2–3, these recoveries should be read as upper bounds.
 

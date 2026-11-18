@@ -46,6 +46,15 @@ SOLO = [k for k in LABEL if not k.startswith("ens_")]
 USED = []
 
 
+
+def rnd(x, digits, sign=False):
+    """Round half up from the shortest decimal form of x (0.7535 -> 0.754)."""
+    import decimal
+    q = decimal.Decimal(repr(float(x))).quantize(decimal.Decimal(1).scaleb(-digits),
+                                                   rounding=decimal.ROUND_HALF_UP)
+    s = f"{q:f}"
+    return "+" + s if sign and not s.startswith("-") else s
+
 def load(path):
     USED.append(os.path.relpath(path, ROOT))
     with open(path) as f:
@@ -63,7 +72,7 @@ def adaptive(model, target, seed, mean_obj=False, sub="adaptive_bpda_{m}",
 
 
 def f3(x):
-    return f"{x:.3f}"
+    return f"{rnd(x, 3)}"
 
 
 def write(name, lines):
@@ -83,7 +92,7 @@ def adaptive_table(model, targets, seeds):
         for c in COLS:
             v = [r["headline"][c] for r in runs]
             cells.append(f3(statistics.fmean(v)) if len(v) < 2 else
-                         f"{statistics.fmean(v):.3f} ({statistics.stdev(v):.3f})")
+                         f"{rnd(statistics.fmean(v), 3)} ({rnd(statistics.stdev(v), 3)})")
         mean_run = adaptive(model, t, 1, mean_obj=True)
         if len(runs[0]["defense"]["branches"]) == 1:
             cells.append("same")
@@ -161,8 +170,8 @@ def main():
     fo = load(os.path.join(R, "clean_control_florence_ocr", "summary_clean_"
                            "control_florence_alltransforms_latest.json")
               )["tracks"]["florence_ocr"]
-    print(f"  undefended clean: yolo {y['undefended_clean']:.4f}, florence "
-          f"{fd['undefended_clean']:.4f}, ocr {fo['undefended_clean']:.3f}")
+    print(f"  undefended clean: yolo {rnd(y['undefended_clean'], 4)}, florence "
+          f"{rnd(fd['undefended_clean'], 4)}, ocr {rnd(fo['undefended_clean'], 3)}")
     lines = []
     for k in SOLO + ENS:
         cells = []
@@ -170,8 +179,8 @@ def main():
                         (fo, "value")):
             d = tr["defenses"].get(k)
             cells.append("" if d is None else
-                         (f"{d[key]:+.3f}" if key.startswith("delta")
-                          else f"{d[key]:.3f}"))
+                         (f"{rnd(d[key], 3, True)}" if key.startswith("delta")
+                          else f"{rnd(d[key], 3)}"))
         if k == "ens_jpeg_median_gaussian":
             lines.append("\\midrule")
         lines.append(f"{LABEL[k]} & " + " & ".join(cells) + " \\\\")
@@ -190,10 +199,10 @@ def main():
         cc, rc = d["clean_cost"], d["recovery"]
         b = lambda iv: "\\textbf{" if iv["excludes_0"] else "{"   # noqa: E731
         lines.append(
-            f"{LABEL[k]} & {d['clean_accuracy']:.3f} & "
-            f"{b(cc)}{cc['point']:+.3f}}} [{cc['lo']:+.3f}, {cc['hi']:+.3f}] & "
-            f"{d['attacked_accuracy']:.3f} & "
-            f"{b(rc)}{rc['point']:+.3f}}} [{rc['lo']:+.3f}, {rc['hi']:+.3f}] \\\\")
+            f"{LABEL[k]} & {rnd(d['clean_accuracy'], 3)} & "
+            f"{b(cc)}{rnd(cc['point'], 3, True)}}} [{rnd(cc['lo'], 3, True)}, {rnd(cc['hi'], 3, True)}] & "
+            f"{rnd(d['attacked_accuracy'], 3)} & "
+            f"{b(rc)}{rnd(rc['point'], 3, True)}}} [{rnd(rc['lo'], 3, True)}, {rnd(rc['hi'], 3, True)}] \\\\")
     write("tab_smolvlm.tex", lines)
 
     owl = os.path.join(R, "oblivious_survey_owl",
@@ -212,22 +221,22 @@ def main():
             if k in boot:
                 b = boot[k]["ensemble_minus_best_member_attacked"]
                 bold = "\\textbf{" if b["excludes_0"] else "{"
-                vs = (f"{bold}{b['point']:+.3f}}} [{b['lo']:+.3f}, {b['hi']:+.3f}] "
+                vs = (f"{bold}{rnd(b['point'], 3, True)}}} [{rnd(b['lo'], 3, True)}, {rnd(b['hi'], 3, True)}] "
                       f"({LABEL[boot[k]['best_member_under_attack']]})")
-            lines.append(f"{LABEL[k]} & {d['clean_cost']:+.3f} & "
-                         f"{d['attacked_mAP']:.3f} & {d['recovery_pct_of_damage']:.0f}\\% & "
+            lines.append(f"{LABEL[k]} & {rnd(d['clean_cost'], 3, True)} & "
+                         f"{rnd(d['attacked_mAP'], 3)} & {rnd(d['recovery_pct_of_damage'], 0)}\\% & "
                          f"{vs} \\\\")
         write("tab_owl_survey.tex", lines)
         for k, r in boot.items():
-            print(f"  boot {k}: vs best {r['ensemble_minus_best_member_attacked']['point']:+.4f} "
-                  f"[{r['ensemble_minus_best_member_attacked']['lo']:+.4f}, "
-                  f"{r['ensemble_minus_best_member_attacked']['hi']:+.4f}] bc_excl "
+            print(f"  boot {k}: vs best {rnd(r['ensemble_minus_best_member_attacked']['point'], 4, True)} "
+                  f"[{rnd(r['ensemble_minus_best_member_attacked']['lo'], 4, True)}, "
+                  f"{rnd(r['ensemble_minus_best_member_attacked']['hi'], 4, True)}] bc_excl "
                   f"{r['ensemble_minus_best_member_attacked']['bc_excludes_0']}; vs median "
-                  f"{r['ensemble_minus_median_attacked']['point']:+.4f} "
-                  f"[{r['ensemble_minus_median_attacked']['lo']:+.4f}, "
-                  f"{r['ensemble_minus_median_attacked']['hi']:+.4f}]; clean "
-                  f"{r['clean_cost']['point']:+.4f} [{r['clean_cost']['lo']:+.4f}, "
-                  f"{r['clean_cost']['hi']:+.4f}]")
+                  f"{rnd(r['ensemble_minus_median_attacked']['point'], 4, True)} "
+                  f"[{rnd(r['ensemble_minus_median_attacked']['lo'], 4, True)}, "
+                  f"{rnd(r['ensemble_minus_median_attacked']['hi'], 4, True)}]; clean "
+                  f"{rnd(r['clean_cost']['point'], 4, True)} [{rnd(r['clean_cost']['lo'], 4, True)}, "
+                  f"{rnd(r['clean_cost']['hi'], 4, True)}]")
         for t in ("median", "ens_jpeg_median_gaussian"):
             r = adaptive("owl", t, 1)
             if r:
@@ -258,11 +267,11 @@ def main():
     for row in rows:
         h = row[4]
         print(f"  {row[0]:8} {row[1]}/255 {row[2]:26} {row[3]:4} clean "
-              f"{h['clean_mAP']:.4f} obl-undef "
-              f"{h['oblivious_attacked_undefended_mAP']:.4f} obl-def "
-              f"{h['oblivious_attacked_defended_mAP']:.4f} adp-undef "
-              f"{h['adaptive_attacked_undefended_mAP']:.4f} adp-def "
-              f"{h['adaptive_attacked_defended_mAP']:.4f}")
+              f"{rnd(h['clean_mAP'], 4)} obl-undef "
+              f"{rnd(h['oblivious_attacked_undefended_mAP'], 4)} obl-def "
+              f"{rnd(h['oblivious_attacked_defended_mAP'], 4)} adp-undef "
+              f"{rnd(h['adaptive_attacked_undefended_mAP'], 4)} adp-def "
+              f"{rnd(h['adaptive_attacked_defended_mAP'], 4)}")
     budget_table(rows)
     print("[files used]")
     for u in USED:

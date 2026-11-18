@@ -17,9 +17,18 @@ SRC = os.path.join(ROOT, "results", "phase4", "rescore_phase3_v2",
                    "summary_rescore_phase3_v2_latest.json")
 
 
+
+def rnd(x, digits, sign=False):
+    """Round half up from the shortest decimal form of x (0.7535 -> 0.754)."""
+    import decimal
+    q = decimal.Decimal(repr(float(x))).quantize(decimal.Decimal(1).scaleb(-digits),
+                                                   rounding=decimal.ROUND_HALF_UP)
+    s = f"{q:f}"
+    return "+" + s if sign and not s.startswith("-") else s
+
 def cell(d):
     """'+0.044 [+0.037, +0.052]', bold when the 95% CI excludes zero."""
-    s = f"{d['point']:+.3f} [{d['lo']:+.3f}, {d['hi']:+.3f}]"
+    s = f"{rnd(d['point'], 3, True)} [{rnd(d['lo'], 3, True)}, {rnd(d['hi'], 3, True)}]"
     s = s.replace("-", "$-$").replace("+", "$+$")
     return f"\\textbf{{{s}}}" if d["excludes_0"] else s
 
@@ -34,8 +43,8 @@ def main():
         clean = data["clean_point"][model]["mAP"]
         atk = [data["recovery"][model][a]["attacked_mAP"]
                for a in ("fgsm", "pgd", "patch")]
-        lines.append("Undefended mAP & %.3f & %.3f & %.3f & %.3f \\\\"
-                     % (clean, *atk))
+        lines.append("Undefended mAP & " + " & ".join(rnd(v, 3) for v in (clean, *atk))
+                 + " \\\\")
         lines.append("\\midrule")
         seen_ens = False
         for name, row in cost.items():

@@ -14,13 +14,13 @@
   alpha 0.002, `--attack-space native --pgd-select best --deterministic`. Tables and every number:
   `README.md` "Results" and `docs/PHASE4_RESULTS_SUMMARY.md`.
 - **Headline (RQ3):** YOLO-World, 1,000 images: oblivious-defended 0.366 / 0.407 / 0.431 (Median /
-  EnsJMG / Ens4W) fall to a worst case of 0.017 / 0.048 / 0.069 under the adaptive attack, vs
+  EnsJMG / Ens4W) fall to a worst case of 0.016 / 0.048 / 0.069 under the adaptive attack, vs
   0.018 undefended (seed 1). Florence-2: Median 0.148, EnsJMG 0.166 vs 0.134-0.138 undefended.
 - **Findings that change the draft:** `--eot-loss mean` beats `max` on YOLO (EnsJMG 0.071 ->
-  0.048, Ens4W 0.108 -> 0.069), equal on Florence, so the "max is the natural worst case /
+  0.048, Ens4W 0.108 -> 0.069), within 0.002 on Florence (0.199 vs 0.201), so the "max is the natural worst case /
   union-aware" claim is dropped and every worst case is the min over both; 100 steps lower EnsJMG
   0.086 -> 0.054 (300 imgs), so adaptive numbers are upper bounds; eps 0.1 -> 0.023; true median
-  gradient 0.017 vs identity 0.042; YOLO repeats bit for bit, Florence differs ~0.005 mAP.
+  gradient 0.016 vs identity 0.042; YOLO repeats bit for bit, Florence differs ~0.005 mAP.
 - **Clean cost, 5,000 images, all transforms:** YOLO ensembles -0.000 to -0.010 (each below its
   members), solos up to -0.057 (Blur+TVM); Florence det smoothing filters -0.050 to -0.081; OCR
   self-consistency 0.51 (Blur+TVM) to 0.95 (SVD). SmolVLM-256M (1,000 images, oblivious only):

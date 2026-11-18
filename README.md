@@ -24,18 +24,19 @@ adversarial attacks. It covers four models, all evaluated on **COCO val2017**:
 - Every Phase-4 GPU job with its start, end, exit code and command: `docs/PHASE4_JOB_LEDGER.md`.
 - Project state and citations: `docs/memory.md`.
 
-## Key findings (18 Nov 2026)
+## Key findings (19 Nov 2026)
 
-1. **The Phase-3 numbers are correct and reproduce exactly.** We re-ran the clean and oblivious-defended scores in Phase 4:
-   - YOLO clean: 0.4519 on 5,000 images and 0.4764 on 1,000.
-   - Florence clean: 0.3304 on 5,000 and 0.3604 on 1,000.
-   - YOLO oblivious PGD + defense: Median 0.366 (Phase 3: 0.364), EnsJMG 0.407 (Phase 3: 0.405).
-2. **Those recoveries only hold against an attacker who ignores the defense.** An adaptive attacker with the same 7/255 budget brings YOLO-World with a defense down to 0.017–0.069 mAP, against 0.476 clean and 0.015 with no defense. On Florence-2 a defense keeps only +0.01 to +0.03 mAP over no defense.
-3. **Ensembles are the least bad option, but not a fix.** They keep 3–4 times more mAP than Median under the adaptive attack (0.048–0.069 vs 0.017). He et al. (WOOT 2017) found the same weakness for ensembles of weak defenses on image classifiers.
-4. **Ensembles are cheap on clean detection** (≤ 0.010 mAP on 5,000 images) **but expensive on OCR** (self-consistency 0.64–0.84).
-5. **SmolVLM, oblivious attack only:** strong smoothing (Blur+TVM, random resize, BM3D) recovers about 70–75% of the damage. The ensembles recover 8–24%.
-6. **OWL-ViT (4th model) is where ensembles do help, against an attacker who ignores the defense.** Every ensemble beats each of its own members (6 of 7 with 95% bootstrap intervals above zero) and costs nothing measurable on clean images. Against an attacker who knows the defense, EnsJMG still falls from 0.201 to 0.061 mAP (no defense: 0.011).
-7. **A smaller budget (4/255) leaves the defenses more, but the ensemble's lead over its best member stays small.** On YOLO, EnsJMG keeps 0.137 against 0.062 with no defense, only 0.011 more than JPEG alone. On Florence it keeps 0.256 against 0.195.
+1. **The Phase-3 numbers hold up.** The clean scores reproduce, and the oblivious defended scores land close to Phase 3's under a stronger PGD:
+   - YOLO-World clean: 0.4519 on 5,000 images and 0.4764 on 1,000 (Phase 3: 0.4765).
+   - Florence-2 clean: 0.3304 on 5,000 (Phase 3: 0.3300) and 0.3604 on 1,000 (Phase 3: 0.3605).
+   - YOLO-World oblivious PGD + defense: Median 0.366 (Phase 3: 0.3639), EnsJMG 0.407 (Phase 3: 0.4045).
+2. **Those recoveries only hold against an attacker who ignores the defense.** An adaptive attacker with the same 7/255 budget brings YOLO-World with a defense down to 0.016–0.069 mAP (worst case over objectives, seed 1), against 0.476 clean and 0.018 with no defense (seed 1; 0.015 over 3 seeds). On Florence-2 a defense keeps only +0.01 to +0.03 mAP over no defense (0.148 and 0.166 against 0.138 and 0.134).
+3. **Ensembles are the least bad option, but not a fix.** Under the adaptive attack they keep 3–4 times more mAP than Median (0.048–0.069 vs 0.016). He et al. (WOOT 2017) found the same weakness for ensembles of weak defenses on image classifiers.
+4. **Ensembles are cheap on clean detection** (at most 0.010 mAP lost on 5,000 images) **but expensive on OCR** (self-consistency 0.644–0.843).
+5. **SmolVLM, oblivious attack only:** strong smoothing (Blur+TVM, random resize, BM3D) recovers 69–75% of the damage. The ensembles recover 8–24%.
+6. **OWL-ViT (4th model) is where ensembles do help, against an attacker who ignores the defense.** Every ensemble beats its best member (by +0.003 to +0.009 mAP; 6 of 7 with 95% bootstrap intervals above zero), and no ensemble has a clean cost distinguishable from zero. Against an attacker who knows the defense, EnsJMG still falls from 0.201 to 0.061 mAP with the max objective (no defense: 0.011); on the first 300 images the mean objective goes lower still (0.073 vs 0.083).
+7. **A smaller budget (4/255) leaves the defenses more, but the ensemble's lead stays small.** On YOLO-World, EnsJMG keeps 0.137 against 0.062 with no defense, only 0.011 more than JPEG alone (0.126). On Florence-2 it keeps 0.256 against 0.194–0.195.
+8. **Correction of 19 Nov:** the adaptive Median number for YOLO-World (seed 1) is 0.0165, which is **0.016** at three decimals. Earlier drafts said 0.017 (rounded twice).
 
 ## Status
 
@@ -50,7 +51,7 @@ adversarial attacks. It covers four models, all evaluated on **COCO val2017**:
 - **Round 2, 18 Nov 10:20 to 16:48, 13 jobs:** the 4/255 budget on YOLO-World and Florence-2 (300 images) and the fourth model, OWL-ViT (`phase4/p4_owl.py`, 1,000 images). The 2/255 budget was started and then dropped for time; nothing from it is cited.
 - Every job ran with `--deterministic`, seed 1 unless it was a seed repeat, and the first N sorted val2017 images.
 - **What is on GitHub:** every summary (`.json` + `.md`) and every run log, under `results/phase4/`; the per-job ledger `docs/PHASE4_JOB_LEDGER.md`.
-- **What stays local:** the raw queue logs (`logs/phase4_queue/`), the resume checkpoints (`*.pkl`) and the per-image files. No cited number depends on them; the per-image check (adaptive objective below oblivious) is stored in each summary as `frac_images_adaptive_below_oblivious`.
+- **What stays local:** the raw queue logs (`logs/phase4_queue/`), the resume checkpoints (`*.pkl`) and the per-image files. Every cited number is in a committed summary, including the per-image check (`frac_images_adaptive_below_oblivious`). Re-computing the first-300 re-scores or the OWL-ViT bootstrap from scratch needs the local checkpoints.
 
 **Paper:** `docs/paper_draft/main.tex` is filled from `docs/paper_draft/make_phase4_tables.py`, which writes every Phase-4 table from the summaries below. `grep -n 'pending{' main.tex` lists anything still red.
 
@@ -61,11 +62,28 @@ adversarial attacks. It covers four models, all evaluated on **COCO val2017**:
 ## Results
 
 **Rules for every table below:**
-- Every number is read from a committed `summary*.json` unless marked otherwise. The old tables were re-checked against their files on 18 Nov 2026.
+- **Every table between `<!-- table:... -->` markers is generated** from the committed result files by `scripts/make_readme_tables.py`. `python3 scripts/make_readme_tables.py --check` confirms that the README still matches the files. Do not edit those tables by hand.
 - Detection is COCO mAP@[.5:.95].
 - OCR is **self-consistency**: how closely the OCR text matches the model's *own* clean output. It is not accuracy.
-- **N=1,000 and N=5,000 are different image subsets. Never mix them in one table or one sentence.**
-- Order: the Phase-4 tables first, then the earlier paper's Phase-3 tables in full (every defense on every track, the bootstrap intervals, and the N=5,000 survey).
+- **N=1,000, N=300 and N=5,000 are different image sets** (the first N sorted val2017 images). Never compare numbers across them.
+- Every table gives the actual scores. Changes and recoveries are extra columns next to them.
+- Order: the Phase-4 tables first, then the earlier paper's Phase-3 tables in full.
+
+### Ensembles
+
+Every ensemble runs its members on the same image and merges their detections. For OCR the members vote; for SmolVLM their yes-probabilities are averaged.
+
+<!-- table:ensembles -->
+| Ensemble | Code name | Members (merged by class-aware NMS, IoU 0.5) | In the Phase-3 v2 runs |
+|---|---|---|---|
+| EnsJMG | `ens_jpeg_median_gaussian` | JPEG, Median, Gaussian | yes |
+| EnsJMT | `ens_jpeg_median_tvm` | JPEG, Median, TVM | yes |
+| Ens4W | `ens_4way` | JPEG, Median, TVM, Gaussian | no (added in the survey) |
+| EnsBTC | `ens_blur_tvm_combo` | JPEG, Blur+TVM, Median | yes |
+| EnsBMT | `ens_bilateral_median` | Bilateral, Median, TVM | no (added in the survey) |
+| EnsJBT | `ens_jpeg_bilateral_tvm` | JPEG, Bilateral, TVM | no (added in the survey) |
+| EnsJTS | `ens_jpeg_tvm_svd` | JPEG, TVM, SVD | no (added in the survey) |
+<!-- /table:ensembles -->
 
 ### Phase 4 — adaptive attack on YOLO-World (N=1,000)
 
@@ -74,85 +92,89 @@ adversarial attacks. It covers four models, all evaluated on **COCO val2017**:
 - 50 steps, alpha 0.002, `--attack-space native`, `--pgd-select best`.
 
 **How the oblivious and adaptive attacks differ:**
-- The oblivious attack ignores the defense.
-- The adaptive attack differentiates through it: BPDA for the non-differentiable parts, the true gradient for Median, and EOT over the ensemble branches.
+- The oblivious attack ignores the defense; the defense is then applied to its image.
+- The adaptive attack differentiates through the defense: BPDA (identity gradient) for JPEG, the true gradient for Median and Gaussian, and EOT over the ensemble branches.
 - Both attacks start from the same seeded point.
 
-**Reference values:**
-- Clean, no defense: **0.476**.
-- PGD, no defense: **0.015** (3-seed mean; seed 1 alone gives 0.018).
+**Columns:**
+- *Max objective* raises the loss of the least-damaged branch; *mean objective* averages the branches. A single transform has one branch, so the two are the same.
+- *Worst case* is the lower of the two objectives (seed 1).
+- *Adaptive image (max objective), defense removed* scores the max-objective adaptive image on the bare model. It stays high for Median: the perturbation is shaped for the defense.
+- Cells over several seeds give the mean, with the standard deviation in parentheses. Every single run is listed in the raw-values table further down.
 
-| Defense | Clean + defense | Oblivious PGD + defense | Adaptive, max objective | Adaptive, mean objective | Worst case |
-|---|---|---|---|---|---|
-| Median | 0.458 | 0.366 | 0.018 (3 seeds, sd 0.001) | same (one branch) | **0.017** |
-| EnsJMG (JPEG + Median + Gaussian) | 0.466 | 0.407 | 0.073 (3 seeds, sd 0.002) | 0.048 | **0.048** |
-| Ens4W (JPEG + Median + TVM + Gaussian) | 0.468 | 0.431 | 0.108 | 0.069 | **0.069** |
+<!-- table:p4_yolo_adaptive -->
+| Defense | Seeds | Clean, no defense | Clean + defense | Oblivious PGD, no defense | Oblivious PGD + defense | Adaptive + defense, max objective | Adaptive + defense, mean objective (seed 1) | Worst case (seed 1) | Adaptive image (max objective), defense removed |
+|---|---|---|---|---|---|---|---|---|---|
+| No defense | 1, 2, 3 | 0.476 |  | 0.015 (sd 0.003) |  |  |  |  |  |
+| Median | 1, 2, 3 | 0.476 | 0.458 | 0.015 (sd 0.003) | 0.366 (sd 0.003) | 0.018 (sd 0.001) | same (one branch) | **0.016** | 0.452 (sd 0.002) |
+| EnsJMG | 1, 2, 3 | 0.476 | 0.466 | 0.015 (sd 0.003) | 0.407 (sd 0.004) | 0.073 (sd 0.002) | 0.048 | **0.048** | 0.107 (sd 0.003) |
+| Ens4W | 1 | 0.476 | 0.468 | 0.018 | 0.431 | 0.108 | 0.069 | **0.069** | 0.083 |
+<!-- /table:p4_yolo_adaptive -->
 
-Notes:
-- The mean-objective runs, the worst-case column and every Ens4W number are seed 1 only.
-- Per seed, adaptive max: Median 0.0165 / 0.0181 / 0.0191; EnsJMG 0.0713 / 0.0746 / 0.0741.
-- Source: `results/phase4/adaptive_bpda_yolo/summary_adaptive_bpda_yolo_<target>_seed<S>[_eot-loss-mean]_attack-space-native_pgd-select-best_latest.json`.
+Source: `results/phase4/adaptive_bpda_yolo/summary_adaptive_bpda_yolo_<target>_seed<S>[_eot-loss-mean]_attack-space-native_pgd-select-best_latest.json`.
 
 ### Phase 4 — adaptive attack on Florence-2 detection (N=1,000, seed 1)
 
-The attack works in pixel space at 7/255. It uses token cross-entropy against the model's own clean decode, with the same PGD loop and surrogates as YOLO.
+The attack works in pixel space at 7/255. It uses token cross-entropy against the model's own clean decode, with the same PGD loop and surrogates as YOLO-World. The mean objective was run on the first 300 images only, where it is within 0.002 of the max objective (0.201 vs 0.199, see the checks), so the EnsJMG worst case here is the max objective only.
 
-**Reference values:**
-- Clean, no defense: **0.360**.
-- Oblivious PGD, no defense: **0.134–0.138**. Identical runs differ because Florence is not bit-repeatable.
+<!-- table:p4_florence_adaptive -->
+| Defense | Seeds | Clean, no defense | Clean + defense | Oblivious PGD, no defense | Oblivious PGD + defense | Adaptive + defense, max objective | Adaptive + defense, mean objective (seed 1) | Worst case (seed 1) | Adaptive image (max objective), defense removed |
+|---|---|---|---|---|---|---|---|---|---|
+| No defense | 1 | 0.360 |  | 0.138 |  |  |  |  |  |
+| Median | 1 | 0.360 | 0.350 | 0.138 | 0.256 | 0.148 | same (one branch) | **0.148** | 0.335 |
+| EnsJMG | 1 | 0.360 | 0.353 | 0.134 | 0.264 | 0.166 | not run | **0.166** (max only) | 0.159 |
+<!-- /table:p4_florence_adaptive -->
 
-| Defense | Clean + defense | Oblivious PGD + defense | Adaptive PGD + defense |
-|---|---|---|---|
-| Median | 0.350 | 0.256 | **0.148** |
-| EnsJMG | 0.353 | 0.264 | **0.166** |
-
-Sources:
-- `results/phase4/adaptive_bpda_florence/summary_adaptive_bpda_florence_<target>_seed1_pgd-select-best_latest.json`.
-- Mean vs max objective on EnsJMG, first 300 images (0.201 vs 0.199): `results/phase4/adaptive_bpda_florence_n300/`.
+Florence-2 is not bit-repeatable, so the no-defense columns differ slightly between the two runs. Source: `results/phase4/adaptive_bpda_florence/summary_adaptive_bpda_florence_<target>_seed1_pgd-select-best_latest.json`.
 
 ### Phase 4 — checks that the attack is sound
 
+<!-- table:p4_checks -->
 | Check | Setting | Result | Meaning |
 |---|---|---|---|
-| Adaptive vs oblivious objective | every 1,000-image run | the adaptive objective is lower on 999–1,000 of 1,000 images | the optimizer does what it should |
-| More steps | YOLO EnsJMG, 300 images | 50 steps 0.086 → 100 steps 0.054 | not converged at 50 steps; Table 5 is an **upper bound** |
-| Larger budget | YOLO EnsJMG, eps 0.1, 300 images | 0.023 | mAP keeps falling as eps grows; no sign of gradient masking |
-| Max vs mean objective | YOLO EnsJMG and Ens4W; Florence EnsJMG | YOLO: mean is stronger (0.071 → 0.048, 0.108 → 0.069). Florence: equal (0.199 vs 0.201) | report the **worst case over objectives** |
-| Median gradient | YOLO Median, true vs identity (BPDA) | 0.017 vs 0.042 | the true median gradient is the stronger attack |
-| Repeatability | `--deterministic`, same seed, run twice | YOLO bit-identical; Florence varies about 0.005 mAP | state repeatability per model |
+| Adaptive vs oblivious objective | all 14 runs on 1,000 images (3 models) | the adaptive objective is below the oblivious one on 999–1,000 of 1,000 images, and on all 300 images of every 300-image run | the optimizer does what it should |
+| More steps | YOLO-World EnsJMG, 300 images | 50 steps 0.086 → 100 steps 0.054 | not converged at 50 steps: the adaptive numbers are **upper bounds** |
+| Larger budget | YOLO-World EnsJMG, eps 0.1 (alpha 0.0067), 300 images | adaptive + defense 0.023 (oblivious + defense 0.340) | mAP keeps falling as eps grows: no sign of gradient masking |
+| Max vs mean objective | YOLO-World EnsJMG and Ens4W (1,000 images); Florence-2 and OWL-ViT EnsJMG (first 300) | YOLO-World: mean is stronger (0.071 → 0.048, 0.108 → 0.069). OWL-ViT: mean is stronger (0.083 → 0.073). Florence-2: within 0.002 (0.199 max vs 0.201 mean) | report the **worst case over objectives** |
+| Median gradient | YOLO-World Median, true vs identity (BPDA), 1,000 images | 0.016 vs 0.042 | the true median gradient is the stronger attack |
+| Repeatability | same seed and images, `--deterministic`: oblivious PGD with no defense, across the runs that compute it | YOLO-World 0.0183 in all 6 runs (identical); Florence-2 0.1336–0.1381 over 2 runs; OWL-ViT 0.0108–0.0117 over 3 runs | YOLO-World is bit-repeatable; Florence-2 and OWL-ViT are not |
+<!-- /table:p4_checks -->
 
-Sources: `results/phase4/adaptive_bpda_yolo_iters50_n300/`, `adaptive_bpda_yolo_iters100_n300/`, `adaptive_bpda_yolo_eps0.1/`, and the `_median-surrogate-identity` and `_eot-loss-mean` summaries in `adaptive_bpda_yolo/`.
+Sources: every run in the raw-values table below, in particular `results/phase4/adaptive_bpda_yolo_iters50_n300/`, `adaptive_bpda_yolo_iters100_n300/`, `adaptive_bpda_yolo_eps0.1/`, `adaptive_bpda_florence_n300/`, `adaptive_bpda_owl_n300/`, and the `_median-surrogate-identity` and `_eot-loss-mean` summaries in `adaptive_bpda_yolo/`.
 
-**Note on the 300-image runs:** the first 300 images of a 1,000-image run are the same images. `scripts/p4_subset_score.py` scores them from the 1,000-image checkpoint. On YOLO it reproduces a separate 300-image run exactly.
+**Note on the 300-image numbers:** the first 300 images of a 1,000-image run are the same images. `scripts/p4_subset_score.py` scores them from the 1,000-image checkpoint (`summary_subset_*_first300.json`). On YOLO-World it reproduces a separate 300-image run exactly.
 
-### Phase 4 — clean cost of every defense (N=5,000, no attack)
+### Phase 4 — clean cost of every transform (N=5,000, no attack)
 
-**Baselines with no defense:** YOLO 0.4519 mAP, Florence detection 0.3304 mAP, OCR 1.000 (by construction).
+Each transform applied to clean images, against the same model with no transform. *change* = with the transform minus without.
 
-| Defense | YOLO mAP change | Florence det. mAP change | OCR self-consistency |
-|---|---|---|---|
-| EnsJTS | +0.000 | −0.007 | 0.843 |
-| Ens4W | −0.004 | −0.009 | 0.746 |
-| EnsJBT | −0.004 | −0.005 | 0.789 |
-| EnsBMT | −0.004 | −0.005 | 0.788 |
-| EnsJMG | −0.005 | −0.006 | 0.713 |
-| EnsJMT | −0.005 | −0.006 | 0.746 |
-| EnsBTC | −0.010 | −0.010 | 0.644 |
-| SVD (keeps 90% of the singular values by count; close to identity) | 0.000 | −0.002 | 0.953 |
-| NLM | −0.002 | −0.020 | 0.886 |
-| Bilateral | −0.006 | +0.001 | 0.821 |
-| Bit depth | −0.007 | −0.050 | 0.797 |
-| Dithering | −0.009 | −0.027 | 0.776 |
-| Anisotropic diffusion | −0.012 | −0.014 | 0.798 |
-| Median | −0.013 | −0.010 | 0.620 |
-| Gaussian | −0.015 | −0.056 | 0.672 |
-| TVM | −0.024 | −0.066 | 0.725 |
-| JPEG | −0.026 | −0.011 | 0.673 |
-| Blur+TVM | −0.057 | −0.081 | 0.507 |
-| BM3D (OCR only) | | | 0.648 |
-| Random resize (OCR only) | | | 0.707 |
+<!-- table:p4_clean_cost -->
+| Defense | YOLO-World mAP | change | Florence-2 det. mAP | change | OCR self-consistency | change |
+|---|---|---|---|---|---|---|
+| **No defense** | 0.4519 |  | 0.3304 |  | 1.000 |  |
+| EnsJTS | 0.4522 | +0.000 | 0.3238 | −0.007 | 0.843 | −0.157 |
+| Ens4W | 0.4480 | −0.004 | 0.3212 | −0.009 | 0.746 | −0.254 |
+| EnsJBT | 0.4480 | −0.004 | 0.3253 | −0.005 | 0.789 | −0.211 |
+| EnsBMT | 0.4477 | −0.004 | 0.3258 | −0.005 | 0.788 | −0.212 |
+| EnsJMG | 0.4468 | −0.005 | 0.3242 | −0.006 | 0.713 | −0.287 |
+| EnsJMT | 0.4466 | −0.005 | 0.3241 | −0.006 | 0.746 | −0.254 |
+| EnsBTC | 0.4424 | −0.010 | 0.3202 | −0.010 | 0.644 | −0.356 |
+| SVD | 0.4519 | +0.000 | 0.3284 | −0.002 | 0.953 | −0.047 |
+| NLM | 0.4503 | −0.002 | 0.3107 | −0.020 | 0.886 | −0.114 |
+| Bilateral | 0.4463 | −0.006 | 0.3314 | +0.001 | 0.821 | −0.179 |
+| Bit depth | 0.4448 | −0.007 | 0.2802 | −0.050 | 0.797 | −0.203 |
+| Dithering | 0.4431 | −0.009 | 0.3036 | −0.027 | 0.776 | −0.224 |
+| Anisotropic diffusion | 0.4399 | −0.012 | 0.3163 | −0.014 | 0.798 | −0.202 |
+| Median | 0.4387 | −0.013 | 0.3202 | −0.010 | 0.620 | −0.380 |
+| Gaussian | 0.4369 | −0.015 | 0.2744 | −0.056 | 0.672 | −0.328 |
+| TVM | 0.4280 | −0.024 | 0.2643 | −0.066 | 0.725 | −0.275 |
+| JPEG | 0.4262 | −0.026 | 0.3198 | −0.011 | 0.673 | −0.327 |
+| Blur+TVM | 0.3953 | −0.057 | 0.2492 | −0.081 | 0.507 | −0.493 |
+| BM3D |  |  |  |  | 0.648 | −0.352 |
+| Random resize |  |  |  |  | 0.707 | −0.293 |
+<!-- /table:p4_clean_cost -->
 
-Sources: `results/phase4/clean_control_{yolo,florence_det,florence_ocr}/summary_clean_control_*_alltransforms_latest.json`.
+Sources: `results/phase4/clean_control_{yolo,florence_det,florence_ocr}/summary_clean_control_*_alltransforms_latest.json`. BM3D and random resize were run for OCR only.
 
 The OCR column bounds OCR recovery: a transform cannot restore more self-consistency under attack than it keeps on clean images.
 
@@ -160,78 +182,90 @@ The OCR column bounds OCR recovery: a transform cannot restore more self-consist
 
 **Setup:**
 - Each image is resized to a 512×512 square in every condition.
-- Questions are "Is there a {class} in this image?", half yes and half no.
+- Questions are "Is there a {class} in this image?", two per image; 992 of the 2,000 have the answer yes.
 - Attack: oblivious PGD, eps 0.03, 10 steps, alpha 0.0075.
 - An ensemble answers with the mean of its members' yes-probabilities.
+- Clean cost = accuracy with the transform minus without, on clean images. Recovery = attacked accuracy with the transform minus without. Share of damage recovered = recovery / (clean − attacked accuracy). Brackets are 95% paired bootstrap intervals; **bold** marks an interval that excludes zero.
 
-**Reference values:** clean accuracy **0.856**, attacked accuracy **0.439**.
+<!-- table:p4_smolvlm -->
+| Defense | Clean accuracy | Clean cost [95% CI] | Attacked accuracy | Recovery [95% CI] | Share of damage recovered |
+|---|---|---|---|---|---|
+| **No defense** | 0.856 |  | 0.439 |  |  |
+| Blur+TVM | 0.786 | **−0.070 [−0.084, −0.057]** | 0.754 | **+0.315 [+0.297, +0.335]** | 75% |
+| Random resize | 0.825 | **−0.031 [−0.043, −0.019]** | 0.748 | **+0.309 [+0.292, +0.328]** | 74% |
+| BM3D | 0.810 | **−0.046 [−0.059, −0.033]** | 0.728 | **+0.290 [+0.272, +0.309]** | 69% |
+| TVM | 0.832 | **−0.025 [−0.037, −0.013]** | 0.638 | **+0.200 [+0.182, +0.218]** | 48% |
+| Gaussian | 0.820 | **−0.037 [−0.049, −0.024]** | 0.580 | **+0.142 [+0.128, +0.159]** | 34% |
+| EnsBTC | 0.831 | **−0.026 [−0.036, −0.015]** | 0.538 | **+0.100 [+0.087, +0.113]** | 24% |
+| Ens4W | 0.835 | **−0.021 [−0.031, −0.011]** | 0.532 | **+0.093 [+0.081, +0.105]** | 22% |
+| Median | 0.845 | **−0.012 [−0.022, −0.001]** | 0.531 | **+0.093 [+0.081, +0.107]** | 22% |
+| EnsJMG | 0.834 | **−0.022 [−0.032, −0.012]** | 0.523 | **+0.084 [+0.072, +0.097]** | 20% |
+| EnsJMT | 0.839 | **−0.018 [−0.028, −0.008]** | 0.522 | **+0.083 [+0.071, +0.096]** | 20% |
+| EnsBMT | 0.843 | **−0.014 [−0.023, −0.004]** | 0.507 | **+0.069 [+0.057, +0.081]** | 16% |
+| JPEG | 0.827 | **−0.030 [−0.041, −0.018]** | 0.483 | **+0.044 [+0.034, +0.054]** | 11% |
+| EnsJBT | 0.837 | **−0.019 [−0.030, −0.009]** | 0.479 | **+0.040 [+0.031, +0.050]** | 10% |
+| EnsJTS | 0.846 | **−0.010 [−0.018, −0.002]** | 0.470 | **+0.032 [+0.024, +0.041]** | 8% |
+| Anisotropic diffusion | 0.846 | **−0.011 [−0.021, −0.001]** | 0.465 | **+0.026 [+0.017, +0.034]** | 6% |
+| Bilateral | 0.842 | **−0.014 [−0.024, −0.004]** | 0.453 | **+0.014 [+0.007, +0.021]** | 3% |
+| NLM | 0.853 | −0.004 [−0.009, +0.002] | 0.441 | +0.003 [−0.003, +0.009] | 1% |
+| Dithering | 0.853 | −0.004 [−0.012, +0.005] | 0.439 | +0.001 [−0.004, +0.004] | 0% |
+| SVD | 0.855 | −0.001 [−0.004, +0.001] | 0.439 | +0.000 [+0.000, +0.000] | 0% |
+| Bit depth | 0.850 | −0.006 [−0.016, +0.004] | 0.438 | −0.001 [−0.005, +0.003] | 0% |
+<!-- /table:p4_smolvlm -->
 
-| Defense | Clean accuracy | Attacked accuracy | Share of damage recovered |
-|---|---|---|---|
-| Blur+TVM | 0.786 | **0.754** | 75% |
-| Random resize | 0.825 | 0.748 | 74% |
-| BM3D | 0.810 | 0.728 | 69% |
-| TVM | 0.832 | 0.638 | 48% |
-| Gaussian | 0.820 | 0.580 | 34% |
-| EnsBTC | 0.831 | 0.538 | 24% |
-| Ens4W | 0.835 | 0.532 | 22% |
-| Median | 0.845 | 0.531 | 22% |
-| EnsJMG | 0.834 | 0.523 | 20% |
-| EnsJMT | 0.839 | 0.522 | 20% |
-| EnsBMT | 0.843 | 0.507 | 16% |
-| JPEG | 0.827 | 0.483 | 11% |
-| EnsJBT | 0.837 | 0.479 | 10% |
-| EnsJTS | 0.846 | 0.470 | 8% |
-| Anisotropic diffusion | 0.846 | 0.465 | 6% |
-| Bilateral | 0.842 | 0.453 | 3% |
-| NLM, dithering, SVD, bit depth | 0.850–0.855 | 0.438–0.441 | 0% |
+Source: `results/phase4/presence_qa_smolvlm/summary_presence_qa_smolvlm_latest.json`.
 
-Source: `results/phase4/presence_qa_smolvlm/summary_presence_qa_smolvlm_latest.json`. That file also has bootstrap intervals for every clean cost and recovery.
-
-We did not run an adaptive attack on SmolVLM. Given the YOLO and Florence results, read these recoveries as upper bounds.
+We did not run an adaptive attack on SmolVLM. Given the YOLO-World and Florence-2 results, read these recoveries as upper bounds.
 
 ### Phase 4 — fourth model: OWL-ViT-B/32 (N=1,000)
 
 **Setup:**
 - Model: `google/owlvit-base-patch32`, about 150M parameters, prompted with "a photo of a {class}" for the 80 COCO classes.
-- Detections: score ≥ 0.001, class-aware NMS at 0.5, at most 300 per image (YOLO's settings).
-- Attack: same as YOLO's (sum over patches of the max-class score), pixel space, 7/255, 50 steps.
+- Detections: score ≥ 0.001, class-aware NMS at 0.5, at most 300 per image (YOLO-World's settings).
+- Attack: the same objective as YOLO-World's (sum over patches of the max-class score), pixel space, 7/255, 50 steps, alpha 0.002.
 
-Under the attack that ignores the defense (`oblivious_survey`). Clean 0.310, attacked 0.012. "vs best member" is the ensemble minus its best member, with a 95% paired bootstrap interval (1,000 resamples):
+**Under the attack that ignores the defense** (`oblivious_survey`, every transform in one run):
+- Clean cost = clean mAP with the transform minus without. Recovery = attacked mAP with the transform minus without. Share of damage recovered = recovery / (clean − attacked).
+- The last column is the ensemble's attacked mAP minus that of its best member under the same attack, with a 95% paired bootstrap interval (1,000 resamples). **Bold** marks an interval that excludes zero.
 
-| Defense | Clean cost | Attacked mAP | Recovery | vs best member [95% CI] |
-|---|---|---|---|---|
-| EnsBTC | +0.002 | **0.243** | 78% | **+0.007 [+0.004, +0.013]** (Blur+TVM) |
-| Ens4W | +0.005 | 0.237 | 75% | **+0.008 [+0.004, +0.013]** (TVM) |
-| Blur+TVM | −0.042 | 0.236 | 75% | |
-| EnsJMT | +0.003 | 0.233 | 74% | **+0.004 [+0.001, +0.009]** (TVM) |
-| EnsJBT | +0.004 | 0.233 | 74% | **+0.004 [+0.001, +0.007]** (TVM) |
-| EnsJTS | +0.006 | 0.232 | 74% | **+0.003 [+0.001, +0.007]** (TVM) |
-| EnsBMT | +0.003 | 0.231 | 74% | +0.003 [−0.000, +0.006] (TVM) |
-| TVM | −0.015 | 0.229 | 73% | |
-| EnsJMG | +0.005 | 0.201 | 63% | **+0.009 [+0.005, +0.015]** (Gaussian) |
-| Gaussian | −0.013 | 0.192 | 60% | |
-| Median | −0.006 | 0.168 | 53% | |
-| JPEG | −0.006 | 0.167 | 52% | |
-| Anisotropic diffusion | −0.005 | 0.146 | 45% | |
-| Bilateral | −0.004 | 0.139 | 43% | |
-| NLM | −0.000 | 0.114 | 34% | |
-| Bit depth | −0.009 | 0.050 | 13% | |
-| Dithering | −0.011 | 0.047 | 12% | |
-| SVD | +0.001 | 0.012 | 0% | |
+<!-- table:p4_owl_survey -->
+| Defense | Clean + defense | Clean cost (ensembles: [95% CI]) | Attacked + defense | Recovery | Share of damage recovered | Ensemble − best member, attacked [95% CI] (member) |
+|---|---|---|---|---|---|---|
+| **No defense** | 0.310 |  | 0.012 |  |  |  |
+| EnsBTC | 0.311 | +0.002 [−0.006, +0.010] | 0.243 | +0.232 | 78% | **+0.007 [+0.004, +0.013]** (Blur+TVM) |
+| Ens4W | 0.314 | +0.005 [−0.002, +0.012] | 0.237 | +0.225 | 75% | **+0.008 [+0.004, +0.013]** (TVM) |
+| Blur+TVM | 0.268 | −0.042 | 0.236 | +0.224 | 75% |  |
+| EnsJMT | 0.313 | +0.003 [−0.004, +0.010] | 0.233 | +0.222 | 74% | **+0.004 [+0.001, +0.009]** (TVM) |
+| EnsJBT | 0.314 | +0.004 [−0.003, +0.010] | 0.233 | +0.221 | 74% | **+0.004 [+0.001, +0.007]** (TVM) |
+| EnsJTS | 0.316 | +0.006 [−0.000, +0.011] | 0.232 | +0.221 | 74% | **+0.003 [+0.001, +0.007]** (TVM) |
+| EnsBMT | 0.313 | +0.003 [−0.005, +0.009] | 0.231 | +0.220 | 74% | +0.003 [−0.000, +0.006] (TVM) |
+| TVM | 0.295 | −0.015 | 0.229 | +0.217 | 73% |  |
+| EnsJMG | 0.315 | +0.005 [−0.001, +0.012] | 0.201 | +0.189 | 63% | **+0.009 [+0.005, +0.015]** (Gaussian) |
+| Gaussian | 0.297 | −0.013 | 0.192 | +0.180 | 60% |  |
+| Median | 0.304 | −0.006 | 0.168 | +0.157 | 53% |  |
+| JPEG | 0.304 | −0.006 | 0.167 | +0.156 | 52% |  |
+| Anisotropic diffusion | 0.305 | −0.005 | 0.146 | +0.134 | 45% |  |
+| Bilateral | 0.306 | −0.004 | 0.139 | +0.127 | 43% |  |
+| NLM | 0.310 | −0.000 | 0.114 | +0.103 | 34% |  |
+| Bit depth | 0.301 | −0.009 | 0.050 | +0.038 | 13% |  |
+| Dithering | 0.299 | −0.011 | 0.047 | +0.035 | 12% |  |
+| SVD | 0.311 | +0.001 | 0.012 | +0.001 | 0% |  |
+<!-- /table:p4_owl_survey -->
 
-The ensembles' clean-cost intervals all include zero.
+Every ensemble beats its best member (6 of 7 intervals exclude zero), and no ensemble's clean-cost interval excludes zero.
 
-Under the attack that knows the defense (`adaptive_bpda`):
+**Under the attack that knows the defense** (`adaptive_bpda`):
 
-| Target | Images | Clean + defense | Ignores defense: no defense / defended | **Knows defense: defended** |
-|---|---|---|---|---|
-| Median | 1,000 | 0.304 | 0.011 / 0.169 | **0.021** |
-| EnsJMG, max objective | 1,000 | 0.315 | 0.011 / 0.201 | **0.061** |
-| EnsJMG, max objective (first 300) | 300 | 0.337 | 0.012 / 0.223 | 0.083 |
-| EnsJMG, mean objective | 300 | 0.337 | 0.012 / 0.223 | **0.073** |
+<!-- table:p4_owl_adaptive -->
+| Target | Objective | Images | Clean, no defense | Clean + defense | Oblivious PGD, no defense | Oblivious PGD + defense | **Adaptive + defense** | Adaptive image, defense removed |
+|---|---|---|---|---|---|---|---|---|
+| Median | (one branch) | 1,000 | 0.310 | 0.304 | 0.011 | 0.169 | **0.021** | 0.244 |
+| EnsJMG | max | 1,000 | 0.310 | 0.315 | 0.011 | 0.201 | **0.061** | 0.041 |
+| EnsJMG | mean | 300 | 0.323 | 0.337 | 0.012 | 0.223 | **0.073** | 0.046 |
+| EnsJMG | max | 300 (first 300 of the 1,000-image run) | 0.323 | 0.337 | 0.012 | 0.223 | **0.083** | 0.063 |
+<!-- /table:p4_owl_adaptive -->
 
-The adaptive objective was below the oblivious one on every image of every run. OWL-ViT is not bit-repeatable: the no-defense number is 0.0108–0.0117 across the three runs that compute it.
+The adaptive objective was below the oblivious one on every image of every run. OWL-ViT is not bit-repeatable: the oblivious no-defense number is 0.0108–0.0117 across the three 1,000-image runs that compute it (the two adaptive runs and the survey). EnsJMG at 1,000 images was run with the max objective only; on the first 300 images the mean objective went lower (0.073 vs 0.083), so 0.061 is not the worst case.
 
 Sources:
 - `results/phase4/oblivious_survey_owl/`: the survey summary, plus `summary_bootstrap_oblivious_survey_owl_seed1.json` from `scripts/p4_boot_survey.py`.
@@ -239,82 +273,132 @@ Sources:
 
 ### Phase 4 — attack budget, 4/255 vs 7/255 (first 300 images, seed 1)
 
-Defended mAP, oblivious → adaptive. For EnsJMG, the adaptive value is the worse of the two objectives.
+Defended mAP under the oblivious and the adaptive attack, at two budgets, on the same 300 images.
 
-| Model | Defense | 4/255 oblivious | **4/255 adaptive** | 7/255 oblivious | **7/255 adaptive** |
-|---|---|---|---|---|---|
-| YOLO-World | no defense | 0.062 | 0.062 | 0.017 | 0.017 |
-| | Median | 0.430 | **0.054** | 0.402 | **0.022** |
-| | JPEG | 0.425 | **0.126** | 0.380 | **0.062** |
-| | Gaussian | 0.461 | **0.082** | 0.443 | **0.035** |
-| | EnsJMG | 0.469 | **0.137** | 0.441 | **0.066** |
-| Florence-2 | no defense | 0.195 | 0.195 | 0.169 | 0.169 |
-| | Median | 0.327 | **0.214** | 0.293 | **0.165** |
-| | EnsJMG | 0.332 | **0.256** | 0.300 | **0.199** |
-
-Sources:
-- `results/phase4/adaptive_bpda_{yolo,florence}_eps{4,7}of255_n300/`.
-- `results/phase4/budget_curve_eps7of255_first300/`: the 7/255 Median and EnsJMG entries, scored from the 1,000-image runs.
+<!-- table:p4_budget -->
+| Model | Defense | Objective | Clean + defense | 4/255 oblivious + defense | **4/255 adaptive + defense** | 7/255 oblivious + defense | **7/255 adaptive + defense** |
+|---|---|---|---|---|---|---|---|
+| YOLO-World | no defense |  | 0.503 | 0.062 | (same) | 0.017 | (same) |
+|  | Median | (one branch) | 0.489 | 0.430 | **0.054** | 0.402 | **0.022** |
+|  | JPEG | (one branch) | 0.487 | 0.425 | **0.126** | 0.380 | **0.062** |
+|  | Gaussian | (one branch) | 0.494 | 0.461 | **0.082** | 0.443 | **0.035** |
+|  | EnsJMG | max | 0.500 | 0.469 | **0.174** | 0.441 | **0.086** |
+|  | EnsJMG | mean | 0.500 | 0.469 | **0.137** | 0.441 | **0.066** |
+| Florence-2 | no defense |  | 0.391 | 0.194–0.195 (2 runs) | (same) | 0.167–0.172 (3 runs) | (same) |
+|  | Median | (one branch) | 0.390 | 0.327 | **0.214** | 0.293 | **0.165** |
+|  | EnsJMG | max | 0.386 | 0.332 | **0.256** | 0.300 | **0.199** |
+|  | EnsJMG | mean | 0.386 | not run | not run | 0.302 | **0.201** |
+<!-- /table:p4_budget -->
 
 Notes:
 - **JPEG is the member whose attack gradient is approximated (BPDA identity),** so its adaptive numbers are the most generous here.
-- **Repeatability:** all YOLO runs agree bit for bit on the no-defense cell. Florence's two 7/255 runs differ by 0.004.
+- **The worst case is the lower of the two EnsJMG rows.** On YOLO-World that is the mean objective at both budgets (0.137 and 0.066). On Florence-2 only the max objective was run at 4/255; at 7/255 the two are within 0.002.
+- **Where two values are given**, the runs that compute them differ because Florence-2 is not bit-repeatable. YOLO-World runs agree bit for bit.
+- Sources: `results/phase4/adaptive_bpda_{yolo,florence}_eps4of255_n300/`, `adaptive_bpda_yolo_eps7of255_n300/` (JPEG and Gaussian), `adaptive_bpda_florence_n300/` (Florence-2 EnsJMG mean), and `budget_curve_eps7of255_first300/` (the other 7/255 rows, scored from the 1,000-image runs).
+
+### Phase 4 — every adaptive-attack run (raw values)
+
+Every adaptive summary in `results/phase4/`, at 4 decimals. Columns as above; *Adaptive objective below oblivious* counts the images on which the adaptive attack reached a lower objective than the oblivious one (not stored for the first-300 re-scores).
+
+<!-- table:p4_all_adaptive -->
+| Model | Target | Seed | Objective | Budget | Steps | Images | Note | Clean | Clean + def. | Obl., no def. | Obl. + def. | Adapt. image, def. removed | Adapt. + def. | Adaptive objective below oblivious | Directory (`results/phase4/`) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| YOLO-World | Median | 1 | (one branch) | 7/255 | 50 | 1,000 | main setting | 0.4764 | 0.4583 | 0.0183 | 0.3691 | 0.4520 | **0.0165** | 1000/1000 | `adaptive_bpda_yolo` |
+| YOLO-World | Median | 2 | (one branch) | 7/255 | 50 | 1,000 | main setting | 0.4764 | 0.4583 | 0.0149 | 0.3669 | 0.4511 | **0.0181** | 1000/1000 | `adaptive_bpda_yolo` |
+| YOLO-World | Median | 3 | (one branch) | 7/255 | 50 | 1,000 | main setting | 0.4764 | 0.4583 | 0.0131 | 0.3623 | 0.4542 | **0.0191** | 999/1000 | `adaptive_bpda_yolo` |
+| YOLO-World | Median | 1 | (one branch) | 7/255 | 50 | 1,000 | median gradient: identity | 0.4764 | 0.4583 | 0.0183 | 0.3691 | 0.2721 | **0.0420** | 1000/1000 | `adaptive_bpda_yolo` |
+| YOLO-World | EnsJMG | 1 | max | 7/255 | 50 | 1,000 | main setting | 0.4764 | 0.4656 | 0.0183 | 0.4106 | 0.1033 | **0.0713** | 1000/1000 | `adaptive_bpda_yolo` |
+| YOLO-World | EnsJMG | 2 | max | 7/255 | 50 | 1,000 | main setting | 0.4764 | 0.4656 | 0.0149 | 0.4068 | 0.1082 | **0.0746** | 1000/1000 | `adaptive_bpda_yolo` |
+| YOLO-World | EnsJMG | 3 | max | 7/255 | 50 | 1,000 | main setting | 0.4764 | 0.4656 | 0.0131 | 0.4029 | 0.1082 | **0.0741** | 1000/1000 | `adaptive_bpda_yolo` |
+| YOLO-World | EnsJMG | 1 | mean | 7/255 | 50 | 1,000 | main setting | 0.4764 | 0.4656 | 0.0183 | 0.4106 | 0.0817 | **0.0484** | 1000/1000 | `adaptive_bpda_yolo` |
+| YOLO-World | Ens4W | 1 | max | 7/255 | 50 | 1,000 | main setting | 0.4764 | 0.4684 | 0.0183 | 0.4312 | 0.0828 | **0.1075** | 1000/1000 | `adaptive_bpda_yolo` |
+| YOLO-World | Ens4W | 1 | mean | 7/255 | 50 | 1,000 | main setting | 0.4764 | 0.4684 | 0.0183 | 0.4312 | 0.0518 | **0.0687** | 1000/1000 | `adaptive_bpda_yolo` |
+| YOLO-World | JPEG | 1 | (one branch) | 7/255 | 50 | 300 | main setting | 0.5032 | 0.4867 | 0.0175 | 0.3804 | 0.1725 | **0.0621** | 300/300 | `adaptive_bpda_yolo_eps7of255_n300` |
+| YOLO-World | Gaussian | 1 | (one branch) | 7/255 | 50 | 300 | main setting | 0.5032 | 0.4935 | 0.0175 | 0.4430 | 0.2860 | **0.0351** | 300/300 | `adaptive_bpda_yolo_eps7of255_n300` |
+| YOLO-World | EnsJMG | 1 | max | 7/255 | 50 | 300 | main setting | 0.5032 | 0.4995 | 0.0175 | 0.4407 | 0.1160 | **0.0859** | 300/300 | `adaptive_bpda_yolo_iters50_n300` |
+| YOLO-World | EnsJMG | 1 | max | 7/255 | 100 | 300 | 100 steps | 0.5032 | 0.4995 | 0.0033 | 0.4428 | 0.0604 | **0.0536** | 300/300 | `adaptive_bpda_yolo_iters100_n300` |
+| YOLO-World | Median | 1 | (one branch) | 7/255 | 50 | 300 | first 300 of the 1,000-image run | 0.5032 | 0.4891 | 0.0175 | 0.4022 | 0.4841 | **0.0222** |  | `budget_curve_eps7of255_first300` |
+| YOLO-World | EnsJMG | 1 | max | 7/255 | 50 | 300 | first 300 of the 1,000-image run | 0.5032 | 0.4995 | 0.0175 | 0.4407 | 0.1160 | **0.0859** |  | `budget_curve_eps7of255_first300` |
+| YOLO-World | EnsJMG | 1 | mean | 7/255 | 50 | 300 | first 300 of the 1,000-image run | 0.5032 | 0.4995 | 0.0175 | 0.4407 | 0.0961 | **0.0661** |  | `budget_curve_eps7of255_first300` |
+| YOLO-World | Median | 1 | (one branch) | 4/255 | 50 | 300 | 4/255 | 0.5032 | 0.4891 | 0.0619 | 0.4301 | 0.4964 | **0.0536** | 300/300 | `adaptive_bpda_yolo_eps4of255_n300` |
+| YOLO-World | JPEG | 1 | (one branch) | 4/255 | 50 | 300 | 4/255 | 0.5032 | 0.4867 | 0.0619 | 0.4252 | 0.2786 | **0.1260** | 300/300 | `adaptive_bpda_yolo_eps4of255_n300` |
+| YOLO-World | Gaussian | 1 | (one branch) | 4/255 | 50 | 300 | 4/255 | 0.5032 | 0.4935 | 0.0619 | 0.4605 | 0.3420 | **0.0822** | 300/300 | `adaptive_bpda_yolo_eps4of255_n300` |
+| YOLO-World | EnsJMG | 1 | max | 4/255 | 50 | 300 | 4/255 | 0.5032 | 0.4995 | 0.0619 | 0.4688 | 0.2243 | **0.1738** | 300/300 | `adaptive_bpda_yolo_eps4of255_n300` |
+| YOLO-World | EnsJMG | 1 | mean | 4/255 | 50 | 300 | 4/255 | 0.5032 | 0.4995 | 0.0619 | 0.4688 | 0.1767 | **0.1368** | 300/300 | `adaptive_bpda_yolo_eps4of255_n300` |
+| YOLO-World | EnsJMG | 1 | max | eps 0.1 | 50 | 300 | eps 0.1 | 0.5032 | 0.4995 | 0.0019 | 0.3399 | 0.0298 | **0.0229** | 300/300 | `adaptive_bpda_yolo_eps0.1` |
+| Florence-2 | Median | 1 | (one branch) | 7/255 | 50 | 1,000 | main setting | 0.3604 | 0.3504 | 0.1381 | 0.2561 | 0.3346 | **0.1480** | 1000/1000 | `adaptive_bpda_florence` |
+| Florence-2 | EnsJMG | 1 | max | 7/255 | 50 | 1,000 | main setting | 0.3604 | 0.3529 | 0.1336 | 0.2642 | 0.1588 | **0.1656** | 1000/1000 | `adaptive_bpda_florence` |
+| Florence-2 | EnsJMG | 1 | mean | 7/255 | 50 | 300 | main setting | 0.3910 | 0.3860 | 0.1715 | 0.3017 | 0.2128 | **0.2014** | 300/300 | `adaptive_bpda_florence_n300` |
+| Florence-2 | Median | 1 | (one branch) | 7/255 | 50 | 300 | first 300 of the 1,000-image run | 0.3910 | 0.3896 | 0.1709 | 0.2934 | 0.3546 | **0.1651** |  | `budget_curve_eps7of255_first300` |
+| Florence-2 | EnsJMG | 1 | max | 7/255 | 50 | 300 | first 300 of the 1,000-image run | 0.3910 | 0.3860 | 0.1669 | 0.3001 | 0.1884 | **0.1993** |  | `adaptive_bpda_florence_n300` |
+| Florence-2 | Median | 1 | (one branch) | 4/255 | 50 | 300 | 4/255 | 0.3910 | 0.3896 | 0.1954 | 0.3271 | 0.3809 | **0.2142** | 300/300 | `adaptive_bpda_florence_eps4of255_n300` |
+| Florence-2 | EnsJMG | 1 | max | 4/255 | 50 | 300 | 4/255 | 0.3910 | 0.3860 | 0.1941 | 0.3323 | 0.2319 | **0.2555** | 300/300 | `adaptive_bpda_florence_eps4of255_n300` |
+| OWL-ViT | Median | 1 | (one branch) | 7/255 | 50 | 1,000 | main setting | 0.3099 | 0.3043 | 0.0108 | 0.1687 | 0.2444 | **0.0213** | 1000/1000 | `adaptive_bpda_owl` |
+| OWL-ViT | EnsJMG | 1 | max | 7/255 | 50 | 1,000 | main setting | 0.3099 | 0.3150 | 0.0114 | 0.2010 | 0.0408 | **0.0610** | 1000/1000 | `adaptive_bpda_owl` |
+| OWL-ViT | EnsJMG | 1 | mean | 7/255 | 50 | 300 | main setting | 0.3231 | 0.3371 | 0.0123 | 0.2232 | 0.0459 | **0.0728** | 300/300 | `adaptive_bpda_owl_n300` |
+| OWL-ViT | EnsJMG | 1 | max | 7/255 | 50 | 300 | first 300 of the 1,000-image run | 0.3231 | 0.3371 | 0.0124 | 0.2229 | 0.0628 | **0.0829** |  | `adaptive_bpda_owl_n300` |
+<!-- /table:p4_all_adaptive -->
 
 ### How Phase 4 changes the Phase-3 conclusions
 
-These are YOLO-World values on the same 1,000 images.
-
-| | Phase 3 | Phase 4, oblivious | Phase 4, adaptive (worst case) |
+<!-- table:p4_vs_p3 -->
+| YOLO-World, same 1,000 images | Phase 3 (v2) | Phase 4, oblivious | Phase 4, adaptive (worst case) |
 |---|---|---|---|
 | Attack | PGD, 10 steps, alpha 0.0075, letterbox space | PGD, 50 steps, alpha 0.002, native resolution | BPDA+EOT through the defense, 50 steps |
-| No defense | 0.0737 | 0.015 | 0.015 |
-| Median | 0.3639 | 0.366 | 0.017 |
-| EnsJMG | 0.4045 | 0.407 | 0.048 |
-| Best Phase-3 defense (EnsBTC) | 0.4128 | not run | not run |
+| Clean, no defense | 0.4765 | 0.476 | 0.476 |
+| Attacked, no defense | 0.0737 | 0.015 (3 seeds) | (no defense to adapt to) |
+| Median | 0.3639 | 0.366 (3 seeds) | 0.016 (seed 1) |
+| EnsJMG | 0.4045 | 0.407 (3 seeds) | 0.048 (seed 1) |
+| Ens4W | not in v2 | 0.431 (seed 1) | 0.069 (seed 1) |
+| EnsBTC | 0.4128 | not run | not run |
+<!-- /table:p4_vs_p3 -->
 
-- **The defended numbers reproduce Phase 3**, so the code and data agree with the paper. The stronger Phase-4 PGD hurts the undefended model more (0.015 vs 0.074). That makes the defenses look slightly *better* under the Phase-3 threat model.
-- **The change is the threat model.** Once the attacker knows the defense, the Phase-3 recovery (+0.29 to +0.33 mAP) disappears. That includes the ensembles the Phase-3 paper recommended.
+- **The clean scores reproduce Phase 3** (0.476 vs 0.4765), so the code and data agree with the paper. The oblivious defended scores land close to Phase 3's (Median 0.366 vs 0.3639, EnsJMG 0.407 vs 0.4045) although the Phase-4 PGD is a different, stronger attack: it hurts the undefended model more (0.015 vs 0.074). That makes the defenses look slightly *better* under the Phase-3 threat model.
+- **The change is the threat model.** Once the attacker knows the defense, the Phase-3 recovery of Median and EnsJMG (+0.29 to +0.33 mAP) disappears. That includes the ensembles the Phase-3 paper recommended.
 - **What the paper must change:**
   - Present the ensemble result two-sided: it helps against an unaware attacker, and little survives an aware one.
-  - Present Table 5 as an upper bound.
+  - Present the adaptive numbers as upper bounds (the attack had not converged at 50 steps).
   - Report the worst case over the objectives.
-  - Drop the claim that the "max" objective is the natural worst case, and the "union-aware" novelty claim. On YOLO the mean objective was stronger.
-- **Florence Phase-3 PGD numbers are not comparable to Phase 4.** Phase 3 attacked Florence in normalized space (about 1.7/255 per pixel); Phase 4 attacks it at 7/255 in pixel space.
+  - Drop the claim that the "max" objective is the natural worst case, and the "union-aware" novelty claim. On YOLO-World and OWL-ViT the mean objective was stronger.
+- **Florence-2 Phase-3 PGD numbers are not comparable to Phase 4.** Phase 3 attacked Florence-2 in normalized space (about 1.7/255 per pixel); Phase 4 attacks it at 7/255 in pixel space.
 
 ### Phase 3 — Locked v2, N=1,000 (the earlier paper's main table)
 
-The scripts in the *generated by* column now live in `archive/Phase3/`. Every row was re-checked against its `summary.json` on 18 Nov 2026.
+The scripts in the *Generated by* column now live in `archive/Phase3/`. Recovery = (defended − attacked) / (clean − attacked), as stored in each file.
 
-| Track | clean | attacked | best defense | defended | generated by | source file |
-|---|---|---|---|---|---|---|
-| YOLO · FGSM | 0.4765 | 0.2259 | blur_tvm | 0.3448 (+47.4%) | `FGSM_Phase3_YOLO_v2.ipynb` | `results/results_phase3_yolo_fgsm_v2/summary.json` |
-| YOLO · PGD (10 iters) | 0.4765 | 0.0737 | ens_blur_tvm_combo | 0.4128 (+84.2%) | `PGD_Phase3_YOLO_v2.ipynb` | `results/results_phase3_yolo_pgd_v2/summary.json` |
-| YOLO · Patch | 0.4765 | 0.4537 | ens_jpeg_median_tvm | 0.4599 (+27.5%) | `Patch_Phase3_YOLO_v2.ipynb` | `results/results_phase3_yolo_patch_v2/summary.json` |
-| Florence · FGSM | 0.3605 | 0.2731 | ens_jpeg_median_gaussian | 0.3281 (+62.9%) | `FGSM_Phase3_Florence_v2.py` | `results/results_phase3_florence_fgsm_v2/summary.json` |
-| Florence · PGD | 0.3605 | 0.2243 | ens_jpeg_median_gaussian | 0.3245 (+73.5%) | `PGD_Phase3_Florence_v2.py` | `results/results_phase3_florence_pgd_v2/summary.json` |
-| Florence · Patch | 0.3605 | 0.3268 | ens_blur_tvm_combo | 0.3324 (+16.7%) | `Patch_Phase3_Florence_v2.py` | `results/results_phase3_florence_patch_v2/summary.json` |
-| OCR · FGSM | 1.0000 | 0.3287 | tvm | 0.5615 (+34.7%) | `FGSM_Florence2_OCR_Robust.py` | `results/results_fgsm_florence2_ocr_robust/summary.json` |
-| OCR · PGD (alpha 0.003) | 1.0000 | 0.3139 | tvm | 0.6384 (+47.3%) | `PGD_Florence2_OCR_Robust.py` | `results/results_pgd_florence2_ocr_robust/summary.json` |
-| OCR · Patch | 1.0000 | 0.3675 | median | 0.5566 (+29.9%) | `Patch_Florence2_OCR_Robust.py` | `results/results_patch_florence2_ocr_robust/summary.json` |
+<!-- table:p3_v2_best -->
+| Track | Clean | Attacked | Best defense | Defended | Recovery | Generated by | Source file |
+|---|---|---|---|---|---|---|---|
+| YOLO-World · FGSM | 0.4765 | 0.2259 | Blur+TVM | **0.3448** | +47.4% | `FGSM_Phase3_YOLO_v2.ipynb` | `results/results_phase3_yolo_fgsm_v2/summary.json` |
+| YOLO-World · PGD (10 steps) | 0.4765 | 0.0737 | EnsBTC | **0.4128** | +84.2% | `PGD_Phase3_YOLO_v2.ipynb` | `results/results_phase3_yolo_pgd_v2/summary.json` |
+| YOLO-World · Patch | 0.4765 | 0.4537 | EnsJMT | **0.4599** | +27.5% | `Patch_Phase3_YOLO_v2.ipynb` | `results/results_phase3_yolo_patch_v2/summary.json` |
+| Florence-2 det. · FGSM | 0.3605 | 0.2731 | EnsJMG | **0.3281** | +62.9% | `FGSM_Phase3_Florence_v2.py` | `results/results_phase3_florence_fgsm_v2/summary.json` |
+| Florence-2 det. · PGD | 0.3605 | 0.2243 | EnsJMG | **0.3245** | +73.5% | `PGD_Phase3_Florence_v2.py` | `results/results_phase3_florence_pgd_v2/summary.json` |
+| Florence-2 det. · Patch | 0.3605 | 0.3268 | EnsBTC | **0.3324** | +16.7% | `Patch_Phase3_Florence_v2.py` | `results/results_phase3_florence_patch_v2/summary.json` |
+| Florence-2 OCR · FGSM | 1.0000 | 0.3287 | TVM | **0.5615** | +34.7% | `FGSM_Florence2_OCR_Robust.py` | `results/results_fgsm_florence2_ocr_robust/summary.json` |
+| Florence-2 OCR · PGD (alpha 0.003) | 1.0000 | 0.3139 | TVM | **0.6384** | +47.3% | `PGD_Florence2_OCR_Robust.py` | `results/results_pgd_florence2_ocr_robust/summary.json` |
+| Florence-2 OCR · Patch | 1.0000 | 0.3675 | Median | **0.5566** | +29.9% | `Patch_Florence2_OCR_Robust.py` | `results/results_patch_florence2_ocr_robust/summary.json` |
+<!-- /table:p3_v2_best -->
 
-Every defense on every v2 track, read from the nine `summary.json` files above. Defended score; **bold** is the best in its column. Detection is mAP, OCR is self-consistency.
+Every defense on every v2 track. Each cell is the defended score, with the recovery in parentheses; **bold** is the best in its column. Detection is mAP, OCR is self-consistency.
 
-| | YOLO FGSM | YOLO PGD | YOLO Patch | Florence FGSM | Florence PGD | Florence Patch | OCR FGSM | OCR PGD | OCR Patch |
+<!-- table:p3_v2_full -->
+|  | YOLO-World · FGSM | YOLO-World · PGD | YOLO-World · Patch | Florence-2 det. · FGSM | Florence-2 det. · PGD | Florence-2 det. · Patch | Florence-2 OCR · FGSM | Florence-2 OCR · PGD | Florence-2 OCR · Patch |
 |---|---|---|---|---|---|---|---|---|---|
 | Clean, no defense | 0.4765 | 0.4765 | 0.4765 | 0.3605 | 0.3605 | 0.3605 | 1.0000 | 1.0000 | 1.0000 |
 | Attacked, no defense | 0.2259 | 0.0737 | 0.4537 | 0.2731 | 0.2243 | 0.3268 | 0.3287 | 0.3139 | 0.3675 |
-| JPEG | 0.2697 | 0.3643 | 0.4391 | 0.3199 | 0.3162 | 0.3270 | 0.4963 | 0.6083 | 0.3765 |
-| Median | 0.2928 | 0.3639 | 0.4496 | 0.3194 | 0.3198 | 0.3289 | 0.4275 | 0.5409 | **0.5566** |
-| TVM | 0.2966 | 0.4049 | 0.4288 | 0.2631 | 0.2622 | 0.2652 | **0.5615** | **0.6384** | 0.3883 |
-| Gaussian | 0.3171 | 0.4053 | 0.4511 | 0.2848 | 0.2874 | 0.2903 | 0.4888 | 0.5501 | 0.5240 |
-| Blur+TVM | **0.3448** | 0.4025 | 0.4093 | 0.2745 | 0.2723 | 0.2676 | 0.4677 | 0.4898 | 0.4655 |
-| EnsBTC | 0.3364 | **0.4128** | 0.4563 | 0.3262 | 0.3243 | **0.3324** | 0.4748 | 0.5813 | 0.5274 |
-| EnsJMG | 0.3098 | 0.4045 | 0.4574 | **0.3281** | **0.3245** | 0.3290 | 0.4901 | 0.5968 | 0.5363 |
-| EnsJMT | 0.3058 | 0.4114 | **0.4599** | 0.3261 | 0.3228 | 0.3307 | 0.5288 | 0.6372 | 0.4160 |
+| JPEG | 0.2697 (+17%) | 0.3643 (+72%) | 0.4391 (−64%) | 0.3199 (+54%) | 0.3162 (+67%) | 0.3270 (+1%) | 0.4963 (+25%) | 0.6083 (+43%) | 0.3765 (+1%) |
+| Median | 0.2928 (+27%) | 0.3639 (+72%) | 0.4496 (−18%) | 0.3194 (+53%) | 0.3198 (+70%) | 0.3289 (+6%) | 0.4275 (+15%) | 0.5409 (+33%) | **0.5566 (+30%)** |
+| TVM | 0.2966 (+28%) | 0.4049 (+82%) | 0.4288 (−109%) | 0.2631 (−11%) | 0.2622 (+28%) | 0.2652 (−182%) | **0.5615 (+35%)** | **0.6384 (+47%)** | 0.3883 (+3%) |
+| Gaussian | 0.3171 (+36%) | 0.4053 (+82%) | 0.4511 (−11%) | 0.2848 (+13%) | 0.2874 (+46%) | 0.2903 (−108%) | 0.4888 (+24%) | 0.5501 (+34%) | 0.5240 (+25%) |
+| Blur+TVM | **0.3448 (+47%)** | 0.4025 (+82%) | 0.4093 (−195%) | 0.2745 (+2%) | 0.2723 (+35%) | 0.2676 (−175%) | 0.4677 (+21%) | 0.4898 (+26%) | 0.4655 (+15%) |
+| EnsBTC | 0.3364 (+44%) | **0.4128 (+84%)** | 0.4563 (+12%) | 0.3262 (+61%) | 0.3243 (+73%) | **0.3324 (+17%)** | 0.4748 (+22%) | 0.5813 (+39%) | 0.5274 (+25%) |
+| EnsJMG | 0.3098 (+33%) | 0.4045 (+82%) | 0.4574 (+16%) | **0.3281 (+63%)** | **0.3245 (+74%)** | 0.3290 (+7%) | 0.4901 (+24%) | 0.5968 (+41%) | 0.5363 (+27%) |
+| EnsJMT | 0.3058 (+32%) | 0.4114 (+84%) | **0.4599 (+27%)** | 0.3261 (+61%) | 0.3228 (+72%) | 0.3307 (+12%) | 0.5288 (+30%) | 0.6372 (+47%) | 0.4160 (+8%) |
+<!-- /table:p3_v2_full -->
 
-> The N=1,000 clean baselines (**YOLO 0.4765**, **Florence 0.3605**) belong to the v2 subset. They are
-> *not* the survey's N=5,000 clean baselines (Florence-det **0.3300**, YOLO **0.4519**). The OCR
-> `clean` column is 1.0 **by construction**.
+- On the patch columns the attack removed very little (0.023 mAP on YOLO-World, 0.034 on Florence-2), so large negative percentages there are small absolute changes.
+- The N=1,000 clean baselines (**YOLO-World 0.4765**, **Florence-2 0.3605**) belong to this subset. They are *not* the survey's N=5,000 clean baselines (Florence-2 **0.3300**, YOLO-World **0.4519**). The OCR clean value is 1.0 **by construction**.
 
 > **Correction (kept):** earlier notes quoted YOLO PGD as `clean 0.4972 → 0.1425 → 0.4801` and a
 > "stronger PGD" `0.4765 → 0.0614 → 0.4263`. Those match **no committed v2 result**; they trace to a
@@ -323,75 +407,79 @@ Every defense on every v2 track, read from the nine `summary.json` files above. 
 ### Phase 3 v2 with 95% bootstrap intervals (N=1,000)
 
 Phase 4 re-scored the committed v2 detections (same images, no new attack) and added paired image-level bootstrap intervals (1,000 resamples, seed 42). These are the paper's interval tables (`tab:ci-yolo`, `tab:ci-florence`).
-- Clean cost: mAP with the transform on clean images minus clean mAP.
-- Recovery: defended minus attacked mAP.
+- *+ defense* columns: the actual mAP with the transform, clean or under that attack.
+- Clean cost: clean mAP with the transform minus without. Recovery: attacked mAP with the transform minus without.
 - **Bold** marks an interval that excludes zero.
 
 YOLO-World:
 
-|  | Clean cost | FGSM recovery | PGD recovery | Patch recovery |
-|---|---|---|---|---|
-| Undefended mAP | 0.476 | 0.226 | 0.074 | 0.454 |
-| JPEG | **−0.024 [−0.033, −0.015]** | **+0.044 [+0.037, +0.052]** | **+0.291 [+0.273, +0.315]** | **−0.015 [−0.022, −0.006]** |
-| Median | **−0.018 [−0.026, −0.010]** | **+0.067 [+0.060, +0.076]** | **+0.290 [+0.279, +0.315]** | −0.004 [−0.012, +0.009] |
-| TVM | **−0.029 [−0.038, −0.021]** | **+0.071 [+0.061, +0.082]** | **+0.331 [+0.317, +0.357]** | **−0.025 [−0.034, −0.016]** |
-| Gaussian | **−0.015 [−0.024, −0.007]** | **+0.091 [+0.082, +0.103]** | **+0.332 [+0.318, +0.357]** | −0.003 [−0.010, +0.008] |
-| Blur+TVM | **−0.062 [−0.073, −0.050]** | **+0.119 [+0.105, +0.133]** | **+0.329 [+0.314, +0.355]** | **−0.044 [−0.056, −0.034]** |
-| EnsBTC | **−0.012 [−0.020, −0.004]** | **+0.110 [+0.100, +0.123]** | **+0.339 [+0.326, +0.366]** | +0.003 [−0.004, +0.012] |
-| EnsJMG | **−0.011 [−0.018, −0.002]** | **+0.084 [+0.076, +0.095]** | **+0.331 [+0.318, +0.358]** | +0.004 [−0.004, +0.016] |
-| EnsJMT | **−0.009 [−0.015, −0.002]** | **+0.080 [+0.072, +0.092]** | **+0.338 [+0.324, +0.364]** | +0.006 [−0.001, +0.015] |
+<!-- table:p3_ci_yolo -->
+| Defense | Clean + defense | Clean cost [95% CI] | FGSM + defense | Recovery [95% CI] | PGD + defense | Recovery [95% CI] | Patch + defense | Recovery [95% CI] |
+|---|---|---|---|---|---|---|---|---|
+| **No defense** | 0.476 |  | 0.226 |  | 0.074 |  | 0.454 |  |
+| JPEG | 0.452 | **−0.024 [−0.033, −0.015]** | 0.270 | **+0.044 [+0.037, +0.052]** | 0.364 | **+0.291 [+0.273, +0.315]** | 0.439 | **−0.015 [−0.022, −0.006]** |
+| Median | 0.458 | **−0.018 [−0.026, −0.010]** | 0.293 | **+0.067 [+0.060, +0.076]** | 0.364 | **+0.290 [+0.279, +0.315]** | 0.450 | −0.004 [−0.012, +0.009] |
+| TVM | 0.447 | **−0.029 [−0.038, −0.021]** | 0.297 | **+0.071 [+0.061, +0.082]** | 0.405 | **+0.331 [+0.317, +0.357]** | 0.429 | **−0.025 [−0.034, −0.016]** |
+| Gaussian | 0.461 | **−0.015 [−0.024, −0.007]** | 0.317 | **+0.091 [+0.082, +0.103]** | 0.405 | **+0.332 [+0.318, +0.357]** | 0.451 | −0.003 [−0.010, +0.008] |
+| Blur+TVM | 0.415 | **−0.062 [−0.073, −0.050]** | 0.345 | **+0.119 [+0.105, +0.133]** | 0.403 | **+0.329 [+0.314, +0.355]** | 0.409 | **−0.044 [−0.056, −0.034]** |
+| EnsBTC | 0.465 | **−0.012 [−0.020, −0.004]** | 0.336 | **+0.110 [+0.100, +0.123]** | 0.413 | **+0.339 [+0.326, +0.366]** | 0.456 | +0.003 [−0.004, +0.012] |
+| EnsJMG | 0.466 | **−0.011 [−0.018, −0.002]** | 0.310 | **+0.084 [+0.076, +0.095]** | 0.405 | **+0.331 [+0.318, +0.358]** | 0.457 | +0.004 [−0.004, +0.016] |
+| EnsJMT | 0.467 | **−0.009 [−0.015, −0.002]** | 0.306 | **+0.080 [+0.072, +0.092]** | 0.411 | **+0.338 [+0.324, +0.364]** | 0.460 | +0.006 [−0.001, +0.015] |
+<!-- /table:p3_ci_yolo -->
 
 Florence-2 detection:
 
-|  | Clean cost | FGSM recovery | PGD recovery | Patch recovery |
-|---|---|---|---|---|
-| Undefended mAP | 0.361 | 0.273 | 0.224 | 0.327 |
-| JPEG | −0.008 [−0.021, +0.004] | **+0.047 [+0.036, +0.059]** | **+0.092 [+0.080, +0.111]** | +0.000 [−0.009, +0.013] |
-| Median | −0.008 [−0.021, +0.007] | **+0.046 [+0.035, +0.061]** | **+0.096 [+0.081, +0.112]** | +0.002 [−0.006, +0.015] |
-| TVM | **−0.071 [−0.088, −0.060]** | −0.010 [−0.028, +0.005] | **+0.038 [+0.020, +0.053]** | **−0.062 [−0.077, −0.050]** |
-| Gaussian | **−0.069 [−0.085, −0.056]** | +0.012 [−0.003, +0.027] | **+0.063 [+0.048, +0.080]** | **−0.036 [−0.050, −0.025]** |
-| Blur+TVM | **−0.095 [−0.115, −0.081]** | +0.001 [−0.016, +0.016] | **+0.048 [+0.029, +0.066]** | **−0.059 [−0.076, −0.043]** |
-| EnsBTC | −0.009 [−0.020, +0.008] | **+0.053 [+0.042, +0.070]** | **+0.100 [+0.087, +0.120]** | +0.006 [−0.004, +0.024] |
-| EnsJMG | −0.009 [−0.020, +0.008] | **+0.055 [+0.043, +0.072]** | **+0.100 [+0.087, +0.120]** | +0.002 [−0.004, +0.017] |
-| EnsJMT | −0.004 [−0.015, +0.011] | **+0.053 [+0.043, +0.069]** | **+0.099 [+0.084, +0.119]** | +0.004 [−0.004, +0.018] |
+<!-- table:p3_ci_florence -->
+| Defense | Clean + defense | Clean cost [95% CI] | FGSM + defense | Recovery [95% CI] | PGD + defense | Recovery [95% CI] | Patch + defense | Recovery [95% CI] |
+|---|---|---|---|---|---|---|---|---|
+| **No defense** | 0.361 |  | 0.273 |  | 0.224 |  | 0.327 |  |
+| JPEG | 0.352 | −0.008 [−0.021, +0.004] | 0.320 | **+0.047 [+0.036, +0.059]** | 0.316 | **+0.092 [+0.080, +0.111]** | 0.327 | +0.000 [−0.009, +0.013] |
+| Median | 0.353 | −0.008 [−0.021, +0.007] | 0.319 | **+0.046 [+0.035, +0.061]** | 0.320 | **+0.096 [+0.081, +0.112]** | 0.329 | +0.002 [−0.006, +0.015] |
+| TVM | 0.289 | **−0.071 [−0.088, −0.060]** | 0.263 | −0.010 [−0.028, +0.005] | 0.262 | **+0.038 [+0.020, +0.053]** | 0.265 | **−0.062 [−0.077, −0.050]** |
+| Gaussian | 0.291 | **−0.069 [−0.085, −0.056]** | 0.285 | +0.012 [−0.003, +0.027] | 0.287 | **+0.063 [+0.048, +0.080]** | 0.290 | **−0.036 [−0.050, −0.025]** |
+| Blur+TVM | 0.265 | **−0.095 [−0.115, −0.081]** | 0.274 | +0.001 [−0.016, +0.016] | 0.272 | **+0.048 [+0.029, +0.066]** | 0.268 | **−0.059 [−0.076, −0.043]** |
+| EnsBTC | 0.352 | −0.009 [−0.020, +0.008] | 0.326 | **+0.053 [+0.042, +0.070]** | 0.324 | **+0.100 [+0.087, +0.120]** | 0.332 | +0.006 [−0.004, +0.024] |
+| EnsJMG | 0.351 | −0.009 [−0.020, +0.008] | 0.328 | **+0.055 [+0.043, +0.072]** | 0.324 | **+0.100 [+0.087, +0.120]** | 0.329 | +0.002 [−0.004, +0.017] |
+| EnsJMT | 0.356 | −0.004 [−0.015, +0.011] | 0.326 | **+0.053 [+0.043, +0.069]** | 0.323 | **+0.099 [+0.084, +0.119]** | 0.331 | +0.004 [−0.004, +0.018] |
+<!-- /table:p3_ci_florence -->
 
 Source: `results/phase4/rescore_phase3_v2/summary_rescore_phase3_v2_latest.json`. The paper's `tab_ci_*.tex` are written from it by `docs/paper_draft/make_tables.py`.
 
 ### Phase 3 — Survey, N=5,000
 
-The Florence-2 detection rows are read from committed files produced by
-`archive/Phase3/run_survey_florence_detection.py --tier survey --num-images 5000`. That run has 19 defense rows (13 solos and 6 ensembles), `novel: false` and 0 failed images. Re-checked on 18 Nov 2026.
+The Florence-2 detection rows are read from committed files produced by `archive/Phase3/run_survey_florence_detection.py --tier survey --num-images 5000`. That run has 19 defense rows (12 single transforms and 7 ensembles), `novel: false` and 0 failed images.
 
-| Track | clean | attacked | best defense | defended | source file |
+<!-- table:p3_survey_best -->
+| Track | Clean | Attacked | Best defense | Defended | Recovery | Best single transform | Source file |
+|---|---|---|---|---|---|---|---|
+| Florence-2 det. · FGSM | 0.3300 | 0.2488 | EnsJBT | **0.2942** | +55.9% | Bilateral 0.2938 | `results/results_survey_florence_detection_fgsm/summary_fgsm.json` |
+| Florence-2 det. · PGD | 0.3300 | 0.2005 | EnsJMT | **0.2961** | +73.8% | Bilateral 0.2956 | `results/results_survey_florence_detection_pgd/summary_pgd.json` |
+| Florence-2 det. · Patch | 0.3300 | 0.2958 | Bilateral | **0.3165** | +60.6% | Bilateral 0.3165 | `results/results_survey_florence_detection_patch/summary_patch.json` |
+<!-- /table:p3_survey_best -->
+
+The YOLO-World and OCR rows below are from the earlier paper's tables (Table 3 and Table 5). The runs were real, but **their summary files no longer exist**. The YOLO-World clean value is now also backed by the committed Phase-4 file.
+
+| Track | Clean | FGSM | PGD | Patch | Source |
 |---|---|---|---|---|---|
-| Florence-det · FGSM | 0.3300 | 0.2488 | ens_jpeg_bilateral_tvm | 0.2942 (+55.9%) | `results/results_survey_florence_detection_fgsm/summary_fgsm.json` |
-| Florence-det · PGD | 0.3300 | 0.2005 | ens_jpeg_median_tvm | 0.2961 (+73.8%) | `results/results_survey_florence_detection_pgd/summary_pgd.json` |
-| Florence-det · Patch | 0.3300 | 0.2958 | bilateral | 0.3165 (+60.6%) | `results/results_survey_florence_detection_patch/summary_patch.json` |
-
-The YOLO and OCR rows below are from the earlier paper's tables (Table 3 and Table 5). The runs were real, but **their summary files no longer exist**. The YOLO clean value is now also backed by the committed Phase-4 file.
-
-| Track | clean | FGSM | PGD | Patch | source |
-|---|---|---|---|---|---|
-| YOLO det (mAP) | 0.4519 | 0.2051 | 0.0619 | 0.4257 | earlier paper Table 3; clean reproduced in `results/phase4/clean_control_yolo/` |
+| YOLO-World detection (mAP) | 0.4519 | 0.2051 | 0.0619 | 0.4257 | earlier paper Table 3; clean reproduced in `results/phase4/clean_control_yolo/` |
 | Florence-2 OCR (self-consistency) | 1.000 | 0.346 | 0.294 | 0.383 | earlier paper Table 5 |
 
-- `bilateral` (a Tier-2 addition, absent from the locked v2 set) is the strongest **solo** on all three Florence-det attacks at N=5,000, and wins Patch outright. The N=1,000 v2 ranking does not carry over.
-- `random_resize` is the worst row on all three attacks (e.g. Patch 0.1449, −0.1510). This is a documented negative result, not a bug.
+- Bilateral (a survey addition, absent from the v2 set) is the strongest **single transform** on all three Florence-2 detection attacks at N=5,000, and wins Patch outright. The N=1,000 v2 ranking does not carry over.
+- Random resize is the worst row on all three attacks (e.g. Patch 0.1449). This is a documented negative result, not a bug.
 - The N=5,000 PGD alpha is eps/4 on all three tracks. Never mix in the N=1,000 OCR PGD row (alpha 0.003).
 
 **Every defense at N=5,000** (the paper's appendix A). Rec. % = (defended − attacked) / (clean − attacked).
-- The Florence-2 detection table matches the committed `results/results_survey_florence_detection_{fgsm,pgd,patch}/summary_*.json` at 4 decimals.
-- The YOLO-World and OCR tables are from the earlier paper (Tables 3 and 5); their summary files are not in this repo.
 - In the patch columns the denominator is tiny (0.026 mAP on YOLO-World, 0.034 on Florence-2), so read the mAP there, not the percentage.
-- Random resize-and-pad is left out of the detection tables: its detection numbers are a box-misalignment artefact.
+- † Random resize is in the committed Florence-2 files but left out of the paper's detection tables: its detection numbers are a box-misalignment artefact.
 
-YOLO-World detection (mAP):
+YOLO-World detection (mAP), from the earlier paper's Table 3 (`docs/paper_draft/tab_yolo_n5000.tex`):
 
+<!-- table:p3_n5000_yolo -->
 |  | FGSM mAP | Rec. % | PGD mAP | Rec. % | Patch mAP | Rec. % |
 |---|---|---|---|---|---|---|
-| No attack, no defense | 0.4519 | -- | 0.4519 | -- | 0.4519 | -- |
-| Attacked, no defense | 0.2051 | -- | 0.0619 | -- | 0.4257 | -- |
-| *Single transforms* | | | | | | |
+| No attack, no defense | 0.4519 |  | 0.4519 |  | 0.4519 |  |
+| Attacked, no defense | 0.2051 |  | 0.0619 |  | 0.4257 |  |
+| *Single transforms* |  |  |  |  |  |  |
 | Gaussian (σ=1) | 0.2948 | 36.3 | 0.3871 | 83.4 | 0.4261 | 1.4 |
 | TVM (w=0.05) | 0.2757 | 28.6 | 0.3847 | 82.8 | 0.4017 | −92.1 |
 | Blur+TVM | 0.3265 | 49.2 | 0.3815 | 81.9 | 0.3840 | −159.6 |
@@ -403,7 +491,7 @@ YOLO-World detection (mAP):
 | Ordered dithering | 0.2191 | 5.7 | 0.1581 | 24.7 | 0.4139 | −45.2 |
 | Bit-depth (4-bit) | 0.2189 | 5.6 | 0.1382 | 19.6 | 0.4150 | −41.0 |
 | SVD (top 90% of rank) | 0.2055 | 0.2 | 0.0638 | 0.5 | 0.4259 | 0.8 |
-| *Output-level ensembles* | | | | | | |
+| *Output-level ensembles* |  |  |  |  |  |  |
 | Ens4W | 0.2896 | 34.2 | 0.3969 | 85.9 | 0.4358 | 38.5 |
 | EnsBTC | 0.3134 | 43.9 | 0.3931 | 84.9 | 0.4317 | 22.6 |
 | EnsJMT | 0.2832 | 31.6 | 0.3902 | 84.2 | 0.4347 | 34.4 |
@@ -411,26 +499,29 @@ YOLO-World detection (mAP):
 | EnsJMG | 0.2882 | 33.7 | 0.3853 | 82.9 | 0.4366 | 41.5 |
 | EnsJBT | 0.2664 | 24.8 | 0.3834 | 82.4 | 0.4298 | 15.6 |
 | EnsJTS | 0.2617 | 22.9 | 0.3751 | 80.3 | 0.4333 | 28.8 |
+<!-- /table:p3_n5000_yolo -->
 
-Florence-2 detection (mAP, geometric pseudo-scores):
+Florence-2 detection (mAP, geometric pseudo-scores), from the committed `results/results_survey_florence_detection_{fgsm,pgd,patch}/summary_*.json`:
 
+<!-- table:p3_n5000_florence -->
 |  | FGSM mAP | Rec. % | PGD mAP | Rec. % | Patch mAP | Rec. % |
 |---|---|---|---|---|---|---|
-| No attack, no defense | 0.3300 | -- | 0.3300 | -- | 0.3300 | -- |
-| Attacked, no defense | 0.2488 | -- | 0.2005 | -- | 0.2958 | -- |
-| *Single transforms* | | | | | | |
+| No attack, no defense | 0.3300 |  | 0.3300 |  | 0.3300 |  |
+| Attacked, no defense | 0.2488 |  | 0.2005 |  | 0.2958 |  |
+| *Single transforms* |  |  |  |  |  |  |
 | Bilateral | 0.2938 | 55.4 | 0.2956 | 73.5 | 0.3165 | 60.6 |
-| JPEG (q=75) | 0.2922 | 53.5 | 0.2937 | 72.0 | 0.3044 | 25.1 |
-| Median (3×3) | 0.2910 | 52.0 | 0.2881 | 67.7 | 0.3032 | 21.5 |
-| Anisotropic | 0.2855 | 45.2 | 0.2856 | 65.7 | 0.3028 | 20.4 |
-| Gaussian (σ=1) | 0.2621 | 16.3 | 0.2625 | 47.9 | 0.2719 | −70.2 |
-| Ordered dithering | 0.2610 | 15.0 | 0.2529 | 40.5 | 0.2852 | −31.2 |
+| JPEG | 0.2922 | 53.5 | 0.2937 | 72.0 | 0.3044 | 25.1 |
+| Median | 0.2910 | 52.0 | 0.2881 | 67.7 | 0.3032 | 21.5 |
+| Anisotropic diffusion | 0.2855 | 45.2 | 0.2856 | 65.7 | 0.3028 | 20.4 |
+| Gaussian | 0.2621 | 16.3 | 0.2625 | 47.9 | 0.2719 | −70.2 |
+| Dithering | 0.2610 | 15.0 | 0.2529 | 40.5 | 0.2852 | −31.2 |
 | Blur+TVM | 0.2467 | −2.6 | 0.2457 | 34.9 | 0.2437 | −152.7 |
-| TVM (w=0.05) | 0.2440 | −5.9 | 0.2410 | 31.3 | 0.2494 | −136.3 |
-| Bit-depth (4-bit) | 0.2321 | −20.7 | 0.2191 | 14.3 | 0.2477 | −141.2 |
-| NLM (h=0.8σ̂) | 0.2420 | −8.4 | 0.2058 | 4.1 | 0.2791 | −49.0 |
-| SVD (top 90% of rank) | 0.2462 | −3.2 | 0.1990 | −1.2 | 0.2920 | −11.3 |
-| *Output-level ensembles* | | | | | | |
+| TVM | 0.2440 | −5.9 | 0.2410 | 31.3 | 0.2494 | −136.3 |
+| Bit depth | 0.2321 | −20.7 | 0.2191 | 14.3 | 0.2477 | −141.2 |
+| NLM | 0.2420 | −8.4 | 0.2058 | 4.1 | 0.2791 | −49.0 |
+| SVD | 0.2462 | −3.2 | 0.1990 | −1.2 | 0.2920 | −11.3 |
+| Random resize † | 0.1389 | −135.5 | 0.1329 | −52.2 | 0.1449 | −442.5 |
+| *Ensembles* |  |  |  |  |  |  |
 | EnsJMT | 0.2931 | 54.6 | 0.2961 | 73.8 | 0.3051 | 27.0 |
 | EnsJMG | 0.2934 | 54.9 | 0.2957 | 73.6 | 0.3057 | 29.0 |
 | EnsBTC | 0.2915 | 52.6 | 0.2955 | 73.3 | 0.3014 | 16.3 |
@@ -438,14 +529,16 @@ Florence-2 detection (mAP, geometric pseudo-scores):
 | EnsBMT | 0.2931 | 54.5 | 0.2938 | 72.1 | 0.3099 | 41.2 |
 | Ens4W | 0.2897 | 50.4 | 0.2927 | 71.2 | 0.3016 | 17.0 |
 | EnsJTS | 0.2792 | 37.5 | 0.2745 | 57.2 | 0.2994 | 10.3 |
+<!-- /table:p3_n5000_florence -->
 
-Florence-2 OCR (self-consistency):
+Florence-2 OCR (self-consistency), from the earlier paper's Table 5 (`docs/paper_draft/tab_ocr_n5000.tex`):
 
+<!-- table:p3_n5000_ocr -->
 |  | FGSM | PGD | Patch |
 |---|---|---|---|
 | No attack, no defense | 1.000 | 1.000 | 1.000 |
 | Attacked, no defense | 0.346 | 0.294 | 0.383 |
-| *Single transforms* | | | |
+| *Single transforms* |  |  |  |
 | TVM (w=0.05) | 0.598 | 0.654 | 0.406 |
 | Bilateral | 0.482 | 0.637 | 0.380 |
 | Anisotropic | 0.507 | 0.630 | 0.372 |
@@ -459,7 +552,7 @@ Florence-2 OCR (self-consistency):
 | Blur+TVM | 0.470 | 0.487 | 0.477 |
 | NLM (h=0.8σ̂) | 0.367 | 0.383 | 0.367 |
 | SVD (top 90% of rank) | 0.350 | 0.309 | 0.385 |
-| *Output-level ensembles (consensus vote)* | | | |
+| *Output-level ensembles (consensus vote)* |  |  |  |
 | EnsJBT | 0.537 | 0.661 | 0.401 |
 | Ens4W | 0.561 | 0.652 | 0.566 |
 | EnsBMT | 0.530 | 0.651 | 0.427 |
@@ -467,6 +560,7 @@ Florence-2 OCR (self-consistency):
 | EnsJMG | 0.522 | 0.620 | 0.578 |
 | EnsBTC | 0.502 | 0.586 | 0.550 |
 | EnsJTS | 0.507 | 0.580 | 0.405 |
+<!-- /table:p3_n5000_ocr -->
 
 Interpretation rule used in this repo: **prioritize recovery from the attacked score over naive comparison with the clean baseline.**
 
@@ -494,6 +588,7 @@ Interpretation rule used in this repo: **prioritize recovery from the attacked s
 │   ├── p4_status.sh · p4_health.py   # read-only progress and health checks
 │   ├── p4_subset_score.py      # scores the first K images of a finished adaptive checkpoint
 │   ├── p4_ledger.py            # writes docs/PHASE4_JOB_LEDGER.md from the local queue ledgers
+│   ├── make_readme_tables.py   # writes every README results table from the summaries (--check)
 │   └── p4_boot_survey.py       # paired bootstrap CIs for an oblivious_survey run (ensemble vs members)
 ├── tests/                      # Phase-4 checks; none need a GPU, weights or COCO
 ├── results/
@@ -573,7 +668,7 @@ tmux attach -t p4_full                     # Ctrl-b d detaches
 D="--deterministic --gpu 0"
 A="--attack-space native --pgd-select best --pgd-iters 50 --alpha 0.002"
 
-# Adaptive vs oblivious, YOLO-World, 1,000 images (Table 5)
+# Adaptive vs oblivious, YOLO-World, 1,000 images (paper table tab:adaptive)
 for t in ens_jpeg_median_gaussian median; do for s in 1 2 3; do
   python phase4/p4_yolo.py --experiment adaptive_bpda $A $D --n 1000 --target $t --seed $s \
       --log-name run_${t}_s$s.log
@@ -647,7 +742,7 @@ CUDA_VISIBLE_DEVICES='' python tests/test_attack_units.py   # 23 CPU-torch attac
 
 ### Measured throughput (RTX 5000 Ada 32 GB, Phase-4 runs, 17–18 Nov 2026)
 
-These are seconds per image as the runs reported them. Up to 8 jobs shared the one GPU, so a job running alone is faster. Peak GPU memory with 8 jobs was 30.4 of 32.7 GB.
+These are seconds per image as the runs reported them. Up to 8 jobs shared the one GPU in round 1 and up to 9 in round 2, so a job running alone is faster. The highest GPU memory logged (round 1, 8 jobs, local health log) was 30,517 of 32,760 MiB.
 
 | Run | s/image | images |
 |---|---|---|
@@ -660,8 +755,12 @@ These are seconds per image as the runs reported them. Up to 8 jobs shared the o
 | SmolVLM presence QA | 26.7 | 1,000 |
 | OWL-ViT `oblivious_survey` (11 transforms + 7 ensembles) | 11.8 | 1,000 |
 | OWL-ViT adaptive, Median / EnsJMG | 14.0 / 18.4 | 1,000 |
+| OWL-ViT adaptive, EnsJMG mean objective | 29.5 | 300 |
+| YOLO adaptive, 300-image runs (4/255, 7/255, 100 steps, eps 0.1) | 13.7–28.5 | 300 |
+| Florence adaptive at 4/255, Median / EnsJMG | 58.8 / 77.4 | 300 |
+| Florence adaptive, EnsJMG mean objective | 54.3 | 300 |
 
-`--deterministic` costs about 19% on YOLO. It makes YOLO runs bit-identical, but not Florence runs.
+`--deterministic` cost about 19% on YOLO in a 10-image test before the runs (7.2 against 6.1 s/image; no file records it). It makes YOLO runs bit-identical, but not Florence-2 or OWL-ViT runs.
 
 ### The experiments
 

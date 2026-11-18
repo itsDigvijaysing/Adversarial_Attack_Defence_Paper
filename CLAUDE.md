@@ -172,7 +172,10 @@ results** and **novel 2025–2026 methods**.
   `results/phase4/`, the tmux queue scripts `scripts/p4_{launch,queue,status}.sh`,
   `scripts/p4_health.py` and `scripts/p4_subset_score.py`. Queue logs (`logs/phase4_queue/`) and
   checkpoints stay local; `docs/PHASE4_JOB_LEDGER.md` (from `scripts/p4_ledger.py`) is the committed
-  record of every job's start, end, exit code and command. The paper's Phase-4 tables come from
+  record of every job's start, end, exit code and command.
+- **README results tables are generated** by `scripts/make_readme_tables.py` (between
+  `<!-- table:NAME -->` markers, straight from the summary files). After any new result, rerun it;
+  `--check` exits 1 if the README no longer matches the files. Never hand-edit those tables. The paper's Phase-4 tables come from
   `docs/paper_draft/make_phase4_tables.py` (writes `tab_*.tex`; never type a number by hand).
 - **`--deterministic` and `--all-transforms`** (17 Nov): the first is an execution flag (out of
   the signature and the stem, recorded in the summary); the second adds the other survey
@@ -194,8 +197,9 @@ results** and **novel 2025–2026 methods**.
   repo root instead of under `results/`. They are frozen; do not repoint them — Phase-4 code writes
   to `results/phase4/` correctly.
 - **N=5000 provenance:** only the Florence-2 detection summaries are committed here. The YOLO
-  (Digvijay) and OCR (Ankush) N=5000 runs happened on their machines — real, confirmed numbers whose
-  files are not yet in this repo. Never call them unverified; the fix is to import the files.
+  (Digvijay) and OCR (Ankush) N=5000 runs happened on their machines — real, confirmed numbers, but
+  the user confirmed on 17 Nov 2026 that those summary files no longer exist anywhere, so the two
+  tables stay as parsed from the earlier paper. Never call them unverified.
 
 ## graphify (knowledge graph — `graphify-out/`)
 Built 2026-08-09 over all 96 files: 1,027 nodes / 1,856 edges / 29 communities. See

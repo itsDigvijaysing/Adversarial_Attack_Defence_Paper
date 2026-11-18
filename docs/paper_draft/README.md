@@ -32,6 +32,16 @@ box-misalignment artefact. The prose numbers of Secs. 4.2, 4.3 and 5 come from t
 summary as `tab_ci_*.tex` (its `conditions`, `clean_cost`, `recovery`, `best_ensemble_vs_median`
 and `score_free_tables` fields).
 
+## Correction of 19 Nov 2026
+YOLO-World adaptive Median (seed 1) is 0.01648 in its summary, i.e. **0.016** at three decimals.
+The abstract, Sec. 4.4 and check (v) said 0.017 (rounded twice, via 0.0165). Fixed in `main.tex`;
+PDF and Overleaf zip rebuilt (22 pages, 0 overfull boxes, zip compiles standalone). Every README
+results table is now generated from the summaries by `scripts/make_readme_tables.py`.
+All three table generators (`make_tables.py`, `make_phase4_tables.py` and the README one) now round
+half up from each value's shortest decimal form. Only `tab_smolvlm.tex` changed (accuracies are
+exact multiples of 1/2000, e.g. 0.7535 -> 0.754, where the old float formatting gave 0.753); the
+prose follows (Blur+TVM 0.754, Median recovery 0.093). `tab_ci_*.tex` are byte-identical.
+
 ## Number check of 15 Nov 2026
 Every number in `main.tex` was traced to a file and every derived number recomputed.
 
@@ -145,7 +155,7 @@ Text changes made with the numbers:
   natural worst-case objective" is gone: the average was stronger on YOLO-World (EnsJMG 0.071 ->
   0.048, Ens4W 0.108 -> 0.069) and equal on Florence-2, so every worst case is the minimum over
   both objectives. Abstract and introduction say the same.
-- Sec. 4.4: Table 6 and the results paragraph (worst case 0.017 / 0.048 / 0.069 against 0.018
+- Sec. 4.4: Table 6 and the results paragraph (worst case 0.016 / 0.048 / 0.069 against 0.018
   undefended, seed 1), checks (i) to (v), and a Florence-2 table and paragraph.
 - Sec. 4.5 (SmolVLM): table and paragraph. Every ensemble is below its best member there.
 - New Sec. 4.6 (OWL-ViT, fourth model): setup written; results red until the runs finish.

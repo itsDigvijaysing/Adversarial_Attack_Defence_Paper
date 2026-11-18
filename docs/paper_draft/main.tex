@@ -81,7 +81,7 @@ restores 72\% of the lost mAP on \yw{}, which says more about how fragile
 that perturbation is than about the filter. An attacker who differentiates
 through the defense takes back almost everything it gave. On \yw{} at
 $\epsilon=7/255$, defended
-mAP falls from 0.37--0.43 under oblivious PGD to 0.017--0.069 at the worst
+mAP falls from 0.37--0.43 under oblivious PGD to 0.016--0.069 at the worst
 case over two adaptive objectives, against 0.018 for the undefended model
 under the same budget; ensembles keep more than a median filter, but never
 more than 0.07 of a clean 0.48. On \fl{}, a defense keeps at most 0.03 mAP
@@ -729,7 +729,7 @@ defense.
 The adaptive attack takes back almost everything the defenses gave. Under
 oblivious PGD the three defenses hold 0.366, 0.407 and 0.431 mAP. Against an
 attacker who targets them, the worst case over the two objectives (seed 1)
-is 0.017 for Median, 0.048 for EnsJMG and 0.069 for Ens4W, while the
+is 0.016 for Median, 0.048 for EnsJMG and 0.069 for Ens4W, while the
 undefended model under the same attack has 0.018. Median ends where no
 defense would. The ensembles keep 0.030 and 0.050 mAP more than that, which
 is an advantage over Median, but a small one next to a clean mAP of 0.476.
@@ -805,7 +805,7 @@ branch at every step; within 50 steps that matters more than aiming at the
 branch the merge will keep. This is why every worst case above takes the
 minimum over both.
 (v) The true median gradient is the stronger choice: with it Median falls to
-0.017, with the straight-through identity to 0.042 (seed 1).
+0.016, with the straight-through identity to 0.042 (seed 1).
 
 \begin{table}[t]
 \centering\small
@@ -879,9 +879,9 @@ bold marks an interval that excludes zero. Sorted by attacked accuracy.}
 
 Table~\ref{tab:smolvlm} gives the result. The attack lowers accuracy from
 0.856 to 0.439. The ranking is not the one the detectors gave. The strongest
-smoothing filters recover most of the loss: Blur+TVM reaches 0.753,
+smoothing filters recover most of the loss: Blur+TVM reaches 0.754,
 random resize-and-pad 0.748 and BM3D 0.728, between 69 and 75\% of the
-damage, at clean costs of 0.03 to 0.07. Median recovers 0.092 (22\%), and the
+damage, at clean costs of 0.03 to 0.07. Median recovers 0.093 (22\%), and the
 seven ensembles between 0.032 and 0.100 (8 to 24\%). Every ensemble here is
 below its own best member under attack; averaging the yes-probabilities
 lets the weak branches dilute the strong one, where the detection merge lets

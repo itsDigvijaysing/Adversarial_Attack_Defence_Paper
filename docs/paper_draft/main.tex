@@ -161,7 +161,11 @@ compute directly, and that replacing the transform by a differentiable
 approximation on the backward pass (BPDA), with an expectation over any
 randomness (EOT), breaks them. Tram\`er et al.~\cite{tramer2020adaptive}
 repeated the exercise for thirteen later defenses, and Croce et
-al.~\cite{croce2022evaluating} for test-time defenses.
+al.~\cite{croce2022evaluating} for test-time defenses. Closest to our
+ensembles, He et al.~\cite{he2017ensembles} studied three defenses that
+combine weaker ones, feature squeezing among them, on image classifiers: an
+adaptive attacker defeated every component and every combination with low
+distortion.
 Sitawarin et al.~\cite{sitawarin2022demystifying} make a point we take
 seriously: a weak adaptive attack overstates robustness just as an oblivious
 one does, and BaRT looked robust under BPDA until the attack was tuned.

@@ -1,0 +1,99 @@
+{
+  "source_checkpoint": "results/phase4/adaptive_bpda_florence/checkpoint_adaptive_14f654be.pkl",
+  "source_summary": "results/phase4/adaptive_bpda_florence/summary_adaptive_bpda_florence_ens_jpeg_median_gaussian_seed1_pgd-select-best_latest.json",
+  "first_k_images": 300,
+  "image_ids_sha1_16": "94c8dc9df724d3df",
+  "target": "ens_jpeg_median_gaussian",
+  "attack_flags": {
+    "target": "ens_jpeg_median_gaussian",
+    "eot_loss": "max",
+    "restarts": 1,
+    "median_surrogate": "true",
+    "quantize": "truncate",
+    "attack_space": "native",
+    "pgd_select": "best"
+  },
+  "attack": {
+    "type": "PGD",
+    "eps": 0.03,
+    "iters": 50,
+    "alpha": 0.002,
+    "seed": 1,
+    "restarts": 1,
+    "quantize": "truncate",
+    "iterate_selection": "best",
+    "init_scheme": "sha256(seed|image_id|restart)->cpu-generator-v1",
+    "pixel_space": "raw [0,1], native resolution",
+    "objective": "maximize the teacher-forced token cross-entropy against the clean decode"
+  },
+  "headline": {
+    "clean_mAP": 0.39101922681977136,
+    "clean_defended_mAP": 0.3860100011380287,
+    "oblivious_attacked_undefended_mAP": 0.16693242194659316,
+    "oblivious_attacked_defended_mAP": 0.3000911757718958,
+    "adaptive_attacked_undefended_mAP": 0.18837452137990424,
+    "adaptive_attacked_defended_mAP": 0.19934968603974193
+  },
+  "conditions": {
+    "clean": {
+      "mAP": 0.39101922681977136,
+      "AP50": 0.5089633923475183
+    },
+    "clean+jpeg": {
+      "mAP": 0.38279444612879693,
+      "AP50": 0.5021549923695721
+    },
+    "clean+median": {
+      "mAP": 0.3895935399027985,
+      "AP50": 0.5146394875835272
+    },
+    "clean+gaussian": {
+      "mAP": 0.33022102922576735,
+      "AP50": 0.4304842333774716
+    },
+    "pgd_oblivious": {
+      "mAP": 0.16693242194659316,
+      "AP50": 0.2661309333623093
+    },
+    "pgd_oblivious+jpeg": {
+      "mAP": 0.2996791014739556,
+      "AP50": 0.4209105432909294
+    },
+    "pgd_oblivious+median": {
+      "mAP": 0.28674081661449263,
+      "AP50": 0.40926549034360515
+    },
+    "pgd_oblivious+gaussian": {
+      "mAP": 0.28659213786662785,
+      "AP50": 0.40755575281247686
+    },
+    "pgd_adaptive": {
+      "mAP": 0.18837452137990424,
+      "AP50": 0.3037310790699157
+    },
+    "pgd_adaptive+jpeg": {
+      "mAP": 0.19223149026328537,
+      "AP50": 0.303698809358734
+    },
+    "pgd_adaptive+median": {
+      "mAP": 0.18081830411748986,
+      "AP50": 0.28460671356646966
+    },
+    "pgd_adaptive+gaussian": {
+      "mAP": 0.17632980984965924,
+      "AP50": 0.28200938705356365
+    },
+    "clean+ens_jpeg_median_gaussian": {
+      "mAP": 0.3860100011380287,
+      "AP50": 0.5209321399589197
+    },
+    "pgd_oblivious+ens_jpeg_median_gaussian": {
+      "mAP": 0.3000911757718958,
+      "AP50": 0.43755566858311623
+    },
+    "pgd_adaptive+ens_jpeg_median_gaussian": {
+      "mAP": 0.19934968603974193,
+      "AP50": 0.32136390968056133
+    }
+  }
+}

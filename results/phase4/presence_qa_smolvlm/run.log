@@ -1,0 +1,109 @@
+==============================================================================
+RUN START  2026-11-17 03:35:25
+  host    : user
+  python  : 3.9.7
+  git     : 3d60981-dirty
+  cwd     : /home/manu/m_work/Adversarial_Attack_Defence_Paper
+  command : phase4/p4_smolvlm.py --deterministic --gpu 0 --results-root results/phase4 --n 1000 --seed 1
+  experiment: presence_qa
+  n       : 1000
+  device  : cuda:0
+  smoke_test: False
+==============================================================================
+================================================================================
+                         PHASE 4: SMOLVLM: presence_qa                          
+================================================================================
+  run id    : 20261117-033524
+  images    : 1000 from /home/manu/m_work/Adversarial_Attack_Defence_Paper/val2017
+  device    : cuda:0
+  output    : results/phase4/presence_qa_smolvlm
+loading annotations into memory...
+Done (t=0.59s)
+creating index...
+index created!
+[smolvlm] loaded HuggingFaceTB/SmolVLM-256M-Instruct | side=512 | yes ids [9230, 9805, 10407, 10539] | no ids [787, 2838, 4607, 5230] | device=cuda:0
+[guard] processor == normalize on the 512x512 square (max |diff| = 0.00e+00)
+================================================================================
+PRESENCE QA: HuggingFaceTB/SmolVLM-256M-Instruct | n=1000 | 2 questions/image | 13 transforms + 7 ensembles | oblivious PGD eps=0.03 x10
+================================================================================
+/home/manu/miniforge3/envs/vlm_ftune/lib/python3.9/site-packages/torch/autograd/graph.py:823: UserWarning: Memory Efficient attention defaults to a non-deterministic algorithm. To explicitly enable determinism call torch.use_deterministic_algorithms(True, warn_only=False). (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/attention_backward.cu:683.)
+  return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+/home/manu/m_work/Adversarial_Attack_Defence_Paper/phase3_common.py:127: UserWarning: median CUDA with indices output does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return patches.contiguous().view(N, C, H, W, -1).median(dim=-1).values
+/home/manu/m_work/Adversarial_Attack_Defence_Paper/phase3_common.py:127: UserWarning: median CUDA with indices output does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return patches.contiguous().view(N, C, H, W, -1).median(dim=-1).values
+[presence] 50/1000 | 22.0m | 26.40s/img
+[survey-ckpt] Flushed 100 images -> results/phase4/presence_qa_smolvlm/checkpoint_presence_b31a8227.pkl
+[presence] 100/1000 | 44.0m | 26.40s/img
+[presence] 150/1000 | 65.8m | 26.31s/img
+[survey-ckpt] Flushed 200 images -> results/phase4/presence_qa_smolvlm/checkpoint_presence_b31a8227.pkl
+[presence] 200/1000 | 87.6m | 26.27s/img
+[presence] 250/1000 | 109.6m | 26.30s/img
+[survey-ckpt] Flushed 300 images -> results/phase4/presence_qa_smolvlm/checkpoint_presence_b31a8227.pkl
+[presence] 300/1000 | 131.4m | 26.27s/img
+[presence] 350/1000 | 153.2m | 26.26s/img
+[survey-ckpt] Flushed 400 images -> results/phase4/presence_qa_smolvlm/checkpoint_presence_b31a8227.pkl
+[presence] 400/1000 | 174.6m | 26.19s/img
+[presence] 450/1000 | 197.3m | 26.30s/img
+[survey-ckpt] Flushed 500 images -> results/phase4/presence_qa_smolvlm/checkpoint_presence_b31a8227.pkl
+[presence] 500/1000 | 220.0m | 26.41s/img
+[presence] 550/1000 | 242.1m | 26.41s/img
+[survey-ckpt] Flushed 600 images -> results/phase4/presence_qa_smolvlm/checkpoint_presence_b31a8227.pkl
+[presence] 600/1000 | 264.5m | 26.45s/img
+[presence] 650/1000 | 287.3m | 26.52s/img
+[survey-ckpt] Flushed 700 images -> results/phase4/presence_qa_smolvlm/checkpoint_presence_b31a8227.pkl
+[presence] 700/1000 | 310.0m | 26.57s/img
+[presence] 750/1000 | 332.9m | 26.63s/img
+[survey-ckpt] Flushed 800 images -> results/phase4/presence_qa_smolvlm/checkpoint_presence_b31a8227.pkl
+[presence] 800/1000 | 355.2m | 26.64s/img
+[presence] 850/1000 | 377.5m | 26.65s/img
+[survey-ckpt] Flushed 900 images -> results/phase4/presence_qa_smolvlm/checkpoint_presence_b31a8227.pkl
+[presence] 900/1000 | 400.0m | 26.67s/img
+[presence] 950/1000 | 422.5m | 26.68s/img
+[survey-ckpt] Flushed 1000 images -> results/phase4/presence_qa_smolvlm/checkpoint_presence_b31a8227.pkl
+[presence] 1000/1000 | 445.2m | 26.71s/img
+[survey-ckpt] Flushed 1000 images -> results/phase4/presence_qa_smolvlm/checkpoint_presence_b31a8227.pkl
+[presence] all 1000 images carry all 28 conditions.
+[survey-ckpt] Flushed 1000 images -> results/phase4/presence_qa_smolvlm/checkpoint_presence_b31a8227.pkl
+[out] results/phase4/presence_qa_smolvlm/summary_presence_qa_smolvlm_n1000_20261117-033524.json
+[out] results/phase4/presence_qa_smolvlm/summary_presence_qa_smolvlm_latest.json  (mirror of the newest run)
+[out] results/phase4/presence_qa_smolvlm/summary_presence_qa_smolvlm_n1000_20261117-033524.md
+[out] results/phase4/presence_qa_smolvlm/summary_presence_qa_smolvlm_latest.md
+
+======================================================================
+RESULT DIGEST (full table in the .md)
+======================================================================
+  clean accuracy     : 0.8560
+  attacked accuracy  : 0.4385
+  best defense       : Blur+TVM -> 0.7535
+
+======================================================================
+RUNTIME ESTIMATE (from this run's own s/image)
+======================================================================
+  measured: 26.71 s/image over 1000 image(s) on cuda:0
+    n=1000  ->   7.42 h
+    n=4000  ->  29.68 h
+    n=5000  ->  37.10 h
+
+======================================================================
+                            RUN ARTIFACTS                             
+======================================================================
+  results/phase4/presence_qa_smolvlm
+
+  committed to git (share these):
+         6 KB  run.log
+        22 KB  summary_presence_qa_smolvlm_latest.json
+         3 KB  summary_presence_qa_smolvlm_latest.md
+        22 KB  summary_presence_qa_smolvlm_n1000_20261117-033524.json
+         3 KB  summary_presence_qa_smolvlm_n1000_20261117-033524.md
+
+  local only (gitignored, do not share):
+       697 KB  checkpoint_presence_b31a8227.pkl
+       2.7 MB  per_image_presence_qa_smolvlm.json
+
+  committed total: 56 KB | directory total: 3.4 MB
+  ✓ every committed artifact is small enough to push and share.
+======================================================================
+==============================================================================
+RUN END    2026-11-17 11:00:40  | 445.2 min | OK
+==============================================================================

@@ -1,0 +1,131 @@
+==============================================================================
+RUN START  2026-11-17 22:06:36
+  host    : user
+  python  : 3.9.7
+  git     : 3d60981-dirty
+  cwd     : /home/manu/m_work/Adversarial_Attack_Defence_Paper
+  command : phase4/p4_florence.py --experiment adaptive_bpda --pgd-select best --deterministic --gpu 0 --n 300 --pgd-iters 50 --alpha 0.002 --target ens_jpeg_median_gaussian --seed 1 --eot-loss mean --output-dir results/phase4/adaptive_bpda_florence_n300 --log-name run_mean.log
+  experiment: adaptive_bpda
+  n       : 300
+  tracks  : florence_det
+  device  : cuda:0
+  visible : 0
+  smoke_test: False
+==============================================================================
+================================================================================
+                      PHASE 4 — FLORENCE-2 — adaptive_bpda                      
+================================================================================
+  run id    : 20261117-220634
+  images    : 300 from /home/manu/m_work/Adversarial_Attack_Defence_Paper/val2017 (--select head, seed 1)
+  id digest : 94c8dc9df724d3df
+  tracks    : ['florence_det']
+  device    : cuda:0
+  output    : results/phase4/adaptive_bpda_florence_n300
+  log       : run_mean.log
+loading annotations into memory...
+Done (t=0.69s)
+creating index...
+index created!
+/home/manu/miniforge3/envs/vlm_ftune/lib/python3.9/site-packages/timm/models/layers/__init__.py:48: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+[florence] loaded microsoft/Florence-2-base @ refs/pr/26 | dtype=torch.float16 | device=cuda:0 | tracks=['florence_det']
+[guard] gaussian_differentiable == pc.gaussian_gpu (max |diff| = 0.00e+00)
+/home/manu/m_work/Adversarial_Attack_Defence_Paper/phase3_common.py:127: UserWarning: median CUDA with indices output does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return patches.contiguous().view(N, C, H, W, -1).median(dim=-1).values
+/home/manu/m_work/Adversarial_Attack_Defence_Paper/phase4/p4_yolo.py:416: UserWarning: median CUDA with indices output does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return patches.contiguous().view(N, C, H, W, -1).median(dim=-1).values
+[guard] median_differentiable == pc.median_gpu (max |diff| = 0.00e+00)
+[guard] differentiable preprocessing vs the processor on 000000000139.jpg: max |diff| = 0.1423 (normalized units; 1/255 is about 0.017)
+================================================================================
+ADAPTIVE WHITE-BOX (Florence-2 <OD>): BPDA vs EnsJMG | n=300 | PGD eps=0.03 x50 | R=1 | eot=mean | pixel space
+================================================================================
+/home/manu/miniforge3/envs/vlm_ftune/lib/python3.9/site-packages/torch/autograd/graph.py:823: UserWarning: Flash Attention defaults to a non-deterministic algorithm. To explicitly enable determinism call torch.use_deterministic_algorithms(True, warn_only=False). (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/attention_backward.cu:102.)
+  return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+/home/manu/miniforge3/envs/vlm_ftune/lib/python3.9/site-packages/torch/autograd/graph.py:823: UserWarning: upsample_bicubic2d_aa_backward_out_cuda does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+/home/manu/miniforge3/envs/vlm_ftune/lib/python3.9/site-packages/torch/autograd/graph.py:823: UserWarning: reflection_pad2d_backward_cuda does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+[bpda] 25/300 | 24.7m | 59.17s/img
+[bpda] 50/300 | 48.7m | 58.49s/img
+[bpda] 75/300 | 71.4m | 57.15s/img
+[survey-ckpt] Flushed 100 images -> results/phase4/adaptive_bpda_florence_n300/checkpoint_adaptive_a13d6a45.pkl
+[bpda] 100/300 | 96.3m | 57.80s/img
+[bpda] 125/300 | 120.5m | 57.85s/img
+[bpda] 150/300 | 142.9m | 57.16s/img
+[bpda] 175/300 | 164.9m | 56.55s/img
+[survey-ckpt] Flushed 200 images -> results/phase4/adaptive_bpda_florence_n300/checkpoint_adaptive_a13d6a45.pkl
+[bpda] 200/300 | 187.5m | 56.26s/img
+[bpda] 225/300 | 209.0m | 55.73s/img
+[bpda] 250/300 | 231.2m | 55.50s/img
+[bpda] 275/300 | 250.9m | 54.74s/img
+[survey-ckpt] Flushed 300 images -> results/phase4/adaptive_bpda_florence_n300/checkpoint_adaptive_a13d6a45.pkl
+[bpda] 300/300 | 271.5m | 54.29s/img
+[survey-ckpt] Flushed 300 images -> results/phase4/adaptive_bpda_florence_n300/checkpoint_adaptive_a13d6a45.pkl
+[bpda] all 300 images carry all 12 conditions.
+[survey-ckpt] Flushed 300 images -> results/phase4/adaptive_bpda_florence_n300/checkpoint_adaptive_a13d6a45.pkl
+[eval] 15 conditions |     mAP    AP50  detections
+[eval]    0.3910  0.5090     1889  clean
+[eval]    0.3860  0.5209     2241  clean+ens_jpeg_median_gaussian
+[eval]    0.3302  0.4305     1310  clean+gaussian
+[eval]    0.3828  0.5022     1851  clean+jpeg
+[eval]    0.3896  0.5146     1882  clean+median
+[eval]    0.2128  0.3380     2454  pgd_adaptive
+[eval]    0.2014  0.3275     3805  pgd_adaptive+ens_jpeg_median_gaussian
+[eval]    0.1760  0.2627     1970  pgd_adaptive+gaussian
+[eval]    0.2054  0.3197     2302  pgd_adaptive+jpeg
+[eval]    0.1754  0.2840     2891  pgd_adaptive+median
+[eval]    0.1715  0.2790     3006  pgd_oblivious
+[eval]    0.3017  0.4438     2636  pgd_oblivious+ens_jpeg_median_gaussian
+[eval]    0.2933  0.4097     1555  pgd_oblivious+gaussian
+[eval]    0.2947  0.4153     2007  pgd_oblivious+jpeg
+[eval]    0.2988  0.4340     2238  pgd_oblivious+median
+[out] results/phase4/adaptive_bpda_florence_n300/summary_adaptive_bpda_florence_ens_jpeg_median_gaussian_seed1_eot-loss-mean_pgd-select-best_n300_20261117-220634.json
+[out] results/phase4/adaptive_bpda_florence_n300/summary_adaptive_bpda_florence_ens_jpeg_median_gaussian_seed1_eot-loss-mean_pgd-select-best_latest.json  (mirror of the newest run)
+[out] results/phase4/adaptive_bpda_florence_n300/summary_adaptive_bpda_florence_ens_jpeg_median_gaussian_seed1_eot-loss-mean_pgd-select-best_n300_20261117-220634.md
+[out] results/phase4/adaptive_bpda_florence_n300/summary_adaptive_bpda_florence_ens_jpeg_median_gaussian_seed1_eot-loss-mean_pgd-select-best_latest.md
+
+======================================================================
+RESULT DIGEST: adaptive vs EnsJMG (full table in the .md)
+======================================================================
+  clean_mAP                             : +0.3910
+  clean_defended_mAP                    : +0.3860
+  oblivious_attacked_undefended_mAP     : +0.1715
+  oblivious_attacked_defended_mAP       : +0.3017
+  adaptive_attacked_undefended_mAP      : +0.2128
+  adaptive_attacked_defended_mAP        : +0.2014
+  defense_recovery_oblivious            : +0.1301
+  defense_recovery_adaptive             : -0.0113
+  adaptive_minus_oblivious_defended     : -0.1002
+  adaptive J below oblivious J on 1.000 of images
+
+======================================================================
+RUNTIME ESTIMATE (from this run's own s/image)
+======================================================================
+  measured: 54.29 s/image over 300 image(s) on cuda:0
+    n=300   ->   4.52 h
+    n=1000  ->  15.08 h
+    n=5000  ->  75.41 h
+
+======================================================================
+                            RUN ARTIFACTS                             
+======================================================================
+  results/phase4/adaptive_bpda_florence_n300
+
+  committed to git (share these):
+         8 KB  run_mean.log
+         9 KB  summary_adaptive_bpda_florence_ens_jpeg_median_gaussian_seed1_eot-loss-mean_pgd-select-best_latest.json
+         3 KB  summary_adaptive_bpda_florence_ens_jpeg_median_gaussian_seed1_eot-loss-mean_pgd-select-best_latest.md
+         9 KB  summary_adaptive_bpda_florence_ens_jpeg_median_gaussian_seed1_eot-loss-mean_pgd-select-best_n300_20261117-220634.json
+         3 KB  summary_adaptive_bpda_florence_ens_jpeg_median_gaussian_seed1_eot-loss-mean_pgd-select-best_n300_20261117-220634.md
+         3 KB  summary_subset_ens_jpeg_median_gaussian_seed1_max_first300.json
+
+  local only (gitignored, do not share):
+       1.9 MB  checkpoint_adaptive_a13d6a45.pkl
+       150 KB  per_image_adaptive_bpda_florence_ens_jpeg_median_gaussian_seed1_eot-loss-mean_pgd-select-best.json
+
+  committed total: 35 KB | directory total: 2.1 MB
+  ✓ every committed artifact is small enough to push and share.
+======================================================================
+==============================================================================
+RUN END    2026-11-18 02:39:31  | 272.9 min | OK
+==============================================================================

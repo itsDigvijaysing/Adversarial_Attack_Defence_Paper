@@ -1,0 +1,199 @@
+==============================================================================
+RUN START  2026-11-17 03:36:11
+  host    : user
+  python  : 3.9.7
+  git     : 3d60981-dirty
+  cwd     : /home/manu/m_work/Adversarial_Attack_Defence_Paper
+  command : phase4/p4_yolo.py --experiment clean_control --all-transforms --deterministic --gpu 0 --results-root results/phase4 --n 5000 --seed 1
+  experiment: clean_control
+  n       : 5000
+  device  : cuda:0
+  visible : 0
+  smoke_test: False
+==============================================================================
+================================================================================
+                          PHASE 4: YOLO: clean_control                          
+================================================================================
+  run id    : 20261117-033609
+  images    : 5000 from /home/manu/m_work/Adversarial_Attack_Defence_Paper/val2017 (--select head, seed 1)
+  id digest : e69f60365d651b46
+  device    : cuda:0
+  output    : results/phase4/clean_control_yolo
+  log       : run.log
+loading annotations into memory...
+Done (t=0.55s)
+creating index...
+index created!
+[yolo] loaded yolov8x-worldv2.pt: 80 COCO classes | imgsz=640 | device=cuda:0
+================================================================================
+           CLEAN CONTROL — yolo | n=5000 | branches=11 | ensembles=7            
+================================================================================
+/home/manu/m_work/Adversarial_Attack_Defence_Paper/phase3_common.py:127: UserWarning: median CUDA with indices output does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return patches.contiguous().view(N, C, H, W, -1).median(dim=-1).values
+/home/manu/m_work/Adversarial_Attack_Defence_Paper/phase3_common.py:127: UserWarning: median CUDA with indices output does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return patches.contiguous().view(N, C, H, W, -1).median(dim=-1).values
+[survey-ckpt] Flushed 100 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 100/5000 | 2.9m | 1.72s/img
+[survey-ckpt] Flushed 200 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 200/5000 | 5.7m | 1.72s/img
+[survey-ckpt] Flushed 300 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 300/5000 | 8.6m | 1.71s/img
+[survey-ckpt] Flushed 400 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 400/5000 | 11.4m | 1.71s/img
+[survey-ckpt] Flushed 500 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 500/5000 | 14.3m | 1.71s/img
+[survey-ckpt] Flushed 600 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 600/5000 | 17.3m | 1.73s/img
+[survey-ckpt] Flushed 700 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 700/5000 | 20.1m | 1.73s/img
+[survey-ckpt] Flushed 800 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 800/5000 | 23.0m | 1.73s/img
+[survey-ckpt] Flushed 900 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 900/5000 | 25.9m | 1.73s/img
+[survey-ckpt] Flushed 1000 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 1000/5000 | 28.8m | 1.73s/img
+[survey-ckpt] Flushed 1100 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 1100/5000 | 31.7m | 1.73s/img
+[survey-ckpt] Flushed 1200 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 1200/5000 | 34.5m | 1.72s/img
+[survey-ckpt] Flushed 1300 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 1300/5000 | 37.4m | 1.73s/img
+[survey-ckpt] Flushed 1400 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 1400/5000 | 40.4m | 1.73s/img
+[survey-ckpt] Flushed 1500 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 1500/5000 | 43.4m | 1.74s/img
+[survey-ckpt] Flushed 1600 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 1600/5000 | 46.4m | 1.74s/img
+[survey-ckpt] Flushed 1700 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 1700/5000 | 49.3m | 1.74s/img
+[survey-ckpt] Flushed 1800 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 1800/5000 | 52.3m | 1.74s/img
+[survey-ckpt] Flushed 1900 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 1900/5000 | 55.3m | 1.75s/img
+[survey-ckpt] Flushed 2000 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 2000/5000 | 58.3m | 1.75s/img
+[survey-ckpt] Flushed 2100 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 2100/5000 | 61.2m | 1.75s/img
+[survey-ckpt] Flushed 2200 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 2200/5000 | 64.1m | 1.75s/img
+[survey-ckpt] Flushed 2300 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 2300/5000 | 67.0m | 1.75s/img
+[survey-ckpt] Flushed 2400 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 2400/5000 | 70.0m | 1.75s/img
+[survey-ckpt] Flushed 2500 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 2500/5000 | 72.9m | 1.75s/img
+[survey-ckpt] Flushed 2600 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 2600/5000 | 75.9m | 1.75s/img
+[survey-ckpt] Flushed 2700 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 2700/5000 | 78.7m | 1.75s/img
+[survey-ckpt] Flushed 2800 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 2800/5000 | 81.7m | 1.75s/img
+[survey-ckpt] Flushed 2900 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 2900/5000 | 84.6m | 1.75s/img
+[survey-ckpt] Flushed 3000 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 3000/5000 | 87.6m | 1.75s/img
+[survey-ckpt] Flushed 3100 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 3100/5000 | 90.6m | 1.75s/img
+[survey-ckpt] Flushed 3200 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 3200/5000 | 93.5m | 1.75s/img
+[survey-ckpt] Flushed 3300 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 3300/5000 | 96.5m | 1.75s/img
+[survey-ckpt] Flushed 3400 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 3400/5000 | 99.5m | 1.76s/img
+[survey-ckpt] Flushed 3500 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 3500/5000 | 102.4m | 1.76s/img
+[survey-ckpt] Flushed 3600 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 3600/5000 | 105.3m | 1.76s/img
+[survey-ckpt] Flushed 3700 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 3700/5000 | 108.3m | 1.76s/img
+[survey-ckpt] Flushed 3800 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 3800/5000 | 111.3m | 1.76s/img
+[survey-ckpt] Flushed 3900 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 3900/5000 | 114.3m | 1.76s/img
+[survey-ckpt] Flushed 4000 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 4000/5000 | 117.3m | 1.76s/img
+[survey-ckpt] Flushed 4100 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 4100/5000 | 120.2m | 1.76s/img
+[survey-ckpt] Flushed 4200 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 4200/5000 | 123.3m | 1.76s/img
+[survey-ckpt] Flushed 4300 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 4300/5000 | 126.2m | 1.76s/img
+[survey-ckpt] Flushed 4400 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 4400/5000 | 129.1m | 1.76s/img
+[survey-ckpt] Flushed 4500 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 4500/5000 | 132.2m | 1.76s/img
+[survey-ckpt] Flushed 4600 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 4600/5000 | 135.2m | 1.76s/img
+[survey-ckpt] Flushed 4700 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 4700/5000 | 138.2m | 1.76s/img
+[survey-ckpt] Flushed 4800 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 4800/5000 | 141.2m | 1.77s/img
+[survey-ckpt] Flushed 4900 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 4900/5000 | 144.2m | 1.77s/img
+[survey-ckpt] Flushed 5000 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] 5000/5000 | 147.3m | 1.77s/img
+[survey-ckpt] Flushed 5000 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[yolo] all 5000 images carry all 12 conditions.
+[survey-ckpt] Flushed 5000 images -> results/phase4/clean_control_yolo/checkpoint_yolo_b7f04288.pkl
+[eval] 19 conditions |     mAP    AP50  detections
+[eval]    0.4519  0.6175   393550  clean
+[eval]    0.4399  0.6030   424025  clean+anisotropic
+[eval]    0.4463  0.6117   395836  clean+bilateral
+[eval]    0.4448  0.6087   399799  clean+bit_depth
+[eval]    0.3953  0.5542   373099  clean+blur_tvm
+[eval]    0.4431  0.6063   409199  clean+dithering
+[eval]    0.4480  0.6136   656943  clean+ens_4way
+[eval]    0.4477  0.6130   595899  clean+ens_bilateral_median
+[eval]    0.4424  0.6079   616413  clean+ens_blur_tvm_combo
+[eval]    0.4480  0.6133   603434  clean+ens_jpeg_bilateral_tvm
+[eval]    0.4468  0.6133   541975  clean+ens_jpeg_median_gaussian
+[eval]    0.4466  0.6112   622788  clean+ens_jpeg_median_tvm
+[eval]    0.4522  0.6174   616890  clean+ens_jpeg_tvm_svd
+[eval]    0.4369  0.6029   322750  clean+gaussian
+[eval]    0.4262  0.5879   341514  clean+jpeg
+[eval]    0.4387  0.6038   380822  clean+median
+[eval]    0.4503  0.6158   404081  clean+nlm
+[eval]    0.4519  0.6177   393211  clean+svd
+[eval]    0.4280  0.5907   424360  clean+tvm
+[out] results/phase4/clean_control_yolo/summary_clean_control_yolo_alltransforms_n5000_20261117-033609.json
+[out] results/phase4/clean_control_yolo/summary_clean_control_yolo_alltransforms_latest.json  (mirror of the newest run)
+[out] results/phase4/clean_control_yolo/summary_clean_control_yolo_alltransforms_n5000_20261117-033609.md
+[out] results/phase4/clean_control_yolo/summary_clean_control_yolo_alltransforms_latest.md
+
+======================================================================
+RESULT DIGEST (full table in the .md next to this log)
+======================================================================
+  yolo: undefended clean = 0.4519  [COCO mAP@[.5:.95]]
+      best  EnsJTS                   0.4522 (+0.0003)
+      best  SVD (ensemble member)    0.4519 (+0.0000)
+      best  Non-local means          0.4503 (-0.0017)
+      worst Blur+TVM                 0.3953 (-0.0566)
+
+======================================================================
+RUNTIME ESTIMATE (from this run's own s/image)
+======================================================================
+  yolo             1.77 s/img  ->  n=1000:  0.49 h | n=5000:  2.45 h
+  ALL TRACKS                 ->  n=1000:  0.49 h | n=5000:  2.45 h
+
+======================================================================
+                            RUN ARTIFACTS                             
+======================================================================
+  results/phase4/clean_control_yolo
+
+  committed to git (share these):
+        12 KB  run.log
+        64 KB  summary_clean_control_yolo_alltransforms_latest.json
+         3 KB  summary_clean_control_yolo_alltransforms_latest.md
+        64 KB  summary_clean_control_yolo_alltransforms_n5000_20261117-033609.json
+         3 KB  summary_clean_control_yolo_alltransforms_n5000_20261117-033609.md
+
+  local only (gitignored, do not share):
+     302.5 MB  checkpoint_yolo_b7f04288.pkl
+       1.2 MB  per_image_yolo.json
+
+  committed total: 145 KB | directory total: 303.8 MB
+  ✓ every committed artifact is small enough to push and share.
+======================================================================
+==============================================================================
+RUN END    2026-11-17 06:23:27  | 167.3 min | OK
+==============================================================================

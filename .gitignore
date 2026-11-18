@@ -80,3 +80,8 @@ graphify-out/*
 # BFG-generated backup branches (if BFG repo cleaner is run later)
 *.bfg-report/
 
+
+# Phase-4 queue logs (scripts/p4_launch.sh): raw console of every job, done
+# markers and status.tsv. Local provenance; the per-run run*.log files in
+# results/ are the committed logs.
+logs/phase4_queue/

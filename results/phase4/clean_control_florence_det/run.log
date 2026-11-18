@@ -1,0 +1,203 @@
+==============================================================================
+RUN START  2026-11-17 03:34:55
+  host    : user
+  python  : 3.9.7
+  git     : 3d60981-dirty
+  cwd     : /home/manu/m_work/Adversarial_Attack_Defence_Paper
+  command : phase4/p4_florence.py --experiment clean_control --all-transforms --deterministic --gpu 0 --tracks florence_det --n 5000 --seed 1 --output-dir results/phase4/clean_control_florence_det
+  experiment: clean_control
+  n       : 5000
+  tracks  : florence_det
+  device  : cuda:0
+  visible : 0
+  smoke_test: False
+==============================================================================
+================================================================================
+                      PHASE 4 — FLORENCE-2 — clean_control                      
+================================================================================
+  run id    : 20261117-033454
+  images    : 5000 from /home/manu/m_work/Adversarial_Attack_Defence_Paper/val2017 (--select head, seed 1)
+  id digest : e69f60365d651b46
+  tracks    : ['florence_det']
+  device    : cuda:0
+  output    : results/phase4/clean_control_florence_det
+  log       : run.log
+loading annotations into memory...
+Done (t=0.59s)
+creating index...
+index created!
+/home/manu/miniforge3/envs/vlm_ftune/lib/python3.9/site-packages/timm/models/layers/__init__.py:48: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+[florence] loaded microsoft/Florence-2-base @ refs/pr/26 | dtype=torch.float16 | device=cuda:0 | tracks=['florence_det']
+================================================================================
+       CLEAN CONTROL — florence_det | n=5000 | branches=11 | ensembles=7        
+================================================================================
+/home/manu/m_work/Adversarial_Attack_Defence_Paper/phase3_common.py:127: UserWarning: median CUDA with indices output does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return patches.contiguous().view(N, C, H, W, -1).median(dim=-1).values
+/home/manu/m_work/Adversarial_Attack_Defence_Paper/phase3_common.py:127: UserWarning: median CUDA with indices output does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return patches.contiguous().view(N, C, H, W, -1).median(dim=-1).values
+[survey-ckpt] Flushed 100 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 100/5000 | 46.6m | 27.95s/img
+[survey-ckpt] Flushed 200 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 200/5000 | 90.0m | 27.01s/img
+[survey-ckpt] Flushed 300 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 300/5000 | 132.5m | 26.50s/img
+[survey-ckpt] Flushed 400 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 400/5000 | 174.3m | 26.15s/img
+[survey-ckpt] Flushed 500 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 500/5000 | 219.0m | 26.27s/img
+[survey-ckpt] Flushed 600 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 600/5000 | 271.9m | 27.19s/img
+[survey-ckpt] Flushed 700 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 700/5000 | 321.1m | 27.52s/img
+[survey-ckpt] Flushed 800 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 800/5000 | 372.6m | 27.94s/img
+[survey-ckpt] Flushed 900 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 900/5000 | 422.8m | 28.19s/img
+[survey-ckpt] Flushed 1000 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 1000/5000 | 466.7m | 28.00s/img
+[survey-ckpt] Flushed 1100 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 1100/5000 | 515.6m | 28.12s/img
+[survey-ckpt] Flushed 1200 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 1200/5000 | 560.8m | 28.04s/img
+[survey-ckpt] Flushed 1300 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 1300/5000 | 608.1m | 28.07s/img
+[survey-ckpt] Flushed 1400 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 1400/5000 | 657.2m | 28.16s/img
+[survey-ckpt] Flushed 1500 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 1500/5000 | 704.0m | 28.16s/img
+[survey-ckpt] Flushed 1600 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 1600/5000 | 757.4m | 28.40s/img
+[survey-ckpt] Flushed 1700 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 1700/5000 | 798.3m | 28.18s/img
+[survey-ckpt] Flushed 1800 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 1800/5000 | 835.4m | 27.85s/img
+[survey-ckpt] Flushed 1900 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 1900/5000 | 878.3m | 27.74s/img
+[survey-ckpt] Flushed 2000 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 2000/5000 | 901.3m | 27.04s/img
+[survey-ckpt] Flushed 2100 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 2100/5000 | 923.8m | 26.39s/img
+[survey-ckpt] Flushed 2200 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 2200/5000 | 941.1m | 25.67s/img
+[survey-ckpt] Flushed 2300 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 2300/5000 | 957.9m | 24.99s/img
+[survey-ckpt] Flushed 2400 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 2400/5000 | 974.1m | 24.35s/img
+[survey-ckpt] Flushed 2500 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 2500/5000 | 991.3m | 23.79s/img
+[survey-ckpt] Flushed 2600 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 2600/5000 | 1009.2m | 23.29s/img
+[survey-ckpt] Flushed 2700 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 2700/5000 | 1026.8m | 22.82s/img
+[survey-ckpt] Flushed 2800 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 2800/5000 | 1044.2m | 22.38s/img
+[survey-ckpt] Flushed 2900 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 2900/5000 | 1060.3m | 21.94s/img
+[survey-ckpt] Flushed 3000 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 3000/5000 | 1079.7m | 21.59s/img
+[survey-ckpt] Flushed 3100 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 3100/5000 | 1094.4m | 21.18s/img
+[survey-ckpt] Flushed 3200 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 3200/5000 | 1111.6m | 20.84s/img
+[survey-ckpt] Flushed 3300 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 3300/5000 | 1139.0m | 20.71s/img
+[survey-ckpt] Flushed 3400 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 3400/5000 | 1163.6m | 20.53s/img
+[survey-ckpt] Flushed 3500 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 3500/5000 | 1185.8m | 20.33s/img
+[survey-ckpt] Flushed 3600 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 3600/5000 | 1211.1m | 20.18s/img
+[survey-ckpt] Flushed 3700 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 3700/5000 | 1231.6m | 19.97s/img
+[survey-ckpt] Flushed 3800 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 3800/5000 | 1252.3m | 19.77s/img
+[survey-ckpt] Flushed 3900 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 3900/5000 | 1268.3m | 19.51s/img
+[survey-ckpt] Flushed 4000 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 4000/5000 | 1284.7m | 19.27s/img
+[survey-ckpt] Flushed 4100 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 4100/5000 | 1303.9m | 19.08s/img
+[survey-ckpt] Flushed 4200 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 4200/5000 | 1322.5m | 18.89s/img
+[survey-ckpt] Flushed 4300 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 4300/5000 | 1340.4m | 18.70s/img
+[survey-ckpt] Flushed 4400 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 4400/5000 | 1351.0m | 18.42s/img
+[survey-ckpt] Flushed 4500 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 4500/5000 | 1361.0m | 18.15s/img
+[survey-ckpt] Flushed 4600 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 4600/5000 | 1371.6m | 17.89s/img
+[survey-ckpt] Flushed 4700 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 4700/5000 | 1381.5m | 17.64s/img
+[survey-ckpt] Flushed 4800 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 4800/5000 | 1391.0m | 17.39s/img
+[survey-ckpt] Flushed 4900 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 4900/5000 | 1400.7m | 17.15s/img
+[survey-ckpt] Flushed 5000 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] 5000/5000 | 1411.2m | 16.93s/img
+[survey-ckpt] Flushed 5000 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[florence_det] all 5000 images carry all 12 conditions.
+[survey-ckpt] Flushed 5000 images -> results/phase4/clean_control_florence_det/checkpoint_florence_det_e29e68b3.pkl
+[eval] 19 conditions |     mAP    AP50  detections
+[eval]    0.3304  0.4498    32040  clean
+[eval]    0.3163  0.4311    29774  clean+anisotropic
+[eval]    0.3314  0.4531    32457  clean+bilateral
+[eval]    0.2802  0.3794    23963  clean+bit_depth
+[eval]    0.2492  0.3377    19233  clean+blur_tvm
+[eval]    0.3036  0.4120    26603  clean+dithering
+[eval]    0.3212  0.4535    36863  clean+ens_4way
+[eval]    0.3258  0.4576    36757  clean+ens_bilateral_median
+[eval]    0.3202  0.4505    36157  clean+ens_blur_tvm_combo
+[eval]    0.3253  0.4565    36794  clean+ens_jpeg_bilateral_tvm
+[eval]    0.3242  0.4536    36061  clean+ens_jpeg_median_gaussian
+[eval]    0.3241  0.4555    36147  clean+ens_jpeg_median_tvm
+[eval]    0.3238  0.4545    36297  clean+ens_jpeg_tvm_svd
+[eval]    0.2744  0.3686    21291  clean+gaussian
+[eval]    0.3198  0.4369    30110  clean+jpeg
+[eval]    0.3202  0.4374    30076  clean+median
+[eval]    0.3107  0.4204    29255  clean+nlm
+[eval]    0.3284  0.4488    32146  clean+svd
+[eval]    0.2643  0.3569    20811  clean+tvm
+[out] results/phase4/clean_control_florence_det/summary_clean_control_florence_alltransforms_n5000_20261117-033454.json
+[out] results/phase4/clean_control_florence_det/summary_clean_control_florence_alltransforms_latest.json  (mirror of the newest run)
+[out] results/phase4/clean_control_florence_det/summary_clean_control_florence_alltransforms_n5000_20261117-033454.md
+[out] results/phase4/clean_control_florence_det/summary_clean_control_florence_alltransforms_latest.md
+
+======================================================================
+RESULT DIGEST (full table in the .md next to this log)
+======================================================================
+  florence_det: undefended clean = 0.3304  [COCO mAP@[.5:.95]]
+      best  Bilateral                0.3314 (+0.0010)
+      best  SVD (ensemble member)    0.3284 (-0.0020)
+      best  EnsBMT                   0.3258 (-0.0046)
+      worst Blur+TVM                 0.2492 (-0.0812)
+
+======================================================================
+RUNTIME ESTIMATE (from this run's own s/image)
+======================================================================
+  florence_det    16.93 s/img  ->  n=1000:  4.70 h | n=5000: 23.52 h
+  ALL TRACKS                 ->  n=1000:  4.70 h | n=5000: 23.52 h
+
+======================================================================
+                            RUN ARTIFACTS                             
+======================================================================
+  results/phase4/clean_control_florence_det
+
+  committed to git (share these):
+        13 KB  run.log
+        64 KB  summary_clean_control_florence_alltransforms_latest.json
+         3 KB  summary_clean_control_florence_alltransforms_latest.md
+        64 KB  summary_clean_control_florence_alltransforms_n5000_20261117-033454.json
+         3 KB  summary_clean_control_florence_alltransforms_n5000_20261117-033454.md
+
+  local only (gitignored, do not share):
+      25.4 MB  checkpoint_florence_det_e29e68b3.pkl
+       1.2 MB  per_image_florence_det.json
+
+  committed total: 147 KB | directory total: 26.7 MB
+  ✓ every committed artifact is small enough to push and share.
+======================================================================
+==============================================================================
+RUN END    2026-11-18 03:10:09  | 1415.2 min | OK
+==============================================================================

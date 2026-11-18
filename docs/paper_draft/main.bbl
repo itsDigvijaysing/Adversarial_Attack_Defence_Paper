@@ -1,4 +1,4 @@
-\begin{thebibliography}{37}
+\begin{thebibliography}{38}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -101,6 +101,13 @@ Chuan Guo, Mayank Rana, Moustapha Cisse, and Laurens van~der Maaten.
 \newblock Countering adversarial images using input transformations.
 \newblock In \emph{International Conference on Learning Representations
   (ICLR)}, 2018.
+
+\bibitem[He et~al.(2017)He, Wei, Chen, Carlini, and Song]{he2017ensembles}
+Warren He, James Wei, Xinyun Chen, Nicholas Carlini, and Dawn Song.
+\newblock Adversarial example defense: Ensembles of weak defenses are not
+  strong.
+\newblock In \emph{11th USENIX Workshop on Offensive Technologies (WOOT 17)}.
+  USENIX Association, 2017.
 
 \bibitem[Kurakin et~al.(2017)Kurakin, Goodfellow, and
   Bengio]{kurakin2017adversarial}

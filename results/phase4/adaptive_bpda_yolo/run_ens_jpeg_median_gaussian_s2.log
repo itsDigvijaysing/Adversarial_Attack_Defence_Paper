@@ -1,0 +1,181 @@
+==============================================================================
+RUN START  2026-11-17 08:05:57
+  host    : user
+  python  : 3.9.7
+  git     : 3d60981-dirty
+  cwd     : /home/manu/m_work/Adversarial_Attack_Defence_Paper
+  command : phase4/p4_yolo.py --experiment adaptive_bpda --attack-space native --pgd-select best --deterministic --gpu 0 --results-root results/phase4 --n 1000 --pgd-iters 50 --alpha 0.002 --target ens_jpeg_median_gaussian --seed 2 --log-name run_ens_jpeg_median_gaussian_s2.log
+  experiment: adaptive_bpda
+  n       : 1000
+  device  : cuda:0
+  visible : 0
+  smoke_test: False
+==============================================================================
+================================================================================
+                          PHASE 4: YOLO: adaptive_bpda                          
+================================================================================
+  run id    : 20261117-080555
+  images    : 1000 from /home/manu/m_work/Adversarial_Attack_Defence_Paper/val2017 (--select head, seed 2)
+  id digest : 620b79f17bd75ab3
+  device    : cuda:0
+  eot batch : on (auto: 31.5 GiB >= 16 GiB)
+  output    : results/phase4/adaptive_bpda_yolo
+  log       : run_ens_jpeg_median_gaussian_s2.log
+loading annotations into memory...
+Done (t=0.64s)
+creating index...
+index created!
+[yolo] loaded yolov8x-worldv2.pt: 80 COCO classes | imgsz=640 | device=cuda:0
+[guard] gaussian_differentiable == pc.gaussian_gpu (max |diff| = 0.00e+00)
+/home/manu/m_work/Adversarial_Attack_Defence_Paper/phase3_common.py:127: UserWarning: median CUDA with indices output does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return patches.contiguous().view(N, C, H, W, -1).median(dim=-1).values
+/home/manu/m_work/Adversarial_Attack_Defence_Paper/phase4/p4_yolo.py:416: UserWarning: median CUDA with indices output does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return patches.contiguous().view(N, C, H, W, -1).median(dim=-1).values
+[guard] median_differentiable == pc.median_gpu (max |diff| = 0.00e+00)
+================================================================================
+ADAPTIVE WHITE-BOX: BPDA+EOT vs EnsJMG | n=1000 | PGD eps=0.03 x50 | R=1 | eot=max | native
+================================================================================
+  eot batch : on (auto: 31.5 GiB >= 16 GiB)
+/home/manu/miniforge3/envs/vlm_ftune/lib/python3.9/site-packages/torch/autograd/graph.py:823: UserWarning: reflection_pad2d_backward_cuda does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+[bpda] 25/1000 | 7.6m | 18.15s/img
+[bpda] 50/1000 | 15.2m | 18.24s/img
+[bpda] 75/1000 | 22.6m | 18.10s/img
+[survey-ckpt] Flushed 100 images -> results/phase4/adaptive_bpda_yolo/checkpoint_adaptive_4fe47138.pkl
+[bpda] 100/1000 | 30.5m | 18.30s/img
+[bpda] 125/1000 | 37.9m | 18.20s/img
+[bpda] 150/1000 | 45.3m | 18.13s/img
+[bpda] 175/1000 | 53.0m | 18.18s/img
+[survey-ckpt] Flushed 200 images -> results/phase4/adaptive_bpda_yolo/checkpoint_adaptive_4fe47138.pkl
+[bpda] 200/1000 | 60.5m | 18.14s/img
+[bpda] 225/1000 | 68.0m | 18.14s/img
+[bpda] 250/1000 | 75.4m | 18.09s/img
+[bpda] 275/1000 | 83.1m | 18.12s/img
+[survey-ckpt] Flushed 300 images -> results/phase4/adaptive_bpda_yolo/checkpoint_adaptive_4fe47138.pkl
+[bpda] 300/1000 | 90.6m | 18.12s/img
+[bpda] 325/1000 | 98.2m | 18.13s/img
+[bpda] 350/1000 | 105.3m | 18.05s/img
+[bpda] 375/1000 | 112.7m | 18.03s/img
+[survey-ckpt] Flushed 400 images -> results/phase4/adaptive_bpda_yolo/checkpoint_adaptive_4fe47138.pkl
+[bpda] 400/1000 | 120.2m | 18.03s/img
+[bpda] 425/1000 | 127.7m | 18.02s/img
+[bpda] 450/1000 | 135.2m | 18.03s/img
+[bpda] 475/1000 | 142.4m | 17.98s/img
+[survey-ckpt] Flushed 500 images -> results/phase4/adaptive_bpda_yolo/checkpoint_adaptive_4fe47138.pkl
+[bpda] 500/1000 | 150.1m | 18.01s/img
+[bpda] 525/1000 | 157.7m | 18.03s/img
+[bpda] 550/1000 | 165.3m | 18.03s/img
+[bpda] 575/1000 | 172.8m | 18.03s/img
+[survey-ckpt] Flushed 600 images -> results/phase4/adaptive_bpda_yolo/checkpoint_adaptive_4fe47138.pkl
+[bpda] 600/1000 | 179.6m | 17.96s/img
+[bpda] 625/1000 | 186.2m | 17.88s/img
+[bpda] 650/1000 | 193.2m | 17.83s/img
+[bpda] 675/1000 | 199.9m | 17.77s/img
+[survey-ckpt] Flushed 700 images -> results/phase4/adaptive_bpda_yolo/checkpoint_adaptive_4fe47138.pkl
+[bpda] 700/1000 | 206.7m | 17.72s/img
+[bpda] 725/1000 | 213.5m | 17.67s/img
+[bpda] 750/1000 | 220.2m | 17.62s/img
+[bpda] 775/1000 | 226.9m | 17.57s/img
+[survey-ckpt] Flushed 800 images -> results/phase4/adaptive_bpda_yolo/checkpoint_adaptive_4fe47138.pkl
+[bpda] 800/1000 | 233.7m | 17.53s/img
+[bpda] 825/1000 | 240.2m | 17.47s/img
+[bpda] 850/1000 | 247.1m | 17.44s/img
+[bpda] 875/1000 | 254.0m | 17.42s/img
+[survey-ckpt] Flushed 900 images -> results/phase4/adaptive_bpda_yolo/checkpoint_adaptive_4fe47138.pkl
+[bpda] 900/1000 | 260.9m | 17.39s/img
+[bpda] 925/1000 | 267.8m | 17.37s/img
+[bpda] 950/1000 | 274.6m | 17.34s/img
+[bpda] 975/1000 | 281.4m | 17.32s/img
+[survey-ckpt] Flushed 1000 images -> results/phase4/adaptive_bpda_yolo/checkpoint_adaptive_4fe47138.pkl
+[bpda] 1000/1000 | 288.2m | 17.29s/img
+[survey-ckpt] Flushed 1000 images -> results/phase4/adaptive_bpda_yolo/checkpoint_adaptive_4fe47138.pkl
+[bpda] all 1000 images carry all 12 conditions.
+[survey-ckpt] Flushed 1000 images -> results/phase4/adaptive_bpda_yolo/checkpoint_adaptive_4fe47138.pkl
+[eval] 15 conditions |     mAP    AP50  detections
+[eval]    0.4764  0.6399    76098  clean
+[eval]    0.4656  0.6324   103956  clean+ens_jpeg_median_gaussian
+[eval]    0.4613  0.6270    62317  clean+gaussian
+[eval]    0.4525  0.6154    66154  clean+jpeg
+[eval]    0.4583  0.6210    73003  clean+median
+[eval]    0.1082  0.1653    33514  pgd_adaptive
+[eval]    0.0746  0.1147    19263  pgd_adaptive+ens_jpeg_median_gaussian
+[eval]    0.0743  0.1145    12233  pgd_adaptive+gaussian
+[eval]    0.0752  0.1137    12966  pgd_adaptive+jpeg
+[eval]    0.0590  0.0933    10512  pgd_adaptive+median
+[eval]    0.0149  0.0290     4263  pgd_oblivious
+[eval]    0.4068  0.5638    70953  pgd_oblivious+ens_jpeg_median_gaussian
+[eval]    0.4087  0.5625    45014  pgd_oblivious+gaussian
+[eval]    0.3655  0.5109    40704  pgd_oblivious+jpeg
+[eval]    0.3669  0.5151    44378  pgd_oblivious+median
+[out] results/phase4/adaptive_bpda_yolo/summary_adaptive_bpda_yolo_ens_jpeg_median_gaussian_seed2_attack-space-native_pgd-select-best_n1000_20261117-080555.json
+[out] results/phase4/adaptive_bpda_yolo/summary_adaptive_bpda_yolo_ens_jpeg_median_gaussian_seed2_attack-space-native_pgd-select-best_latest.json  (mirror of the newest run)
+[out] results/phase4/adaptive_bpda_yolo/summary_adaptive_bpda_yolo_ens_jpeg_median_gaussian_seed2_attack-space-native_pgd-select-best_n1000_20261117-080555.md
+[out] results/phase4/adaptive_bpda_yolo/summary_adaptive_bpda_yolo_ens_jpeg_median_gaussian_seed2_attack-space-native_pgd-select-best_latest.md
+
+======================================================================
+RESULT DIGEST: BPDA+EOT vs EnsJMG (full table in the .md)
+======================================================================
+  clean, undefended                : 0.4764
+  clean, EnsJMG                    : 0.4656
+  oblivious attack, undefended     : 0.0149
+  oblivious attack, EnsJMG        : 0.4068  (recovery +0.3919)
+  adaptive  attack, undefended     : 0.1082
+  adaptive  attack, EnsJMG        : 0.0746  (recovery -0.0336)
+  defended mAP lost to adaptivity  : -0.3322
+  surrogate J clean/obl/adp        : 49.06 / 31.38 / 2.89  (adaptive below oblivious on 1.000)
+
+======================================================================
+RUNTIME ESTIMATE (from this run's own s/image)
+======================================================================
+  measured: 17.29 s/image over 1000 image(s) on cuda:0
+    n=300   ->   1.44 h
+    n=1000  ->   4.80 h
+    n=5000  ->  24.02 h
+
+======================================================================
+                            RUN ARTIFACTS                             
+======================================================================
+  results/phase4/adaptive_bpda_yolo
+
+  committed to git (share these):
+         5 KB  run_ens_4way_s1.log
+        11 KB  run_ens_jpeg_median_gaussian_s1.log
+         9 KB  run_ens_jpeg_median_gaussian_s2.log
+         9 KB  run_median_s1.log
+        11 KB  run_median_s2.log
+         6 KB  run_median_s3.log
+        19 KB  summary_adaptive_bpda_yolo_ens_jpeg_median_gaussian_seed1_attack-space-native_pgd-select-best_latest.json
+         6 KB  summary_adaptive_bpda_yolo_ens_jpeg_median_gaussian_seed1_attack-space-native_pgd-select-best_latest.md
+        19 KB  summary_adaptive_bpda_yolo_ens_jpeg_median_gaussian_seed1_attack-space-native_pgd-select-best_n1000_20261117-033539.json
+         6 KB  summary_adaptive_bpda_yolo_ens_jpeg_median_gaussian_seed1_attack-space-native_pgd-select-best_n1000_20261117-033539.md
+        19 KB  summary_adaptive_bpda_yolo_ens_jpeg_median_gaussian_seed2_attack-space-native_pgd-select-best_latest.json
+         6 KB  summary_adaptive_bpda_yolo_ens_jpeg_median_gaussian_seed2_attack-space-native_pgd-select-best_latest.md
+        19 KB  summary_adaptive_bpda_yolo_ens_jpeg_median_gaussian_seed2_attack-space-native_pgd-select-best_n1000_20261117-080555.json
+         6 KB  summary_adaptive_bpda_yolo_ens_jpeg_median_gaussian_seed2_attack-space-native_pgd-select-best_n1000_20261117-080555.md
+        18 KB  summary_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best_latest.json
+         5 KB  summary_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best_latest.md
+        18 KB  summary_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best_n1000_20261117-033554.json
+         5 KB  summary_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best_n1000_20261117-033554.md
+        18 KB  summary_adaptive_bpda_yolo_median_seed2_attack-space-native_pgd-select-best_latest.json
+         5 KB  summary_adaptive_bpda_yolo_median_seed2_attack-space-native_pgd-select-best_latest.md
+        18 KB  summary_adaptive_bpda_yolo_median_seed2_attack-space-native_pgd-select-best_n1000_20261117-062806.json
+         5 KB  summary_adaptive_bpda_yolo_median_seed2_attack-space-native_pgd-select-best_n1000_20261117-062806.md
+
+  local only (gitignored, do not share):
+      15.6 MB  checkpoint_adaptive_0f4b9217.pkl
+      17.2 MB  checkpoint_adaptive_349ab0b8.pkl
+      31.0 MB  checkpoint_adaptive_4fe47138.pkl
+      17.2 MB  checkpoint_adaptive_88d50f99.pkl
+      34.5 MB  checkpoint_adaptive_e8759cac.pkl
+      31.0 MB  checkpoint_adaptive_f1b8c71f.pkl
+       595 KB  per_image_adaptive_bpda_yolo_ens_jpeg_median_gaussian_seed1_attack-space-native_pgd-select-best.json
+       595 KB  per_image_adaptive_bpda_yolo_ens_jpeg_median_gaussian_seed2_attack-space-native_pgd-select-best.json
+       453 KB  per_image_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best.json
+       452 KB  per_image_adaptive_bpda_yolo_median_seed2_attack-space-native_pgd-select-best.json
+
+  committed total: 244 KB | directory total: 148.7 MB
+  ✓ every committed artifact is small enough to push and share.
+======================================================================
+==============================================================================
+RUN END    2026-11-17 12:55:45  | 289.8 min | OK
+==============================================================================

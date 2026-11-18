@@ -1,0 +1,193 @@
+==============================================================================
+RUN START  2026-11-18 10:51:15
+  host    : user
+  python  : 3.9.7
+  git     : 56ca821-dirty
+  cwd     : /home/manu/m_work/Adversarial_Attack_Defence_Paper
+  command : phase4/p4_owl.py --experiment oblivious_survey --n 1000 --deterministic --gpu 0 --seed 1 --pgd-iters 50 --alpha 0.002 --pgd-select best
+  experiment: oblivious_survey
+  n       : 1000
+  device  : cuda:0
+  visible : 0
+  smoke_test: False
+==============================================================================
+================================================================================
+                      PHASE 4 — OWL-ViT — oblivious_survey                      
+================================================================================
+  run id    : 20261118-105114
+  images    : 1000 from /home/manu/m_work/Adversarial_Attack_Defence_Paper/val2017 (--select head, seed 1)
+  id digest : 620b79f17bd75ab3
+  device    : cuda:0
+  output    : /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/oblivious_survey_owl
+  log       : run.log
+loading annotations into memory...
+Done (t=0.58s)
+creating index...
+index created!
+[owl] loaded google/owlvit-base-patch32 | float32 | device=cuda:0 | 80 queries ('a photo of a person', ...) | input 768x768
+[guard] cached-query heads vs the full forward: logits 0.00e+00, boxes 0.00e+00
+[guard] differentiable preprocessing vs the processor on 000000000139.jpg: max |diff| 0.1219, mean 0.00398 (normalized units; 1/255 is about 0.015)
+================================================================================
+OBLIVIOUS SURVEY (OWL-ViT) | n=1000 | 11 transforms + 7 ensembles | PGD eps=0.03 x50
+================================================================================
+/home/manu/m_work/Adversarial_Attack_Defence_Paper/phase3_common.py:127: UserWarning: median CUDA with indices output does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return patches.contiguous().view(N, C, H, W, -1).median(dim=-1).values
+/home/manu/miniforge3/envs/vlm_ftune/lib/python3.9/site-packages/torch/autograd/graph.py:823: UserWarning: upsample_bicubic2d_aa_backward_out_cuda does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+/home/manu/m_work/Adversarial_Attack_Defence_Paper/phase3_common.py:127: UserWarning: median CUDA with indices output does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return patches.contiguous().view(N, C, H, W, -1).median(dim=-1).values
+[survey] 25/1000 | 5.3m | 12.64s/img
+[survey] 50/1000 | 10.5m | 12.63s/img
+[survey] 75/1000 | 15.6m | 12.47s/img
+[survey-ckpt] Flushed 100 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/oblivious_survey_owl/checkpoint_survey_a3b7c24d.pkl
+[survey] 100/1000 | 20.9m | 12.56s/img
+[survey] 125/1000 | 26.2m | 12.56s/img
+[survey] 150/1000 | 31.4m | 12.58s/img
+[survey] 175/1000 | 36.7m | 12.60s/img
+[survey-ckpt] Flushed 200 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/oblivious_survey_owl/checkpoint_survey_a3b7c24d.pkl
+[survey] 200/1000 | 42.0m | 12.60s/img
+[survey] 225/1000 | 47.3m | 12.61s/img
+[survey] 250/1000 | 52.5m | 12.61s/img
+[survey] 275/1000 | 57.8m | 12.60s/img
+[survey-ckpt] Flushed 300 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/oblivious_survey_owl/checkpoint_survey_a3b7c24d.pkl
+[survey] 300/1000 | 63.0m | 12.60s/img
+[survey] 325/1000 | 68.3m | 12.61s/img
+[survey] 350/1000 | 73.5m | 12.60s/img
+[survey] 375/1000 | 78.7m | 12.59s/img
+[survey-ckpt] Flushed 400 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/oblivious_survey_owl/checkpoint_survey_a3b7c24d.pkl
+[survey] 400/1000 | 84.0m | 12.60s/img
+[survey] 425/1000 | 89.2m | 12.60s/img
+[survey] 450/1000 | 94.5m | 12.60s/img
+[survey] 475/1000 | 99.7m | 12.60s/img
+[survey-ckpt] Flushed 500 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/oblivious_survey_owl/checkpoint_survey_a3b7c24d.pkl
+[survey] 500/1000 | 105.1m | 12.61s/img
+[survey] 525/1000 | 110.5m | 12.62s/img
+[survey] 550/1000 | 115.7m | 12.62s/img
+[survey] 575/1000 | 120.9m | 12.62s/img
+[survey-ckpt] Flushed 600 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/oblivious_survey_owl/checkpoint_survey_a3b7c24d.pkl
+[survey] 600/1000 | 126.3m | 12.63s/img
+[survey] 625/1000 | 131.6m | 12.63s/img
+[survey] 650/1000 | 137.0m | 12.64s/img
+[survey] 675/1000 | 142.2m | 12.64s/img
+[survey-ckpt] Flushed 700 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/oblivious_survey_owl/checkpoint_survey_a3b7c24d.pkl
+[survey] 700/1000 | 147.6m | 12.65s/img
+[survey] 725/1000 | 152.3m | 12.60s/img
+[survey] 750/1000 | 156.9m | 12.55s/img
+[survey] 775/1000 | 161.5m | 12.51s/img
+[survey-ckpt] Flushed 800 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/oblivious_survey_owl/checkpoint_survey_a3b7c24d.pkl
+[survey] 800/1000 | 166.3m | 12.47s/img
+[survey] 825/1000 | 170.4m | 12.39s/img
+[survey] 850/1000 | 174.5m | 12.32s/img
+[survey] 875/1000 | 178.1m | 12.22s/img
+[survey-ckpt] Flushed 900 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/oblivious_survey_owl/checkpoint_survey_a3b7c24d.pkl
+[survey] 900/1000 | 181.9m | 12.13s/img
+[survey] 925/1000 | 185.6m | 12.04s/img
+[survey] 950/1000 | 189.2m | 11.95s/img
+[survey] 975/1000 | 192.9m | 11.87s/img
+[survey-ckpt] Flushed 1000 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/oblivious_survey_owl/checkpoint_survey_a3b7c24d.pkl
+[survey] 1000/1000 | 196.7m | 11.80s/img
+[survey-ckpt] Flushed 1000 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/oblivious_survey_owl/checkpoint_survey_a3b7c24d.pkl
+[survey] all 1000 images carry all 24 conditions.
+[survey-ckpt] Flushed 1000 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/oblivious_survey_owl/checkpoint_survey_a3b7c24d.pkl
+[eval] 38 conditions |     mAP    AP50  detections
+[eval]    0.3099  0.4889   252293  clean
+[eval]    0.3048  0.4802   251587  clean+anisotropic
+[eval]    0.3058  0.4840   250092  clean+bilateral
+[eval]    0.3007  0.4789   260934  clean+bit_depth
+[eval]    0.2680  0.4237   232202  clean+blur_tvm
+[eval]    0.2993  0.4801   261041  clean+dithering
+[eval]    0.3144  0.4941   457466  clean+ens_4way
+[eval]    0.3126  0.4926   392813  clean+ens_bilateral_median
+[eval]    0.3115  0.4888   431592  clean+ens_blur_tvm_combo
+[eval]    0.3137  0.4951   408463  clean+ens_jpeg_bilateral_tvm
+[eval]    0.3150  0.4951   391928  clean+ens_jpeg_median_gaussian
+[eval]    0.3130  0.4953   415694  clean+ens_jpeg_median_tvm
+[eval]    0.3157  0.4978   411122  clean+ens_jpeg_tvm_svd
+[eval]    0.2969  0.4659   222873  clean+gaussian
+[eval]    0.3037  0.4788   244566  clean+jpeg
+[eval]    0.3043  0.4813   240901  clean+median
+[eval]    0.3096  0.4870   249685  clean+nlm
+[eval]    0.3112  0.4911   249079  clean+svd
+[eval]    0.2945  0.4671   246357  clean+tvm
+[eval]    0.0117  0.0193     1085  pgd_oblivious
+[eval]    0.1455  0.2335    90461  pgd_oblivious+anisotropic
+[eval]    0.1389  0.2221    75273  pgd_oblivious+bilateral
+[eval]    0.0497  0.0865     8389  pgd_oblivious+bit_depth
+[eval]    0.2362  0.3731   207272  pgd_oblivious+blur_tvm
+[eval]    0.0471  0.0811     5982  pgd_oblivious+dithering
+[eval]    0.2366  0.3806   326495  pgd_oblivious+ens_4way
+[eval]    0.2313  0.3714   267969  pgd_oblivious+ens_bilateral_median
+[eval]    0.2434  0.3866   319786  pgd_oblivious+ens_blur_tvm_combo
+[eval]    0.2325  0.3737   267262  pgd_oblivious+ens_jpeg_bilateral_tvm
+[eval]    0.2006  0.3242   234981  pgd_oblivious+ens_jpeg_median_gaussian
+[eval]    0.2332  0.3748   291985  pgd_oblivious+ens_jpeg_median_tvm
+[eval]    0.2322  0.3734   248040  pgd_oblivious+ens_jpeg_tvm_svd
+[eval]    0.1920  0.3114   134130  pgd_oblivious+gaussian
+[eval]    0.1673  0.2729   114613  pgd_oblivious+jpeg
+[eval]    0.1684  0.2717   124048  pgd_oblivious+median
+[eval]    0.1144  0.1877    64648  pgd_oblivious+nlm
+[eval]    0.0124  0.0206     1139  pgd_oblivious+svd
+[eval]    0.2288  0.3674   189504  pgd_oblivious+tvm
+[out] /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/oblivious_survey_owl/summary_oblivious_survey_owl_seed1_n1000_20261118-105114.json
+[out] /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/oblivious_survey_owl/summary_oblivious_survey_owl_seed1_latest.json  (mirror of the newest run)
+[out] /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/oblivious_survey_owl/summary_oblivious_survey_owl_seed1_n1000_20261118-105114.md
+[out] /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/oblivious_survey_owl/summary_oblivious_survey_owl_seed1_latest.md
+
+======================================================================
+RESULT DIGEST: oblivious survey (full table in the .md)
+======================================================================
+  clean 0.3099 | attacked 0.0117
+  EnsBTC                   attacked 0.2434  clean 0.3115
+  Ens4W                    attacked 0.2366  clean 0.3144
+  Blur+TVM                 attacked 0.2362  clean 0.2680
+  EnsJMT                   attacked 0.2332  clean 0.3130
+  EnsJBT                   attacked 0.2325  clean 0.3137
+
+======================================================================
+RUNTIME ESTIMATE (from this run's own s/image)
+======================================================================
+  measured: 11.80 s/image over 1000 image(s) on cuda:0
+    n=300   ->   0.98 h
+    n=1000  ->   3.28 h
+    n=5000  ->  16.39 h
+
+======================================================================
+                            RUN ARTIFACTS                             
+======================================================================
+  /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/oblivious_survey_owl
+
+  committed to git (share these):
+        10 KB  run.log
+         8 KB  smoke_test/check50/run.log
+        12 KB  smoke_test/check50/summary_oblivious_survey_owl_seed1_latest.json
+         2 KB  smoke_test/check50/summary_oblivious_survey_owl_seed1_latest.md
+        12 KB  smoke_test/check50/summary_oblivious_survey_owl_seed1_n10_20261118-104655.json
+         2 KB  smoke_test/check50/summary_oblivious_survey_owl_seed1_n10_20261118-104655.md
+         8 KB  smoke_test/check_adaptive/run.log
+         4 KB  smoke_test/check_adaptive/summary_adaptive_bpda_owl_ens_jpeg_median_gaussian_seed1_pgd-select-best_latest.json
+         1 KB  smoke_test/check_adaptive/summary_adaptive_bpda_owl_ens_jpeg_median_gaussian_seed1_pgd-select-best_latest.md
+         4 KB  smoke_test/check_adaptive/summary_adaptive_bpda_owl_ens_jpeg_median_gaussian_seed1_pgd-select-best_n5_20261118-104858.json
+         1 KB  smoke_test/check_adaptive/summary_adaptive_bpda_owl_ens_jpeg_median_gaussian_seed1_pgd-select-best_n5_20261118-104858.md
+         8 KB  smoke_test/run.log
+        12 KB  smoke_test/summary_oblivious_survey_owl_seed42_latest.json
+         2 KB  smoke_test/summary_oblivious_survey_owl_seed42_latest.md
+        12 KB  smoke_test/summary_oblivious_survey_owl_seed42_n2_20261118-104606.json
+         2 KB  smoke_test/summary_oblivious_survey_owl_seed42_n2_20261118-104606.md
+        23 KB  summary_oblivious_survey_owl_seed1_latest.json
+         2 KB  summary_oblivious_survey_owl_seed1_latest.md
+        23 KB  summary_oblivious_survey_owl_seed1_n1000_20261118-105114.json
+         2 KB  summary_oblivious_survey_owl_seed1_n1000_20261118-105114.md
+
+  local only (gitignored, do not share):
+     254.2 MB  checkpoint_survey_a3b7c24d.pkl
+       677 KB  per_image_oblivious_survey_owl_seed1.json
+         7 KB  smoke_test/check50/per_image_oblivious_survey_owl_seed1.json
+         2 KB  smoke_test/check_adaptive/per_image_adaptive_bpda_owl_ens_jpeg_median_gaussian_seed1_pgd-select-best.json
+         1 KB  smoke_test/per_image_oblivious_survey_owl_seed42.json
+
+  committed total: 152 KB | directory total: 255.0 MB
+  ✓ every committed artifact is small enough to push and share.
+======================================================================
+==============================================================================
+RUN END    2026-11-18 14:18:17  | 207.0 min | OK
+==============================================================================

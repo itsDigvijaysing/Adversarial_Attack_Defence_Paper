@@ -1,0 +1,103 @@
+{
+  "source_checkpoint": "results/phase4/adaptive_bpda_yolo/checkpoint_adaptive_f585447c.pkl",
+  "source_summary": "results/phase4/adaptive_bpda_yolo/summary_adaptive_bpda_yolo_ens_jpeg_median_gaussian_seed1_eot-loss-mean_attack-space-native_pgd-select-best_latest.json",
+  "first_k_images": 300,
+  "image_ids_sha1_16": "94c8dc9df724d3df",
+  "target": "ens_jpeg_median_gaussian",
+  "attack_flags": {
+    "target": "ens_jpeg_median_gaussian",
+    "eot_loss": "mean",
+    "restarts": 1,
+    "median_surrogate": "true",
+    "quantize": "truncate",
+    "attack_space": "native",
+    "pgd_select": "best"
+  },
+  "attack": {
+    "type": "PGD",
+    "eps": 0.03,
+    "iters": 50,
+    "alpha": 0.002,
+    "random_init": true,
+    "init": "seeded uniform(-eps, eps) per (seed, image id, restart); identical for the oblivious and the adaptive attack",
+    "init_scheme": "sha256(seed|image_id|restart)->cpu-generator-v1",
+    "seed": 1,
+    "restarts": 1,
+    "restart_selection": "lowest surrogate objective on the quantized attack-frame tensor",
+    "quantize": "truncate",
+    "iterate_selection": "best",
+    "attack_space": "native",
+    "pixel_space": "raw [0,1], native resolution, differentiable ultralytics letterbox into the model",
+    "objective": "minimize J = sum_anchors max_class pred[:,4:,:] (post-sigmoid confidences), i.e. maximize -J; untargeted, no ground truth, no self-labels, box regression excluded, no objectness term"
+  },
+  "headline": {
+    "clean_mAP": 0.5031681820634338,
+    "clean_defended_mAP": 0.4995183471471081,
+    "oblivious_attacked_undefended_mAP": 0.017463687329203507,
+    "oblivious_attacked_defended_mAP": 0.44069647667239537,
+    "adaptive_attacked_undefended_mAP": 0.09609520830090089,
+    "adaptive_attacked_defended_mAP": 0.06611923574430223
+  },
+  "conditions": {
+    "clean": {
+      "mAP": 0.5031681820634338,
+      "AP50": 0.6731710219534458
+    },
+    "clean+jpeg": {
+      "mAP": 0.4867072279775672,
+      "AP50": 0.6553842762201683
+    },
+    "clean+median": {
+      "mAP": 0.4891259052958413,
+      "AP50": 0.657172261447695
+    },
+    "clean+gaussian": {
+      "mAP": 0.49353442309279666,
+      "AP50": 0.6641168710254685
+    },
+    "pgd_oblivious": {
+      "mAP": 0.017463687329203507,
+      "AP50": 0.03215459025125706
+    },
+    "pgd_oblivious+jpeg": {
+      "mAP": 0.380410424190151,
+      "AP50": 0.5312711810879283
+    },
+    "pgd_oblivious+median": {
+      "mAP": 0.40215052655788686,
+      "AP50": 0.5579711754965133
+    },
+    "pgd_oblivious+gaussian": {
+      "mAP": 0.44300234768165264,
+      "AP50": 0.6108434234009693
+    },
+    "pgd_adaptive": {
+      "mAP": 0.09609520830090089,
+      "AP50": 0.14351824986880593
+    },
+    "pgd_adaptive+jpeg": {
+      "mAP": 0.06436533132754337,
+      "AP50": 0.09747406326430617
+    },
+    "pgd_adaptive+median": {
+      "mAP": 0.03860793642922537,
+      "AP50": 0.05708382404952705
+    },
+    "pgd_adaptive+gaussian": {
+      "mAP": 0.06270019281985288,
+      "AP50": 0.09795506574347344
+    },
+    "clean+ens_jpeg_median_gaussian": {
+      "mAP": 0.4995183471471081,
+      "AP50": 0.6705389113229341
+    },
+    "pgd_oblivious+ens_jpeg_median_gaussian": {
+      "mAP": 0.44069647667239537,
+      "AP50": 0.6109080941810434
+    },
+    "pgd_adaptive+ens_jpeg_median_gaussian": {
+      "mAP": 0.06611923574430223,
+      "AP50": 0.10211849215718916
+    }
+  }
+}

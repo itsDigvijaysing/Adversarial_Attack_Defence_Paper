@@ -1,0 +1,115 @@
+==============================================================================
+RUN START  2026-11-18 10:20:52
+  host    : user
+  python  : 3.9.7
+  git     : 56ca821-dirty
+  cwd     : /home/manu/m_work/Adversarial_Attack_Defence_Paper
+  command : phase4/p4_yolo.py --experiment adaptive_bpda --attack-space native --deterministic --gpu 0 --n 300 --seed 1 --pgd-select best --pgd-iters 50 --eps 0.016 --alpha 0.00107 --output-dir results/phase4/adaptive_bpda_yolo_eps4of255_n300 --target median --log-name run_median.log
+  experiment: adaptive_bpda
+  n       : 300
+  device  : cuda:0
+  visible : 0
+  smoke_test: False
+==============================================================================
+================================================================================
+                          PHASE 4: YOLO: adaptive_bpda                          
+================================================================================
+  run id    : 20261118-102050
+  images    : 300 from /home/manu/m_work/Adversarial_Attack_Defence_Paper/val2017 (--select head, seed 1)
+  id digest : 94c8dc9df724d3df
+  device    : cuda:0
+  eot batch : on (auto: 31.5 GiB >= 16 GiB)
+  output    : results/phase4/adaptive_bpda_yolo_eps4of255_n300
+  log       : run_median.log
+loading annotations into memory...
+Done (t=0.71s)
+creating index...
+index created!
+[yolo] loaded yolov8x-worldv2.pt: 80 COCO classes | imgsz=640 | device=cuda:0
+/home/manu/m_work/Adversarial_Attack_Defence_Paper/phase3_common.py:127: UserWarning: median CUDA with indices output does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return patches.contiguous().view(N, C, H, W, -1).median(dim=-1).values
+/home/manu/m_work/Adversarial_Attack_Defence_Paper/phase4/p4_yolo.py:416: UserWarning: median CUDA with indices output does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return patches.contiguous().view(N, C, H, W, -1).median(dim=-1).values
+[guard] median_differentiable == pc.median_gpu (max |diff| = 0.00e+00)
+================================================================================
+ADAPTIVE WHITE-BOX: BPDA+EOT vs Median | n=300 | PGD eps=0.016 x50 | R=1 | eot=max | native
+================================================================================
+  eot batch : on (auto: 31.5 GiB >= 16 GiB); one branch, nothing to batch
+/home/manu/miniforge3/envs/vlm_ftune/lib/python3.9/site-packages/torch/autograd/graph.py:823: UserWarning: reflection_pad2d_backward_cuda does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+[bpda] 25/300 | 3.2m | 7.58s/img
+[bpda] 50/300 | 8.5m | 10.23s/img
+[bpda] 75/300 | 13.9m | 11.09s/img
+[survey-ckpt] Flushed 100 images -> results/phase4/adaptive_bpda_yolo_eps4of255_n300/checkpoint_adaptive_a6b820b8.pkl
+[bpda] 100/300 | 19.4m | 11.65s/img
+[bpda] 125/300 | 22.8m | 10.93s/img
+[bpda] 150/300 | 26.4m | 10.57s/img
+[bpda] 175/300 | 31.3m | 10.73s/img
+[survey-ckpt] Flushed 200 images -> results/phase4/adaptive_bpda_yolo_eps4of255_n300/checkpoint_adaptive_a6b820b8.pkl
+[bpda] 200/300 | 40.1m | 12.03s/img
+[bpda] 225/300 | 48.9m | 13.03s/img
+[bpda] 250/300 | 57.5m | 13.80s/img
+[bpda] 275/300 | 66.5m | 14.52s/img
+[survey-ckpt] Flushed 300 images -> results/phase4/adaptive_bpda_yolo_eps4of255_n300/checkpoint_adaptive_a6b820b8.pkl
+[bpda] 300/300 | 75.4m | 15.07s/img
+[survey-ckpt] Flushed 300 images -> results/phase4/adaptive_bpda_yolo_eps4of255_n300/checkpoint_adaptive_a6b820b8.pkl
+[bpda] all 300 images carry all 6 conditions.
+[survey-ckpt] Flushed 300 images -> results/phase4/adaptive_bpda_yolo_eps4of255_n300/checkpoint_adaptive_a6b820b8.pkl
+[eval] 6 conditions |     mAP    AP50  detections
+[eval]    0.5032  0.6732    23319  clean
+[eval]    0.4891  0.6572    22240  clean+median
+[eval]    0.4964  0.6592    20481  pgd_adaptive
+[eval]    0.0536  0.0857     3920  pgd_adaptive+median
+[eval]    0.0619  0.0956     3925  pgd_oblivious
+[eval]    0.4301  0.5912    15740  pgd_oblivious+median
+[out] results/phase4/adaptive_bpda_yolo_eps4of255_n300/summary_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best_n300_20261118-102050.json
+[out] results/phase4/adaptive_bpda_yolo_eps4of255_n300/summary_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best_latest.json  (mirror of the newest run)
+[out] results/phase4/adaptive_bpda_yolo_eps4of255_n300/summary_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best_n300_20261118-102050.md
+[out] results/phase4/adaptive_bpda_yolo_eps4of255_n300/summary_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best_latest.md
+
+======================================================================
+RESULT DIGEST: BPDA+EOT vs Median (full table in the .md)
+======================================================================
+  clean, undefended                : 0.5032
+  clean, Median                    : 0.4891
+  oblivious attack, undefended     : 0.0619
+  oblivious attack, Median        : 0.4301  (recovery +0.3682)
+  adaptive  attack, undefended     : 0.4964
+  adaptive  attack, Median        : 0.0536  (recovery -0.4428)
+  defended mAP lost to adaptivity  : -0.3765
+  surrogate J clean/obl/adp        : 43.12 / 25.57 / 1.24  (adaptive below oblivious on 1.000)
+
+======================================================================
+RUNTIME ESTIMATE (from this run's own s/image)
+======================================================================
+  measured: 15.07 s/image over 300 image(s) on cuda:0
+    n=300   ->   1.26 h
+    n=1000  ->   4.19 h
+    n=5000  ->  20.93 h
+
+======================================================================
+                            RUN ARTIFACTS                             
+======================================================================
+  results/phase4/adaptive_bpda_yolo_eps4of255_n300
+
+  committed to git (share these):
+         3 KB  run_gaussian.log
+         2 KB  run_jpeg.log
+         6 KB  run_median.log
+        10 KB  summary_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best_latest.json
+         5 KB  summary_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best_latest.md
+        10 KB  summary_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best_n300_20261118-102050.json
+         5 KB  summary_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best_n300_20261118-102050.md
+
+  local only (gitignored, do not share):
+       3.7 MB  checkpoint_adaptive_7e7d4cd0.pkl
+       5.7 MB  checkpoint_adaptive_a6b820b8.pkl
+       3.9 MB  checkpoint_adaptive_ebd0f85d.pkl
+       135 KB  per_image_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best.json
+
+  committed total: 41 KB | directory total: 13.4 MB
+  ✓ every committed artifact is small enough to push and share.
+======================================================================
+==============================================================================
+RUN END    2026-11-18 11:36:32  | 75.7 min | OK
+==============================================================================

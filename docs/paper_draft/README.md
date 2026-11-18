@@ -123,31 +123,53 @@ references, 0 overfull boxes, 17 pages; the zip compiles standalone.
 - The jobs below are superseded by `docs/HANDOFF_A5000.md` (rewritten 17 Nov): clean cost now
   runs with `--all-transforms`, and there are new jobs for Florence-2 and the third model.
 
-## What is still red in the PDF, and the run that fills each item
-Everything inside `\pending{...}` is a result that has not been run. Nothing red is a number.
+## Update of 18 Nov 2026: Phase-4 results filled in
+All planned Phase-4 runs finished on the RTX 5000 Ada server (17 Nov 03:36 to 18 Nov 03:10, 20
+jobs, 0 failures) and are committed under `results/phase4/`. `make_phase4_tables.py` (new,
+stdlib only) reads their `summary_*_latest.json` files and writes every Phase-4 table body; it
+also prints each number the prose cites, with its source file. Run it from anywhere:
 
-There is no launcher: run the jobs as plain commands, as written out in `docs/HANDOFF_A5000.md`
-(which adds `--gpu` and a `--log-name` per job). The table lists jobs J1 to J6. Every command runs
-from the repo root and leaves `--eot-batch` at its default `auto`, which changes speed and
-memory only, never the numbers. `A` stands for the adaptive flags
-`--experiment adaptive_bpda --attack-space native --pgd-select best`.
+    python3 docs/paper_draft/make_phase4_tables.py
 
-| `\pending{}` in `main.tex` | Job | Command (`python phase4/p4_yolo.py A ...` unless stated) |
+| Table body | Table in the PDF | Source |
 |---|---|---|
-| Sec. 3.6: K, alpha, R; Sec. 4.4 check (ii) | J1, convergence (n = 300, EnsJMG, seed 1) | `--n 300 --target ens_jpeg_median_gaussian --seed 1 --pgd-iters 50 --alpha 0.002 --output-dir results/phase4/adaptive_bpda_yolo_iters50_n300` and the same with `--pgd-iters 100 --output-dir results/phase4/adaptive_bpda_yolo_iters100_n300`. R = 1 (the default) unless a `--restarts` run is added |
-| Table 5 (caption n and all 15 cells), the RQ3 results paragraph, the abstract's last sentence, the introduction's RQ3 sentence, the conclusion's last sentence, check (i) | J2, main adaptive runs (9 jobs) | `--n 1000 --pgd-iters 50 --alpha 0.002 --target T --seed S` for T in `median`, `ens_jpeg_median_gaussian`, `ens_4way` and S in 1, 2, 3. Output: `results/phase4/adaptive_bpda_yolo/` (one `_latest` per target, seed and flag set). Check (i) is `surrogate_objective.frac_images_adaptive_below_oblivious` in each summary; the five Table 5 columns are the `headline` fields `clean_defended_mAP`, `oblivious_attacked_undefended_mAP`, `oblivious_attacked_defended_mAP`, `adaptive_attacked_undefended_mAP`, `adaptive_attacked_defended_mAP`, averaged over the three seeds |
-| Check (iii), larger budget | J3 | `--n 300 --target ens_jpeg_median_gaussian --seed 1 --pgd-iters 50 --eps 0.1 --alpha 0.0067 --output-dir results/phase4/adaptive_bpda_yolo_eps0.1` (alpha scaled with eps) |
-| Check (iv), max vs mean objective | J4 | J2's EnsJMG seed-1 command plus `--eot-loss mean` (own summary stem, same directory) |
-| Check (v), true median gradient vs identity | J5 | J2's Median seed-1 command plus `--median-surrogate identity` (own summary stem, same directory) |
-| Sec. 4.2, clean cost of every transform | J6 | `python phase4/p4_yolo.py --experiment clean_control --n 5000` and `python phase4/p4_florence.py --experiment clean_control --n 1000` (both tracks, detection and OCR) |
+| `tab_clean_n5000.tex` | clean cost of every transform, 5,000 images (Sec. 4.2) | `results/phase4/clean_control_{yolo,florence_det,florence_ocr}/` |
+| `tab_adaptive_yolo.tex` | YOLO-World adaptive (Sec. 4.4); Median and EnsJMG mean (sd) over seeds 1-3, Ens4W seed 1; last column = `--eot-loss mean`, seed 1 | `results/phase4/adaptive_bpda_yolo/` |
+| `tab_adaptive_florence.tex` | Florence-2 adaptive (Sec. 4.4), seed 1 | `results/phase4/adaptive_bpda_florence/` |
+| `tab_smolvlm.tex` | SmolVLM-256M (Sec. 4.5), with the paired bootstrap intervals the run computed | `results/phase4/presence_qa_smolvlm/` |
+| `tab_owl_survey.tex` | OWL-ViT, every transform under oblivious PGD (Sec. 4.6) | `results/phase4/oblivious_survey_owl/` (running on 18 Nov) |
+| `tab_budget.tex` | defended mAP at 4/255 and 7/255, first 300 images (check iii) | `results/phase4/adaptive_bpda_{yolo,florence}_eps{4,7}of255_n300/` and `results/phase4/budget_curve_eps7of255_first300/` (7/255 scored from the 1,000-image checkpoints by `scripts/p4_subset_score.py`) |
 
-K = 50 and alpha = 0.002 are a suggestion that has not been tested: 50 steps of 0.002 move a
-pixel at most 0.1 in total, about 3.3 eps (Madry et al.'s rule of thumb, 2.5 eps / K, would give
-0.0015). J1 decides: if the 100-step run lowers defended mAP noticeably, raise K in J2 to J5
-before running them. Eps and iteration diagnostics share the summary stem
-of a normal run, which is why J1 and J3 have their own `--output-dir`. The
-paper text describes `--attack-space native`, `--pgd-select best`, `--eot-loss max` and the true
-median gradient, so J2 must keep those.
+Text changes made with the numbers:
+- Sec. 3.6: K = 50, alpha = 0.002, R = 1. The claim that Eq. 3 (max over branches) is "the
+  natural worst-case objective" is gone: the average was stronger on YOLO-World (EnsJMG 0.071 ->
+  0.048, Ens4W 0.108 -> 0.069) and equal on Florence-2, so every worst case is the minimum over
+  both objectives. Abstract and introduction say the same.
+- Sec. 4.4: Table 6 and the results paragraph (worst case 0.017 / 0.048 / 0.069 against 0.018
+  undefended, seed 1), checks (i) to (v), and a Florence-2 table and paragraph.
+- Sec. 4.5 (SmolVLM): table and paragraph. Every ensemble is below its best member there.
+- New Sec. 4.6 (OWL-ViT, fourth model): setup written; results red until the runs finish.
+- Discussion, Limitations, Conclusion, reproducibility appendix (YOLO-World repeats bit for bit
+  with deterministic kernels; Florence-2 differs by about 0.005 mAP between identical runs).
+- Citations added and checked against arXiv: `minderer2022simple` (OWL-ViT, ECCV 2022),
+  `marafioti2025smolvlm` (preprint).
+
+## Update of 18 Nov 2026, second round: budget and fourth model
+- Runs (all exited 0 by 16:49): 4/255 on the first 300 images (YOLO-World Median, JPEG,
+  Gaussian, EnsJMG with both objectives; Florence-2 Median, EnsJMG) and JPEG / Gaussian alone at
+  7/255; OWL-ViT-B/32 (`phase4/p4_owl.py`): oblivious survey and adaptive Median / EnsJMG on
+  1,000 images, EnsJMG with the average objective on 300. 2/255 was dropped for time.
+- `scripts/p4_boot_survey.py` (new) adds paired bootstrap intervals (1,000 resamples, the
+  `p4_rescore.py` engine) for each ensemble against its best member, against Median, and for its
+  clean cost; its output is
+  `results/phase4/oblivious_survey_owl/summary_bootstrap_oblivious_survey_owl_seed1.json`.
+- New tables: `tab_budget.tex` (Table 7) and `tab_owl_survey.tex` (Table 10), both from
+  `make_phase4_tables.py`. Text: EnsJMG against its members (level with JPEG at 7/255, +0.011 at
+  4/255), check (iii) at 4/255 on both detectors, Sec. 4.6 on OWL-ViT, the abstract's OWL-ViT
+  clause, Discussion and Conclusion.
+- No red item is left: `grep -n 'pending{' main.tex` finds only the header comments. Built on
+  18 Nov: 0 errors, 0 undefined references or citations, 0 overfull boxes, 22 pages;
+  `make_overleaf_zip.sh --check` compiles the zip standalone.
 
 ## Uploading to Overleaf
 Nobody here has access to the Overleaf project (no link or login on disk), so the upload is a
@@ -183,12 +205,13 @@ bibliography; keep `\tabinput` (plain `\input` breaks the `\bottomrule` after it
 `\pending` macro until every red item is filled.
 
 ## Before submitting
-- Import the YOLO and OCR N=5000 summaries and rebuild their tables from the files.
+- The YOLO and OCR N=5000 attacked summaries no longer exist (user, 17 Nov): those two
+  appendix tables stay as parsed from the submitted PDF. The YOLO clean baseline 0.4519 is
+  reproduced by `results/phase4/clean_control_yolo/`.
 - Confirm the APSCON 2026 entry against IEEE Xplore (authors, pages, DOI) and its one-sentence
   description in Related Work against the PDF.
 - Re-check arXiv 2610.29196 for a new version (the nearest overlapping work).
 - Re-check the reference entries not marked VERIFIED in `refs.bib`.
 - Add one qualitative example figure (needs the images and a model run).
-- Fill every red item from J1 to J6. `grep -n 'pending{' main.tex` should then list only the
-  two comment lines of the header, and the header's source list needs the adaptive summaries
-  added.
+- Fill the remaining red items (above). `grep -n 'pending{' main.tex` should then list only
+  the comment lines of the header.

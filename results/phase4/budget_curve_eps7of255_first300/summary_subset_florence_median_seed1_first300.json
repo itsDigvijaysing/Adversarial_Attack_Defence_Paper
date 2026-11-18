@@ -1,0 +1,63 @@
+{
+  "source_checkpoint": "results/phase4/adaptive_bpda_florence/checkpoint_adaptive_17882704.pkl",
+  "source_summary": "results/phase4/adaptive_bpda_florence/summary_adaptive_bpda_florence_median_seed1_pgd-select-best_latest.json",
+  "first_k_images": 300,
+  "image_ids_sha1_16": "94c8dc9df724d3df",
+  "target": "median",
+  "attack_flags": {
+    "target": "median",
+    "eot_loss": "max",
+    "restarts": 1,
+    "median_surrogate": "true",
+    "quantize": "truncate",
+    "attack_space": "native",
+    "pgd_select": "best"
+  },
+  "attack": {
+    "type": "PGD",
+    "eps": 0.03,
+    "iters": 50,
+    "alpha": 0.002,
+    "seed": 1,
+    "restarts": 1,
+    "quantize": "truncate",
+    "iterate_selection": "best",
+    "init_scheme": "sha256(seed|image_id|restart)->cpu-generator-v1",
+    "pixel_space": "raw [0,1], native resolution",
+    "objective": "maximize the teacher-forced token cross-entropy against the clean decode"
+  },
+  "headline": {
+    "clean_mAP": 0.39101922681977136,
+    "clean_defended_mAP": 0.3895935399027985,
+    "oblivious_attacked_undefended_mAP": 0.17092649758944142,
+    "oblivious_attacked_defended_mAP": 0.29337071264533876,
+    "adaptive_attacked_undefended_mAP": 0.35462799099885023,
+    "adaptive_attacked_defended_mAP": 0.16507127285163534
+  },
+  "conditions": {
+    "clean": {
+      "mAP": 0.39101922681977136,
+      "AP50": 0.5089633923475183
+    },
+    "clean+median": {
+      "mAP": 0.3895935399027985,
+      "AP50": 0.5146394875835272
+    },
+    "pgd_oblivious": {
+      "mAP": 0.17092649758944142,
+      "AP50": 0.27125633777774816
+    },
+    "pgd_oblivious+median": {
+      "mAP": 0.29337071264533876,
+      "AP50": 0.42646479079090793
+    },
+    "pgd_adaptive": {
+      "mAP": 0.35462799099885023,
+      "AP50": 0.4844281828202916
+    },
+    "pgd_adaptive+median": {
+      "mAP": 0.16507127285163534,
+      "AP50": 0.26600761410865165
+    }
+  }
+}

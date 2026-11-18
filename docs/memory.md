@@ -4,8 +4,42 @@
 > survey-scope reference. All numbers below are read from committed `summary.json` files unless
 > marked off-repo. **Last full update: 2026-10-26** (Phase-4 code ready, CPU rescore, novelty check;
 > 22 Oct: submission history, PDF audit, Phase-4 status,
-> revival plan). **Status refresh: 2026-11-17** (see "Status on 17 Nov 2026" below, which
-> overrides older lines where they disagree).
+> revival plan). **Status refresh: 2026-11-18** (see "Status on 18 Nov 2026" below, which
+> overrides older lines where they disagree, including the 17 Nov block).
+
+## Status on 18 Nov 2026
+- **All planned Phase-4 GPU runs finished** (RTX 5000 Ada, 17 Nov 03:36 to 18 Nov 03:10, 20 jobs,
+  0 failures; committed in 9f0ad4a). Settings: first N sorted val2017 images, seed 1 (YOLO
+  Median/EnsJMG also seeds 2, 3), eps 0.03 (7/255 after the uint8 clip), 50 PGD steps,
+  alpha 0.002, `--attack-space native --pgd-select best --deterministic`. Tables and every number:
+  `README.md` "Results" and `docs/PHASE4_RESULTS_SUMMARY.md`.
+- **Headline (RQ3):** YOLO-World, 1,000 images: oblivious-defended 0.366 / 0.407 / 0.431 (Median /
+  EnsJMG / Ens4W) fall to a worst case of 0.017 / 0.048 / 0.069 under the adaptive attack, vs
+  0.018 undefended (seed 1). Florence-2: Median 0.148, EnsJMG 0.166 vs 0.134-0.138 undefended.
+- **Findings that change the draft:** `--eot-loss mean` beats `max` on YOLO (EnsJMG 0.071 ->
+  0.048, Ens4W 0.108 -> 0.069), equal on Florence, so the "max is the natural worst case /
+  union-aware" claim is dropped and every worst case is the min over both; 100 steps lower EnsJMG
+  0.086 -> 0.054 (300 imgs), so adaptive numbers are upper bounds; eps 0.1 -> 0.023; true median
+  gradient 0.017 vs identity 0.042; YOLO repeats bit for bit, Florence differs ~0.005 mAP.
+- **Clean cost, 5,000 images, all transforms:** YOLO ensembles -0.000 to -0.010 (each below its
+  members), solos up to -0.057 (Blur+TVM); Florence det smoothing filters -0.050 to -0.081; OCR
+  self-consistency 0.51 (Blur+TVM) to 0.95 (SVD). SmolVLM-256M (1,000 images, oblivious only):
+  0.856 -> 0.439; Blur+TVM / random resize / BM3D recover 69-75%, ensembles 8-24%, each below its
+  best member.
+- **18 Nov, second round (finished 16:49, 0 failures; tmux p4_budget, p4_owl):**
+  - 4/255 budget, first 300 images, adaptive worst case: YOLO Median 0.054, Gaussian 0.082,
+    JPEG 0.126, EnsJMG 0.137 (max 0.174 / mean 0.137) vs 0.062 undefended; at 7/255 Median 0.022,
+    Gaussian 0.035, JPEG 0.062, EnsJMG 0.066 vs 0.017. Florence 4/255: Median 0.214, EnsJMG 0.256 vs
+    0.195 (7/255: 0.165, 0.199 vs 0.169). EnsJMG is level with its best member (JPEG, BPDA identity)
+    at 7/255 and 0.011 above it at 4/255.
+  - OWL-ViT-B/32 (`phase4/p4_owl.py`, 1,000 images): clean 0.310, oblivious PGD 0.012. Every
+    ensemble beats each of its members (6/7 with paired bootstrap CIs above 0, +0.003 to +0.009;
+    `scripts/p4_boot_survey.py`), clean cost of every ensemble not distinguishable from 0, best
+    overall EnsBTC 0.243 vs Blur+TVM 0.236. Adaptive: Median 0.169 -> 0.021, EnsJMG 0.201 -> 0.061
+    (max, 1,000) / 0.073 (mean, first 300; max 0.083 there) vs 0.011 undefended. OWL-ViT is not
+    bit-repeatable (undefended cell 0.0108-0.0117 across runs).
+- **Paper:** every red item is filled (22 pages, builds clean, Overleaf zip checked). Remaining
+  before submission: the venue template, the APSCON entry check, a qualitative figure.
 
 ## Status on 17 Nov 2026
 - **The paper is `docs/paper_draft/main.tex`** (plain `article` class, 17 pages, builds with 0

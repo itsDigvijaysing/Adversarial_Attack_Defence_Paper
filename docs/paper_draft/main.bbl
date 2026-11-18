@@ -1,4 +1,4 @@
-\begin{thebibliography}{38}
+\begin{thebibliography}{40}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -146,6 +146,26 @@ Aleksander Madry, Aleksandar Makelov, Ludwig Schmidt, Dimitris Tsipras, and
 \newblock Towards deep learning models resistant to adversarial attacks.
 \newblock In \emph{International Conference on Learning Representations
   (ICLR)}, 2018.
+
+\bibitem[Marafioti et~al.(2025)Marafioti, Zohar, Farr{\'e}, Noyan, Bakouch,
+  Cuenca, Zakka, Allal, Lozhkov, Tazi, Srivastav, Lochner, Larcher, Morlon,
+  Tunstall, von Werra, and Wolf]{marafioti2025smolvlm}
+Andr{\'e}s Marafioti, Orr Zohar, Miquel Farr{\'e}, Merve Noyan, Elie Bakouch,
+  Pedro Cuenca, Cyril Zakka, Loubna~Ben Allal, Anton Lozhkov, Nouamane Tazi,
+  Vaibhav Srivastav, Joshua Lochner, Hugo Larcher, Mathieu Morlon, Lewis
+  Tunstall, Leandro von Werra, and Thomas Wolf.
+\newblock {SmolVLM}: Redefining small and efficient multimodal models.
+\newblock \emph{arXiv preprint arXiv:2504.05299}, 2025.
+
+\bibitem[Minderer et~al.(2022)Minderer, Gritsenko, Stone, Neumann, Weissenborn,
+  Dosovitskiy, Mahendran, Arnab, Dehghani, Shen, Wang, Zhai, Kipf, and
+  Houlsby]{minderer2022simple}
+Matthias Minderer, Alexey Gritsenko, Austin Stone, Maxim Neumann, Dirk
+  Weissenborn, Alexey Dosovitskiy, Aravindh Mahendran, Anurag Arnab, Mostafa
+  Dehghani, Zhuoran Shen, Xiao Wang, Xiaohua Zhai, Thomas Kipf, and Neil
+  Houlsby.
+\newblock Simple open-vocabulary object detection with vision transformers.
+\newblock In \emph{European Conference on Computer Vision (ECCV)}, 2022.
 
 \bibitem[Nie et~al.(2022)Nie, Guo, Huang, Xiao, Vahdat, and
   Anandkumar]{nie2022diffusion}

@@ -1,0 +1,114 @@
+==============================================================================
+RUN START  2026-11-18 10:40:41
+  host    : user
+  python  : 3.9.7
+  git     : 56ca821-dirty
+  cwd     : /home/manu/m_work/Adversarial_Attack_Defence_Paper
+  command : phase4/p4_yolo.py --experiment adaptive_bpda --attack-space native --deterministic --gpu 0 --n 300 --seed 1 --pgd-select best --pgd-iters 50 --eps 0.016 --alpha 0.00107 --output-dir results/phase4/adaptive_bpda_yolo_eps4of255_n300 --target jpeg --log-name run_jpeg.log
+  experiment: adaptive_bpda
+  n       : 300
+  device  : cuda:0
+  visible : 0
+  smoke_test: False
+==============================================================================
+================================================================================
+                          PHASE 4: YOLO: adaptive_bpda                          
+================================================================================
+  run id    : 20261118-104039
+  images    : 300 from /home/manu/m_work/Adversarial_Attack_Defence_Paper/val2017 (--select head, seed 1)
+  id digest : 94c8dc9df724d3df
+  device    : cuda:0
+  eot batch : on (auto: 31.5 GiB >= 16 GiB)
+  output    : results/phase4/adaptive_bpda_yolo_eps4of255_n300
+  log       : run_jpeg.log
+loading annotations into memory...
+Done (t=0.77s)
+creating index...
+index created!
+[yolo] loaded yolov8x-worldv2.pt: 80 COCO classes | imgsz=640 | device=cuda:0
+================================================================================
+ADAPTIVE WHITE-BOX: BPDA+EOT vs JPEG | n=300 | PGD eps=0.016 x50 | R=1 | eot=max | native
+================================================================================
+  eot batch : on (auto: 31.5 GiB >= 16 GiB); one branch, nothing to batch
+[bpda] 25/300 | 3.5m | 8.35s/img
+[bpda] 50/300 | 7.0m | 8.38s/img
+[bpda] 75/300 | 11.4m | 9.16s/img
+[survey-ckpt] Flushed 100 images -> results/phase4/adaptive_bpda_yolo_eps4of255_n300/checkpoint_adaptive_ebd0f85d.pkl
+[bpda] 100/300 | 19.6m | 11.75s/img
+[bpda] 125/300 | 27.4m | 13.16s/img
+[bpda] 150/300 | 35.3m | 14.11s/img
+[bpda] 175/300 | 43.4m | 14.87s/img
+[survey-ckpt] Flushed 200 images -> results/phase4/adaptive_bpda_yolo_eps4of255_n300/checkpoint_adaptive_ebd0f85d.pkl
+[bpda] 200/300 | 51.3m | 15.40s/img
+[bpda] 225/300 | 59.4m | 15.84s/img
+[bpda] 250/300 | 67.4m | 16.17s/img
+[bpda] 275/300 | 75.7m | 16.51s/img
+[survey-ckpt] Flushed 300 images -> results/phase4/adaptive_bpda_yolo_eps4of255_n300/checkpoint_adaptive_ebd0f85d.pkl
+[bpda] 300/300 | 83.7m | 16.74s/img
+[survey-ckpt] Flushed 300 images -> results/phase4/adaptive_bpda_yolo_eps4of255_n300/checkpoint_adaptive_ebd0f85d.pkl
+[bpda] all 300 images carry all 6 conditions.
+[survey-ckpt] Flushed 300 images -> results/phase4/adaptive_bpda_yolo_eps4of255_n300/checkpoint_adaptive_ebd0f85d.pkl
+[eval] 6 conditions |     mAP    AP50  detections
+[eval]    0.5032  0.6732    23319  clean
+[eval]    0.4867  0.6554    20222  clean+jpeg
+[eval]    0.2786  0.3972    17380  pgd_adaptive
+[eval]    0.1260  0.1981     7329  pgd_adaptive+jpeg
+[eval]    0.0619  0.0956     3925  pgd_oblivious
+[eval]    0.4252  0.5852    14673  pgd_oblivious+jpeg
+[out] results/phase4/adaptive_bpda_yolo_eps4of255_n300/summary_adaptive_bpda_yolo_jpeg_seed1_attack-space-native_pgd-select-best_n300_20261118-104039.json
+[out] results/phase4/adaptive_bpda_yolo_eps4of255_n300/summary_adaptive_bpda_yolo_jpeg_seed1_attack-space-native_pgd-select-best_latest.json  (mirror of the newest run)
+[out] results/phase4/adaptive_bpda_yolo_eps4of255_n300/summary_adaptive_bpda_yolo_jpeg_seed1_attack-space-native_pgd-select-best_n300_20261118-104039.md
+[out] results/phase4/adaptive_bpda_yolo_eps4of255_n300/summary_adaptive_bpda_yolo_jpeg_seed1_attack-space-native_pgd-select-best_latest.md
+
+======================================================================
+RESULT DIGEST: BPDA+EOT vs JPEG (full table in the .md)
+======================================================================
+  clean, undefended                : 0.5032
+  clean, JPEG                      : 0.4867
+  oblivious attack, undefended     : 0.0619
+  oblivious attack, JPEG          : 0.4252  (recovery +0.3633)
+  adaptive  attack, undefended     : 0.2786
+  adaptive  attack, JPEG          : 0.1260  (recovery -0.1526)
+  defended mAP lost to adaptivity  : -0.2991
+  surrogate J clean/obl/adp        : 36.75 / 23.69 / 3.50  (adaptive below oblivious on 1.000)
+
+======================================================================
+RUNTIME ESTIMATE (from this run's own s/image)
+======================================================================
+  measured: 16.74 s/image over 300 image(s) on cuda:0
+    n=300   ->   1.39 h
+    n=1000  ->   4.65 h
+    n=5000  ->  23.25 h
+
+======================================================================
+                            RUN ARTIFACTS                             
+======================================================================
+  results/phase4/adaptive_bpda_yolo_eps4of255_n300
+
+  committed to git (share these):
+         3 KB  run_ensjmg_max.log
+         3 KB  run_gaussian.log
+         5 KB  run_jpeg.log
+         8 KB  run_median.log
+        10 KB  summary_adaptive_bpda_yolo_jpeg_seed1_attack-space-native_pgd-select-best_latest.json
+         5 KB  summary_adaptive_bpda_yolo_jpeg_seed1_attack-space-native_pgd-select-best_latest.md
+        10 KB  summary_adaptive_bpda_yolo_jpeg_seed1_attack-space-native_pgd-select-best_n300_20261118-104039.json
+         5 KB  summary_adaptive_bpda_yolo_jpeg_seed1_attack-space-native_pgd-select-best_n300_20261118-104039.md
+        10 KB  summary_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best_latest.json
+         5 KB  summary_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best_latest.md
+        10 KB  summary_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best_n300_20261118-102050.json
+         5 KB  summary_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best_n300_20261118-102050.md
+
+  local only (gitignored, do not share):
+       3.7 MB  checkpoint_adaptive_7e7d4cd0.pkl
+       5.7 MB  checkpoint_adaptive_a6b820b8.pkl
+       5.5 MB  checkpoint_adaptive_ebd0f85d.pkl
+       133 KB  per_image_adaptive_bpda_yolo_jpeg_seed1_attack-space-native_pgd-select-best.json
+       135 KB  per_image_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best.json
+
+  committed total: 78 KB | directory total: 15.3 MB
+  ✓ every committed artifact is small enough to push and share.
+======================================================================
+==============================================================================
+RUN END    2026-11-18 12:04:47  | 84.1 min | OK
+==============================================================================

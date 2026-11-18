@@ -1,0 +1,122 @@
+==============================================================================
+RUN START  2026-11-18 10:40:43
+  host    : user
+  python  : 3.9.7
+  git     : 56ca821-dirty
+  cwd     : /home/manu/m_work/Adversarial_Attack_Defence_Paper
+  command : phase4/p4_yolo.py --experiment adaptive_bpda --attack-space native --deterministic --gpu 0 --n 300 --seed 1 --pgd-select best --pgd-iters 50 --eps 0.016 --alpha 0.00107 --output-dir results/phase4/adaptive_bpda_yolo_eps4of255_n300 --target gaussian --log-name run_gaussian.log
+  experiment: adaptive_bpda
+  n       : 300
+  device  : cuda:0
+  visible : 0
+  smoke_test: False
+==============================================================================
+================================================================================
+                          PHASE 4: YOLO: adaptive_bpda                          
+================================================================================
+  run id    : 20261118-104041
+  images    : 300 from /home/manu/m_work/Adversarial_Attack_Defence_Paper/val2017 (--select head, seed 1)
+  id digest : 94c8dc9df724d3df
+  device    : cuda:0
+  eot batch : on (auto: 31.5 GiB >= 16 GiB)
+  output    : results/phase4/adaptive_bpda_yolo_eps4of255_n300
+  log       : run_gaussian.log
+loading annotations into memory...
+Done (t=0.70s)
+creating index...
+index created!
+[yolo] loaded yolov8x-worldv2.pt: 80 COCO classes | imgsz=640 | device=cuda:0
+[guard] gaussian_differentiable == pc.gaussian_gpu (max |diff| = 0.00e+00)
+================================================================================
+ADAPTIVE WHITE-BOX: BPDA+EOT vs Gaussian | n=300 | PGD eps=0.016 x50 | R=1 | eot=max | native
+================================================================================
+  eot batch : on (auto: 31.5 GiB >= 16 GiB); one branch, nothing to batch
+/home/manu/miniforge3/envs/vlm_ftune/lib/python3.9/site-packages/torch/autograd/graph.py:823: UserWarning: reflection_pad2d_backward_cuda does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+[bpda] 25/300 | 3.6m | 8.62s/img
+[bpda] 50/300 | 7.3m | 8.74s/img
+[bpda] 75/300 | 12.3m | 9.85s/img
+[survey-ckpt] Flushed 100 images -> results/phase4/adaptive_bpda_yolo_eps4of255_n300/checkpoint_adaptive_7e7d4cd0.pkl
+[bpda] 100/300 | 20.8m | 12.48s/img
+[bpda] 125/300 | 29.1m | 13.97s/img
+[bpda] 150/300 | 37.3m | 14.92s/img
+[bpda] 175/300 | 45.8m | 15.70s/img
+[survey-ckpt] Flushed 200 images -> results/phase4/adaptive_bpda_yolo_eps4of255_n300/checkpoint_adaptive_7e7d4cd0.pkl
+[bpda] 200/300 | 54.2m | 16.27s/img
+[bpda] 225/300 | 62.7m | 16.72s/img
+[bpda] 250/300 | 71.1m | 17.05s/img
+[bpda] 275/300 | 79.8m | 17.41s/img
+[survey-ckpt] Flushed 300 images -> results/phase4/adaptive_bpda_yolo_eps4of255_n300/checkpoint_adaptive_7e7d4cd0.pkl
+[bpda] 300/300 | 88.1m | 17.62s/img
+[survey-ckpt] Flushed 300 images -> results/phase4/adaptive_bpda_yolo_eps4of255_n300/checkpoint_adaptive_7e7d4cd0.pkl
+[bpda] all 300 images carry all 6 conditions.
+[survey-ckpt] Flushed 300 images -> results/phase4/adaptive_bpda_yolo_eps4of255_n300/checkpoint_adaptive_7e7d4cd0.pkl
+[eval] 6 conditions |     mAP    AP50  detections
+[eval]    0.5032  0.6732    23319  clean
+[eval]    0.4935  0.6641    19188  clean+gaussian
+[eval]    0.3420  0.4793    17119  pgd_adaptive
+[eval]    0.0822  0.1276     4779  pgd_adaptive+gaussian
+[eval]    0.0619  0.0956     3925  pgd_oblivious
+[eval]    0.4605  0.6315    15169  pgd_oblivious+gaussian
+[out] results/phase4/adaptive_bpda_yolo_eps4of255_n300/summary_adaptive_bpda_yolo_gaussian_seed1_attack-space-native_pgd-select-best_n300_20261118-104041.json
+[out] results/phase4/adaptive_bpda_yolo_eps4of255_n300/summary_adaptive_bpda_yolo_gaussian_seed1_attack-space-native_pgd-select-best_latest.json  (mirror of the newest run)
+[out] results/phase4/adaptive_bpda_yolo_eps4of255_n300/summary_adaptive_bpda_yolo_gaussian_seed1_attack-space-native_pgd-select-best_n300_20261118-104041.md
+[out] results/phase4/adaptive_bpda_yolo_eps4of255_n300/summary_adaptive_bpda_yolo_gaussian_seed1_attack-space-native_pgd-select-best_latest.md
+
+======================================================================
+RESULT DIGEST: BPDA+EOT vs Gaussian (full table in the .md)
+======================================================================
+  clean, undefended                : 0.5032
+  clean, Gaussian                  : 0.4935
+  oblivious attack, undefended     : 0.0619
+  oblivious attack, Gaussian      : 0.4605  (recovery +0.3986)
+  adaptive  attack, undefended     : 0.3420
+  adaptive  attack, Gaussian      : 0.0822  (recovery -0.2598)
+  defended mAP lost to adaptivity  : -0.3783
+  surrogate J clean/obl/adp        : 39.31 / 28.97 / 1.98  (adaptive below oblivious on 1.000)
+
+======================================================================
+RUNTIME ESTIMATE (from this run's own s/image)
+======================================================================
+  measured: 17.62 s/image over 300 image(s) on cuda:0
+    n=300   ->   1.47 h
+    n=1000  ->   4.90 h
+    n=5000  ->  24.48 h
+
+======================================================================
+                            RUN ARTIFACTS                             
+======================================================================
+  results/phase4/adaptive_bpda_yolo_eps4of255_n300
+
+  committed to git (share these):
+         3 KB  run_ensjmg_max.log
+         5 KB  run_gaussian.log
+         7 KB  run_jpeg.log
+         8 KB  run_median.log
+        10 KB  summary_adaptive_bpda_yolo_gaussian_seed1_attack-space-native_pgd-select-best_latest.json
+         5 KB  summary_adaptive_bpda_yolo_gaussian_seed1_attack-space-native_pgd-select-best_latest.md
+        10 KB  summary_adaptive_bpda_yolo_gaussian_seed1_attack-space-native_pgd-select-best_n300_20261118-104041.json
+         5 KB  summary_adaptive_bpda_yolo_gaussian_seed1_attack-space-native_pgd-select-best_n300_20261118-104041.md
+        10 KB  summary_adaptive_bpda_yolo_jpeg_seed1_attack-space-native_pgd-select-best_latest.json
+         5 KB  summary_adaptive_bpda_yolo_jpeg_seed1_attack-space-native_pgd-select-best_latest.md
+        10 KB  summary_adaptive_bpda_yolo_jpeg_seed1_attack-space-native_pgd-select-best_n300_20261118-104039.json
+         5 KB  summary_adaptive_bpda_yolo_jpeg_seed1_attack-space-native_pgd-select-best_n300_20261118-104039.md
+        10 KB  summary_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best_latest.json
+         5 KB  summary_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best_latest.md
+        10 KB  summary_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best_n300_20261118-102050.json
+         5 KB  summary_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best_n300_20261118-102050.md
+
+  local only (gitignored, do not share):
+       5.3 MB  checkpoint_adaptive_7e7d4cd0.pkl
+       5.7 MB  checkpoint_adaptive_a6b820b8.pkl
+       5.5 MB  checkpoint_adaptive_ebd0f85d.pkl
+       136 KB  per_image_adaptive_bpda_yolo_gaussian_seed1_attack-space-native_pgd-select-best.json
+       133 KB  per_image_adaptive_bpda_yolo_jpeg_seed1_attack-space-native_pgd-select-best.json
+       135 KB  per_image_adaptive_bpda_yolo_median_seed1_attack-space-native_pgd-select-best.json
+
+  committed total: 112 KB | directory total: 17.1 MB
+  ✓ every committed artifact is small enough to push and share.
+======================================================================
+==============================================================================
+RUN END    2026-11-18 12:09:11  | 88.5 min | OK
+==============================================================================

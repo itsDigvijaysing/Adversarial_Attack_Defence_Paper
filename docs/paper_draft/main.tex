@@ -12,9 +12,12 @@
 %           (prose numbers in Secs. 4.2-4.3 and 5 come from the same file)
 %       (b) N=5000 Florence-2 detection: committed summaries in
 %           results/results_survey_florence_detection_{fgsm,pgd,patch}/
-%       (c) N=5000 YOLO-World and OCR: the submitted ECCV-W PDF (Tabs. 3, 5).
-%           The summary files are on teammates' machines. IMPORT THEM INTO
-%           results/ BEFORE SUBMITTING, and re-generate tab_*_n5000.tex.
+%       (c) N=5000 YOLO-World and OCR under attack: the submitted ECCV-W PDF
+%           (Tabs. 3, 5). Those summary files no longer exist; the YOLO clean
+%           baseline 0.4519 is reproduced by results/phase4/clean_control_yolo/.
+%       (d) Phase 4 (Tables clean5000, adaptive, adaptive-florence, smolvlm,
+%           owl-*; Secs. 4.4-4.6): tab_*.tex written by make_phase4_tables.py
+%           from results/phase4/*/summary_*_latest.json (committed).
 %     README.md lists every number check (15 Nov 2026) and which run fills
 %     each \pending{}.
 %   * Figure 2 (fig_cost_vs_patch.pdf) is drawn by make_figures.py from
@@ -60,7 +63,9 @@ classifiers this kind of defense has a poor record once the attacker takes it
 into account, but nobody has measured it on open-vocabulary models. We
 evaluate 13 input transforms and 7 ensembles that run the model once per
 transform and merge the outputs, on \yw{} and \fl{} (detection and OCR), on
-COCO val2017, under FGSM, PGD and a digital patch. We report what earlier
+COCO val2017, under FGSM, PGD and a digital patch, and repeat the central
+comparisons on a chat-style vision-language model and a second
+open-vocabulary detector. We report what earlier
 evaluations of this kind, including our own first version, left out: the cost
 of each transform on clean images, confidence intervals over images, and an
 attacker who differentiates through the defense. Three findings need no new
@@ -73,10 +78,18 @@ significant harm, on \yw{} (by up to
 0.049 mAP under PGD) but not on \fl{}, where the mAP gap is at most 0.009 and
 not separable from zero. Against oblivious PGD a $3\times3$ median filter alone
 restores 72\% of the lost mAP on \yw{}, which says more about how fragile
-that perturbation is than about the filter. The adaptive attack, which
-suppresses the most confident branch at every anchor so that it matches the
-way ensembles merge boxes, \pending{RQ3 headline: defended mAP at the worst
-case, and the gap to the oblivious number}.
+that perturbation is than about the filter. An attacker who differentiates
+through the defense takes back almost everything it gave. On \yw{} at
+$\epsilon=7/255$, defended
+mAP falls from 0.37--0.43 under oblivious PGD to 0.017--0.069 at the worst
+case over two adaptive objectives, against 0.018 for the undefended model
+under the same budget; ensembles keep more than a median filter, but never
+more than 0.07 of a clean 0.48. On \fl{}, a defense keeps at most 0.03 mAP
+above no defense. On a fourth model, the open-vocabulary detector OWL-ViT,
+every ensemble beats each of its own members against oblivious PGD (by 0.003
+to 0.009 mAP) at no measurable clean cost, and the adaptive attack again
+leaves it close to the undefended model (EnsJMG keeps 0.061 mAP, against
+0.011 with no defense).
 \end{abstract}
 
 % ======================================================================
@@ -129,10 +142,14 @@ bootstrap intervals for every headline comparison (Sec.~\ref{sec:rq1},
 findings are not supported: the patch setting supports no positive claim for
 any transform, and the advantage of ensembles over a median filter is
 specific to \yw{}. And we
-evaluate an adaptive attack built for the way the ensembles merge
-(Sec.~\ref{sec:adaptive}): because a box survives the merge if any branch
-keeps it, the attack suppresses, at each anchor, whichever branch is most
-confident. \pending{One sentence on the RQ3 outcome.}
+evaluate adaptive attacks on both detectors (Sec.~\ref{sec:adaptive}), with
+two objectives: one built for the way the ensembles merge (a box survives if
+any branch keeps it, so the attack suppresses whichever branch is most
+confident at each anchor) and the usual average over branches, reporting the
+worse of the two for every defense. Against this attacker the defended
+detectors end no more than about 0.05 mAP (\yw{}) and 0.03 mAP (\fl{}) above the undefended
+ones, and the merge-specific objective turns out to be the weaker of the
+two.
 
 We also correct the record. Sec.~\ref{sec:disclosures} lists the properties
 of the evaluation that a reader needs in order to interpret the numbers and
@@ -267,7 +284,7 @@ shows the two settings for a three-branch ensemble.
 % adaptive gradient: back through every branch
 \draw[ada, ->] (f1.north) -- (6.6,1.85) -| (x.north);
 \node[ada, solid, draw=none, anchor=south] at (3.3,1.88)
-  {adaptive: gradient of $J_{\max}$ through every $T_b$};
+  {adaptive: gradient through every $T_b$};
 % oblivious gradient: bare detector only
 \node[box, obl] (fb) at (6.6,-2.6) {detector, no defense};
 \draw[obl, ->] (fb.west) -| (x.south);
@@ -278,8 +295,9 @@ shows the two settings for a three-branch ensemble.
 follows (dashed), for the ensemble EnsJMG on \yw{}. Every branch runs the
 detector once on a transformed copy of the image, and a box survives the
 merge if any branch keeps it. The oblivious attacker differentiates the bare
-detector; the adaptive attacker differentiates the objective of
-Eq.~\ref{eq:Jmax} through all branches (Sec.~\ref{sec:adaptive-method}).}
+detector; the adaptive attacker differentiates an objective over all
+branches, Eq.~\ref{eq:Jmax} or the average of the branch objectives
+(Sec.~\ref{sec:adaptive-method}).}
 \label{fig:pipeline}
 \end{figure}
 
@@ -448,9 +466,11 @@ J_{\max}(z') = \sum_{a}\; \max_{b\le k}\; \max_{c}\; s_{a,c}\big(T_b(z')\big).
 \end{equation}
 At every anchor only the most confident branch contributes. This is still a
 proxy, since the real merge matches boxes by overlap after thresholding and
-not anchors by index, and we report the average objective as an ablation.
-We present Eq.~\ref{eq:Jmax} as the natural worst-case objective for this
-merge rule, not as a new attack.
+not anchors by index. We expected it to be the stronger objective for this
+merge rule; on \yw{} it was not (Sec.~\ref{sec:adaptive}). We therefore run
+both Eq.~\ref{eq:Jmax} and the average over branches against every ensemble
+and report, for each defense, the lower of the two defended mAPs. Neither
+objective is new.
 
 In this experiment the oblivious and the adaptive attack run side by side on
 the same images. Both start from the same seeded random point for a given
@@ -462,7 +482,8 @@ is converted to 8 bits by truncation and clipped to $\pm7$ gray levels of the
 clean image, so no pixel the defense receives moves by more than $\epsilon$.
 Because of this change of attack space, the oblivious numbers of
 Table~\ref{tab:adaptive} are not the ones of Sec.~\ref{sec:rq2}. We run
-\pending{K} steps of size \pending{$\alpha$} with \pending{R} restarts. Within
+50 steps of size $\alpha=0.002$ (about $\epsilon/15$) with one restart, on
+the first 1{,}000 images. Within
 a restart we keep whichever of the last iterate and the lowest-objective
 iterate seen during the run has the lower objective after the 8-bit
 conversion, and across restarts the restart whose result has the lowest
@@ -569,8 +590,36 @@ score-free metrics agree: those three lose 0.07 to 0.10 F1 on clean images.
 Whatever these smoothing filters remove, \fl{} needs it and \yw{} mostly does
 not.
 
-\pending{Clean cost of every transform, from the clean-control runs: \yw{}
-on all 5{,}000 images, \fl{} detection and OCR on the first 1{,}000.}
+\begin{table}[t]
+\centering\small
+\caption{Clean cost of every transform on all 5{,}000 images, one run, no
+intervals. Detection: defended minus undefended clean mAP (\yw{} 0.452,
+\fl{} 0.330). OCR: self-consistency of the defended clean output, which is
+1 without a defense. Random resize-and-pad and BM3D are scored on OCR only
+(Sec.~\ref{sec:disclosures}).}
+\label{tab:clean5000}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+ & \yw{} & \fl{} detection & \fl{} OCR \\
+\midrule
+\tabinput{tab_clean_n5000}
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:clean5000} extends this to every transform and ensemble on
+all 5{,}000 images. The pattern holds. On \yw{} every single transform
+except SVD, which keeps 90\% of the singular values and is close to the
+identity, costs mAP: 0.002 (non-local means) to 0.057 (Blur+TVM). Every
+ensemble costs less than each of its members, between 0.004 and 0.010,
+except EnsJTS, which costs nothing, as does its member SVD. On \fl{} the
+same smoothing filters are again the expensive ones (Gaussian 0.056, TVM
+0.066, Blur+TVM 0.081, and bit-depth reduction 0.050), while every ensemble
+costs at most 0.010. OCR is where nothing is cheap. On clean images the
+defended reading agrees with the undefended one at between 0.51 (Blur+TVM)
+and 0.95 (SVD), Median reaches 0.62, and no ensemble exceeds 0.85. Whatever
+a transform recovers on the OCR track under attack, it starts from this
+ceiling.
 
 \subsection{RQ2: recovery against oblivious attacks}
 \label{sec:rq2}
@@ -647,24 +696,27 @@ expect: Median's small patch recovery on \yw{}, for example, is positive on
 
 \begin{table}[t]
 \centering\small
-\caption{\yw{} under oblivious and adaptive PGD, \pending{n} images, mean
-over three seeds. Each row is one target defense; the adaptive attack is
-computed against that defense. Both attacks optimize at the original
+\caption{\yw{} under oblivious and adaptive PGD, first 1{,}000 images,
+$\epsilon=7/255$, 50 steps; clean mAP 0.476. Each row is one target defense;
+the adaptive attack is computed against that defense. The first five columns
+use the objective of Eq.~\ref{eq:Jmax}; Median and EnsJMG are the mean over
+three seeds (standard deviation), Ens4W is one seed. The last column is the
+adaptive attack with the average objective (seed 1); for a single transform
+the two objectives coincide. Both attacks optimize at the original
 resolution (Sec.~\ref{sec:adaptive-method}), so the oblivious columns are not
-those of Table~\ref{tab:ci-yolo}. \pending{All cells: run
-\texttt{p4\_yolo.py -{}-experiment adaptive\_bpda}.}}
+those of Table~\ref{tab:ci-yolo}.}
 \label{tab:adaptive}
-\begin{tabular}{@{}lccccc@{}}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lcccccc@{}}
 \toprule
- & & \multicolumn{2}{c}{Oblivious PGD} & \multicolumn{2}{c}{Adaptive PGD} \\
-\cmidrule(lr){3-4}\cmidrule(lr){5-6}
-Target & Clean, defended & undefended & defended & undefended & defended \\
+ & & \multicolumn{2}{c}{Oblivious PGD} & \multicolumn{3}{c}{Adaptive PGD} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-7}
+ & Clean, & & & & defended & defended \\
+Target & defended & undefended & defended & undefended & (Eq.~\ref{eq:Jmax}) & (average) \\
 \midrule
-Median & \pending{} & \pending{} & \pending{} & \pending{} & \pending{} \\
-EnsJMG & \pending{} & \pending{} & \pending{} & \pending{} & \pending{} \\
-Ens4W  & \pending{} & \pending{} & \pending{} & \pending{} & \pending{} \\
+\tabinput{tab_adaptive_yolo}
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table}
 
 Table~\ref{tab:adaptive} is read row by row. The honest comparison is between
@@ -674,22 +726,119 @@ perturbation is tuned to the defense and may be a weaker attack on the bare
 model, so comparing the two ``adaptive'' columns alone would flatter the
 defense.
 
-\pending{Results paragraph: the worst-case defended mAP for each target, the
-gap to its oblivious number, and whether the ensemble keeps an advantage over
-Median.}
+The adaptive attack takes back almost everything the defenses gave. Under
+oblivious PGD the three defenses hold 0.366, 0.407 and 0.431 mAP. Against an
+attacker who targets them, the worst case over the two objectives (seed 1)
+is 0.017 for Median, 0.048 for EnsJMG and 0.069 for Ens4W, while the
+undefended model under the same attack has 0.018. Median ends where no
+defense would. The ensembles keep 0.030 and 0.050 mAP more than that, which
+is an advantage over Median, but a small one next to a clean mAP of 0.476.
+The column ``adaptive, undefended'' shows why the comparison has to be
+between worst cases: the perturbation tuned against Median barely hurts the
+bare model (0.452), so a reader who compared the two adaptive columns would
+credit Median with almost nothing to defend against. The three seeds agree
+closely: with Eq.~\ref{eq:Jmax}, Median's defended mAP lies between 0.016
+and 0.019 and EnsJMG's between 0.071 and 0.075.
+
+Against its own members the ensemble's lead is small. Table~\ref{tab:budget}
+repeats the attack on the first 300 images for JPEG and Gaussian alone. At
+$7/255$ EnsJMG keeps 0.066 under the adaptive attack, against 0.062 for JPEG,
+0.035 for Gaussian and 0.022 for Median. It ends level with its strongest
+member, and that member is the one whose gradient we approximate by the
+identity, the part of our attack most likely to be too weak
+(Sec.~\ref{sec:adaptive-method}).
+
+\begin{table}[t]
+\centering\small
+\caption{Defended mAP against the attack budget, first 300 images, 50 steps,
+seed 1. For each budget: oblivious PGD, then the adaptive attack against that
+defense (for EnsJMG, the worse of the two objectives). The ``no defense'' row
+is oblivious PGD on the bare model in both columns. The $7/255$ entries of
+Median and EnsJMG are the first 300 images of the runs of
+Tables~\ref{tab:adaptive} and~\ref{tab:adaptive-florence}. \fl{}'s undefended
+cells are the mean of two runs that differ by 0.004 ($7/255$) and 0.001
+($4/255$) (Sec.~\ref{sec:adaptive}).}
+\label{tab:budget}
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+ & & \multicolumn{2}{c}{$\epsilon=4/255$} & \multicolumn{2}{c}{$\epsilon=7/255$} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}
+Model & Defense & oblivious & adaptive & oblivious & adaptive \\
+\midrule
+\tabinput{tab_budget}
+\bottomrule
+\end{tabular}
+\end{table}
 
 \paragraph{Checks.} Following~\cite{carlini2019evaluating}, we verify that
-the attack is doing what it should. \pending{(i) The adaptive attack reaches
-a lower value of its own objective than the oblivious attack on a stated
-fraction of images. (ii) More steps do not change the result: K versus a
-longer run on 300 images. (iii) A larger budget drives defended mAP toward
-zero. (iv) The max objective of Eq.~\ref{eq:Jmax} against the mean objective.
-(v) True median gradient against the identity.}
+the attack is doing what it should.
+(i) Measured through the target defense, the adaptive attack reaches a lower
+value of its objective than the oblivious attack on 999 or 1{,}000 of the
+1{,}000 images in every run.
+(ii) The attack has not converged at 50 steps. On the first 300 images,
+EnsJMG falls from 0.086 after 50 steps to 0.054 after 100. Every adaptive
+number in this section is therefore an upper bound on what the defense
+keeps.
+(iii) A larger budget drives the defended mAP toward zero: at
+$\epsilon=25/255$ ($\epsilon=0.1$, $\alpha=0.0067$) EnsJMG keeps 0.023 under
+the adaptive attack, against 0.340 under the oblivious one, on the same 300
+images. At a smaller budget the defenses keep more, and the ensemble keeps
+most (Table~\ref{tab:budget}). At $4/255$, where oblivious PGD leaves the
+undefended \yw{} at 0.062, the adaptive attack leaves Median at 0.054,
+Gaussian at 0.082, JPEG at 0.126 and EnsJMG at 0.137 (0.174 with
+Eq.~\ref{eq:Jmax}, 0.137 with the average). Median is again at the
+undefended level; EnsJMG keeps 0.075 mAP above it, 0.011 more than JPEG
+alone. On \fl{} at $4/255$, where the undefended model keeps 0.195, Median
+keeps 0.214 and EnsJMG 0.256 under the adaptive attack (EnsJMG with the
+merge-specific objective only, which matched the average at $7/255$), that
+is 0.019 and 0.061 above no defense, against $-0.004$ and 0.030 on the same
+images at $7/255$. On both models the defenses keep more as the budget
+shrinks, and the ensemble's margin grows with it; none of them comes close
+to its oblivious number at either budget.
+(iv) Eq.~\ref{eq:Jmax} is the weaker objective on \yw{}. With the average
+over branches, EnsJMG falls to 0.048 instead of 0.071 and Ens4W to 0.069
+instead of 0.108 (seed 1). On \fl{} the two give the same result for EnsJMG
+on its first 300 images (0.199 with the merge-specific objective, 0.201 with
+the average). A plausible reason is that the anchor-wise maximum passes the
+gradient of only one branch at each anchor, while the average moves every
+branch at every step; within 50 steps that matters more than aiming at the
+branch the merge will keep. This is why every worst case above takes the
+minimum over both.
+(v) The true median gradient is the stronger choice: with it Median falls to
+0.017, with the straight-through identity to 0.042 (seed 1).
 
-\paragraph{\fl{}.} \pending{Table and one paragraph for \fl{} detection
-under the adaptive attack of Sec.~\ref{sec:adaptive-method}: Median and
-EnsJMG, same five columns as Table~\ref{tab:adaptive}, from
-\texttt{p4\_florence.py -{}-experiment adaptive\_bpda}.}
+\begin{table}[t]
+\centering\small
+\caption{\fl{} detection under oblivious and adaptive PGD, first 1{,}000
+images, $\epsilon=7/255$ in pixel space, 50 steps, one seed; clean mAP 0.360.
+Columns as in Table~\ref{tab:adaptive}. The average objective was run for
+EnsJMG on the first 300 images only (check iv). Geometric pseudo-scores
+(Sec.~\ref{sec:disclosures}).}
+\label{tab:adaptive-florence}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+ & & \multicolumn{2}{c}{Oblivious PGD} & \multicolumn{3}{c}{Adaptive PGD} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-7}
+ & Clean, & & & & defended & defended \\
+Target & defended & undefended & defended & undefended & (merge obj.) & (average) \\
+\midrule
+\tabinput{tab_adaptive_florence}
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\paragraph{\fl{}.} Table~\ref{tab:adaptive-florence} repeats the experiment
+on \fl{} detection. The pattern is the same and the numbers are less
+extreme, because the attack itself does less damage to this model: oblivious
+PGD at the same budget leaves the undefended model at 0.134 to 0.138. Under
+that attack Median and EnsJMG add 0.12 and 0.13 mAP (0.256 and 0.264). Under
+the adaptive attack they hold 0.148 and 0.166, so they keep 0.010 and 0.032
+mAP above the undefended model. The adaptive objective was lower than the
+oblivious one, measured through the target, on every image. \fl{} runs are
+not repeatable bit for bit on our GPU: the undefended oblivious cell, which
+the two rows compute from the same seed and images, differs by 0.005 between
+them, and differences of that size in this table are noise.
 
 \subsection{A third model}
 \label{sec:third}
@@ -697,7 +846,7 @@ EnsJMG, same five columns as Table~\ref{tab:adaptive}, from
 Whether a transform chosen on two detectors carries over to a model of a
 different kind is a fair question for a defense that is meant to be attached
 to any model. We therefore fixed one more model before running anything on
-it: SmolVLM-256M-Instruct, a chat-style vision-language model with 0.26
+it: SmolVLM-256M-Instruct~\cite{marafioti2025smolvlm}, a chat-style vision-language model with 0.26
 billion parameters. It returns text, not boxes, so the task changes. For
 each image we ask yes/no questions of the form ``Is there a \emph{class} in
 this image?'', half about a COCO class annotated in the image and half about
@@ -708,10 +857,103 @@ cross-entropy of the correct answers. An ensemble answers with the mean of
 its branches' yes-probabilities. Every image is resized to the model's
 $512\times512$ input in every condition, so the transforms act at that
 size. No adaptive attack was run on this model.
-\pending{Table: clean accuracy, attacked accuracy, and for every transform
-and ensemble the clean cost and the recovery with paired intervals, from
-\texttt{p4\_smolvlm.py}. One paragraph on whether Median and the ensembles
-recover accuracy here as they do on the detectors.}
+
+\begin{table}[t]
+\centering\small
+\caption{SmolVLM-256M, yes/no presence questions on the first 1{,}000
+images (2{,}000 questions, 49.6\% with answer yes). Accuracy without a
+defense: 0.856 clean, 0.439 under oblivious PGD. Clean cost is defended
+minus undefended clean accuracy; recovery is defended minus undefended
+attacked accuracy. Brackets are 95\% paired bootstrap intervals over images;
+bold marks an interval that excludes zero. Sorted by attacked accuracy.}
+\label{tab:smolvlm}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+ & Clean acc. & Clean cost & Attacked acc. & Recovery \\
+\midrule
+\tabinput{tab_smolvlm}
+\bottomrule
+\end{tabular}}
+\end{table}
+
+Table~\ref{tab:smolvlm} gives the result. The attack lowers accuracy from
+0.856 to 0.439. The ranking is not the one the detectors gave. The strongest
+smoothing filters recover most of the loss: Blur+TVM reaches 0.753,
+random resize-and-pad 0.748 and BM3D 0.728, between 69 and 75\% of the
+damage, at clean costs of 0.03 to 0.07. Median recovers 0.092 (22\%), and the
+seven ensembles between 0.032 and 0.100 (8 to 24\%). Every ensemble here is
+below its own best member under attack; averaging the yes-probabilities
+lets the weak branches dilute the strong one, where the detection merge lets
+the strong branch's boxes through. Four transforms (non-local means,
+dithering, SVD, bit-depth reduction) neither cost nor recover anything we
+can measure. Since no adaptive attack was run here, these recoveries are
+upper bounds in the sense of Sec.~\ref{sec:adaptive}.
+
+\subsection{A fourth model}
+\label{sec:fourth}
+
+The third model changes the task as well as the architecture, so it cannot
+say whether the ensembles' behavior on the two detectors is a property of
+detection or of those two models. We therefore added a second
+open-vocabulary detector with a different design, chosen before any of its
+results were seen: OWL-ViT~\cite{minderer2022simple}
+(\texttt{google/owlvit-base-patch32}, about 150 million parameters), which
+puts a box and a score for every text query on each of the 576 patches of a
+CLIP vision transformer. It has real confidences, so its mAP is ranked by
+score as \yw{}'s is. We prompt it with ``a photo of a \emph{class}'' for the
+80 COCO classes, keep boxes scoring at least 0.001 after class-aware
+non-maximum suppression at IoU 0.5 and at most 300 per image, the settings
+we use for \yw{}. Both attacks minimize the objective of Eq.~\ref{eq:J} with
+$s_{a,c}$ the sigmoid score of patch $a$ for query $c$, in pixel space at
+the original resolution with the budget, steps and objectives of
+Sec.~\ref{sec:adaptive-method}; patches line up across branches because
+every branch is resized to the same $768\times768$ input.
+
+\begin{table}[t]
+\centering\small
+\caption{OWL-ViT under oblivious PGD ($\epsilon=7/255$, 50 steps), first
+1{,}000 images; clean mAP 0.310, attacked 0.012. Clean cost is defended minus
+undefended clean mAP; recovery is the share of the attack's damage that the
+defense restores. Last column: an ensemble's attacked mAP minus that of its
+best member, with a 95\% paired bootstrap interval over images (1{,}000
+resamples); bold marks an interval that excludes zero. Sorted by attacked
+mAP.}
+\label{tab:owl}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lcccl@{}}
+\toprule
+ & Clean cost & Attacked mAP & Recovery & Ensemble minus best member \\
+\midrule
+\tabinput{tab_owl_survey}
+\bottomrule
+\end{tabular}}
+\end{table}
+
+Table~\ref{tab:owl} is the one setting in this paper where the ensembles do
+what they were built to do. PGD lowers OWL-ViT from 0.310 to 0.012 mAP.
+Every ensemble ends above each of its own members, and for six of the seven
+the interval of that difference excludes zero; the margins are small, 0.003
+to 0.009 mAP. Every ensemble also leads Median, by 0.032 to 0.075 mAP, with
+intervals that exclude zero. On clean images no ensemble costs anything we
+can measure (point estimates $+0.002$ to $+0.006$, every interval includes
+zero), while every single transform except SVD costs mAP, from less than
+0.001 (non-local means) to 0.042 (Blur+TVM). The best single transform overall, Blur+TVM (0.236), is still
+ahead of five of the seven ensembles, at that clean cost of 0.042.
+
+The adaptive attack removes this advantage as it did on the other two
+detectors. Median falls from 0.169 under oblivious PGD to 0.021, against
+0.011 for the undefended model under the same attack. EnsJMG falls from
+0.201 to 0.061 with the objective of Eq.~\ref{eq:Jmax}. On the first 300
+images the average objective is again the stronger one: it leaves EnsJMG at
+0.073, against 0.083 for Eq.~\ref{eq:Jmax} on the same images, 0.223 under the
+oblivious attack and 0.012 with no defense. EnsJMG thus keeps about 0.05 mAP
+more than the undefended model and 0.04 more than Median, a small margin as
+on \yw{}, and its lead against oblivious attacks does not protect it here. In every run the adaptive attack reached a lower
+value of its objective than the oblivious one on every image. Like \fl{},
+OWL-ViT does not repeat bit for bit on our GPU: the undefended oblivious
+cell, computed from the same seed and images, is between 0.0108 and 0.0117
+in the three runs that contain it.
 
 % ======================================================================
 \section{Discussion}
@@ -731,15 +973,26 @@ filter, as multi-step attacks are known to transfer worse between
 models~\cite{kurakin2017adversarial}. Measuring the spectra of the two
 perturbations would separate them.
 
-\paragraph{What we would recommend.} Less than the earlier version did.
-On \yw{}, an ensemble such as EnsJMG costs about 0.01 mAP on clean images
-and three forward passes, and against oblivious attacks it is better than a
-median filter, the one single filter that never did significant harm.
-Whether that is worth having depends on Table~\ref{tab:adaptive}. On \fl{},
-a median filter does as well in mAP as any ensemble we tried at a third of
-the compute, and TVM and Gaussian blur should be avoided because of what
-they cost on clean images. Against the patch as we implemented it, we cannot
-recommend anything.
+\paragraph{What we would recommend.} Less than the earlier version did,
+and nothing against an attacker who knows the defense. On \yw{}, an
+ensemble such as EnsJMG costs about 0.005 to 0.01 mAP on clean images and
+three forward passes, and against attacks crafted on the bare model it is
+better than a median filter, the one single filter that never did
+significant harm. Table~\ref{tab:adaptive} limits what that is worth: once
+the attacker accounts for it, the ensemble keeps 0.05 to 0.07 of a clean
+0.48 mAP. It still keeps more than Median, so among these transforms it
+remains the one to choose, but as protection against unaware attackers
+only. OWL-ViT is the strongest case for an ensemble: there every ensemble
+beats each of its members against oblivious attacks at no measurable clean
+cost (Table~\ref{tab:owl}), so an ensemble is the right choice among input
+transforms for that model, with the same caveat. On \fl{}, a median filter does as well in mAP as any ensemble we tried
+at a third of the compute, and TVM and Gaussian blur should be avoided
+because of what they cost on clean images. Against the patch as we
+implemented it, we cannot recommend anything. A deployer who needs
+robustness to an informed attacker needs something other than input
+filtering; the classifier literature points to adversarial training or
+heavier purification~\cite{nie2022diffusion,raber2025keep}, neither of which
+we evaluated.
 
 % ======================================================================
 \section{Limitations}
@@ -761,8 +1014,14 @@ defenses we did not run.
 
 The two models are attacked with budgets that differ by a factor of 4.4, so
 we compare transforms within a model and never models with each other. The
-adaptive evaluation covers detection on two models; the OCR track and the
-third model are evaluated against oblivious attacks only. We did not include a control in which
+adaptive evaluation covers detection on \yw{}, \fl{} and OWL-ViT; the OCR
+track and SmolVLM are evaluated against oblivious attacks only. It uses the
+first 1{,}000 images, 50 steps and one restart; check (ii) shows that more
+steps lower the defended numbers further, so they are upper bounds, and
+Ens4W and the \fl{} runs have one seed each. The identity gradient we use
+for JPEG and TVM is the part of the attack most likely to be too weak
+(Sec.~\ref{sec:adaptive-method}), which again makes our adaptive numbers
+favorable to the defenses. We did not include a control in which
 the ensemble's extra forward passes are spent on views that do not denoise
 (for example a flipped or rescaled image), so we cannot say how much of the
 ensemble's advantage on \yw{} comes from denoising and how much from merging
@@ -779,9 +1038,14 @@ PGD damage, at a clean cost that is small for \yw{} and, for three of the
 smoothing filters, large for \fl{}. Merging the outputs of several transforms
 beats a median filter on \yw{} and makes no measurable difference to \fl{}'s
 mAP. No transform helps
-against our patch. \pending{Final sentence on what the adaptive attack leaves
-of this.} We release the code, the per-image outputs and the scripts that
-produce every table.
+against our patch. An attacker who knows the defense leaves little of the
+rest: on \yw{} the best defense we tested keeps 0.069 of 0.476 mAP, against
+0.018 with no defense; on \fl{} a defense keeps at most 0.03 mAP above
+none; and on OWL-ViT, the one model on which every ensemble beats its own
+members against oblivious attacks, EnsJMG keeps 0.061 of 0.310 mAP against
+0.011. Input transforms, alone or merged, protect these models from attackers
+who do not know they are there, and from no one else. We release the code,
+the per-image outputs and the scripts that produce every table.
 
 \bibliographystyle{plainnat}
 \bibliography{refs}
@@ -851,15 +1115,18 @@ the saved detections, with no model or image loaded; the script reproduces
 all 168 mAP values of the original runs exactly before resampling. PGD
 starting points in the adaptive experiment are derived from a hash of the
 run seed, the image id and the restart index, so the oblivious and adaptive
-attacks on an image start from the same point. \pending{One sentence on
-repeatability, from the two identical 10-image runs: either ``repeating a
-command reproduces its numbers exactly'' or the measured run-to-run
-difference, which GPU arithmetic causes even from the same starting point.}
+attacks on an image start from the same point. All Phase-4 runs use
+deterministic GPU kernels where they exist. With them, repeating a \yw{}
+command reproduces its saved detections bit for bit (checked on two
+identical 10-image runs); \fl{} does not repeat exactly on our GPU, and two
+runs from the same seed and images differ by about 0.005 mAP.
 When GPU memory allows, the adaptive runs pass the $k$ defended copies of the
 image through the detector as one batch, with one backward pass, per PGD
 step; this is an execution option (\texttt{-{}-eot-batch}) that leaves the
 objective and its gradient unchanged up to floating-point rounding. Every
-run is one command of \texttt{phase4/p4\_yolo.py} or
-\texttt{phase4/p4\_florence.py}; the release lists them.
+run is one command of \texttt{phase4/p4\_yolo.py},
+\texttt{p4\_florence.py}, \texttt{p4\_smolvlm.py} or \texttt{p4\_owl.py};
+the release lists them, and \texttt{make\_phase4\_tables.py} rebuilds every
+Phase-4 table from the saved summaries.
 
 \end{document}

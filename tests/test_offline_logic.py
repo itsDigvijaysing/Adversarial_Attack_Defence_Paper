@@ -834,6 +834,33 @@ def t_header_lines():
 check("header_lines records provenance and labels smoke runs", t_header_lines)
 
 
+def t_owl_cli():
+    """p4_owl (fourth model): its CLI, output paths and summary stem."""
+    import p4_owl as owl
+    a = owl.parse_args([])
+    assert a.experiment == "oblivious_survey" and a.model_key == "owl"
+    assert defense_tuple(a) == DEFENSE_DEFAULTS, defense_tuple(a)
+    assert a.owl_model == "google/owlvit-base-patch32"
+    assert (a.conf, a.max_det, a.prompt) == (0.001, 300, "a photo of a {}")
+    assert a.attack_space == "native", "OWL-ViT attacks at native resolution"
+    assert a.output_dir.endswith(os.path.join("phase4", "oblivious_survey_owl"))
+    b = owl.parse_args(["--experiment", "adaptive_bpda", "--target", "median",
+                        "--seed", "1", "--pgd-select", "best",
+                        "--eot-loss", "mean"])
+    assert b.output_dir.endswith(os.path.join("phase4", "adaptive_bpda_owl"))
+    # native is the default here, so it never appears in the stem
+    assert yolo.summary_stem(b, owl.STEM_FLAG_DEFAULTS) == (
+        "adaptive_bpda_owl_median_seed1_eot-loss-mean_pgd-select-best")
+    assert set(owl.SURVEY_EXTRA) <= set(core.EXTRA_PAPER_NAMES)
+    assert not set(owl.SURVEY_EXTRA) & set(core.EXTRA_OCR_ONLY), (
+        "random resize / BM3D are OCR-only and must not be scored on detection")
+    s = owl.parse_args(["--smoke-test"])
+    assert s.n == 2 and s.pgd_iters == 2 and s.device == "cpu"
+
+
+check("p4_owl CLI, output paths and summary stem (fourth model)", t_owl_cli)
+
+
 print("\n" + "=" * 60)
 print(f"Phase-4 offline check: {len(PASS)} passed, {len(FAIL)} failed")
 if FAIL:

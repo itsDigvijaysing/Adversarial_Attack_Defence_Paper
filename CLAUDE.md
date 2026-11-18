@@ -21,7 +21,7 @@ results** and **novel 2025–2026 methods**.
   `PYTHONPATH=.`).
 - **Do NOT execute training/eval scripts unless explicitly asked** — they need GPU + model + COCO.
   For code changes, verify with `python -m py_compile <file>` **and**
-  `python tests/test_offline_logic.py` (38 torch-free checks: CLI incl. the adaptive flags, --log-name/--eot-batch/--gpu mapping, output
+  `python tests/test_offline_logic.py` (39 torch-free checks: CLI incl. the adaptive flags, --log-name/--eot-batch/--gpu mapping, output
   paths, seeded selection + the short-image-dir error, the matching `--preflight` image count, the
   BPDA surrogate table, OCR helpers, artifact policy, and AST checks that p4's 7 ensembles and the
   `--target` member lists come from `phase3_common`) **and**
@@ -65,9 +65,18 @@ results** and **novel 2025–2026 methods**.
     truth, oblivious PGD only, all solo transforms + the 7 ensembles (mean yes-probability).
     Images are resized to a 512 square in every condition; a startup guard refuses to run if
     the processor is not an identity resize on it.
+  - `p4_owl.py` — ENTRY POINT (18 Nov). Fourth model, OWL-ViT (`google/owlvit-base-patch32`,
+    ~150M), chosen before any result: a CLIP-ViT open-vocabulary detector with real confidences.
+    Two experiments: `oblivious_survey` (clean + oblivious PGD through all 11 detection
+    transforms + 7 ensembles) and `adaptive_bpda` (same as YOLO/Florence). Objective = YOLO's J
+    (sum over the 576 patches of the max-class sigmoid), pixel space, native resolution; reuses
+    `p4_yolo`'s PGD loop/surrogates/union aggregation and `p4_florence`'s native frame and
+    differentiable preprocessing. Text queries ("a photo of a <class>") are embedded once;
+    startup guards check the cached-query heads against the full forward (exact) and the
+    preprocessing gap. Detections: conf >= 0.001, class-aware NMS 0.5, max 300 (YOLO's values).
   - `p4_logging.py` — the run-artifact policy: `run_log` (tee to `run.log`), `eval_dump_dir`
     (COCO dumps to a temp dir, deleted), `artifact_report` (committed vs local split).
-- **`tests/`**: `test_offline_logic.py` (38 torch-free checks) and `test_flow_stubbed.py` (21
+- **`tests/`**: `test_offline_logic.py` (39 torch-free checks) and `test_flow_stubbed.py` (21
   stubbed end-to-end checks): run both after any `phase4/` edit. `test_attack_units.py` (23 checks,
   vlm_ftune python, CPU only): run after touching the attack math.
 - **`docs/`** — report + presentation PDFs, `memory.md`, `memory_phase2_archive.md`, `GPU`,
@@ -159,10 +168,12 @@ results** and **novel 2025–2026 methods**.
   is). Cite preprints as preprints; see the table in `docs/memory.md`.
 
 ## Git
-- **New and untracked since fc8c330 (17 Nov 2026):** `phase4/p4_smolvlm.py`,
-  `docs/paper_draft/make_adaptive_table.py`, `docs/paper_draft/make_figures.py` and its output
-  `docs/paper_draft/fig_cost_vs_patch.pdf` (Figure 2 of the draft; `main.tex` will not build
-  without it). A commit of this round must `git add` them.
+- **Phase-4 runs (17–18 Nov 2026) are committed** (9f0ad4a, 56ca821): summaries + run logs under
+  `results/phase4/`, the tmux queue scripts `scripts/p4_{launch,queue,status}.sh`,
+  `scripts/p4_health.py` and `scripts/p4_subset_score.py`. Queue logs (`logs/phase4_queue/`) and
+  checkpoints stay local; `docs/PHASE4_JOB_LEDGER.md` (from `scripts/p4_ledger.py`) is the committed
+  record of every job's start, end, exit code and command. The paper's Phase-4 tables come from
+  `docs/paper_draft/make_phase4_tables.py` (writes `tab_*.tex`; never type a number by hand).
 - **`--deterministic` and `--all-transforms`** (17 Nov): the first is an execution flag (out of
   the signature and the stem, recorded in the summary); the second adds the other survey
   transforms to `clean_control` under its own checkpoint and an `_alltransforms` summary name.

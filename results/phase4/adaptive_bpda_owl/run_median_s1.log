@@ -1,0 +1,149 @@
+==============================================================================
+RUN START  2026-11-18 10:51:13
+  host    : user
+  python  : 3.9.7
+  git     : 56ca821-dirty
+  cwd     : /home/manu/m_work/Adversarial_Attack_Defence_Paper
+  command : phase4/p4_owl.py --experiment adaptive_bpda --n 1000 --deterministic --gpu 0 --seed 1 --pgd-iters 50 --alpha 0.002 --pgd-select best --target median --log-name run_median_s1.log
+  experiment: adaptive_bpda
+  n       : 1000
+  device  : cuda:0
+  visible : 0
+  smoke_test: False
+==============================================================================
+================================================================================
+                       PHASE 4 — OWL-ViT — adaptive_bpda                        
+================================================================================
+  run id    : 20261118-105111
+  images    : 1000 from /home/manu/m_work/Adversarial_Attack_Defence_Paper/val2017 (--select head, seed 1)
+  id digest : 620b79f17bd75ab3
+  device    : cuda:0
+  output    : /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/adaptive_bpda_owl
+  log       : run_median_s1.log
+loading annotations into memory...
+Done (t=0.57s)
+creating index...
+index created!
+[owl] loaded google/owlvit-base-patch32 | float32 | device=cuda:0 | 80 queries ('a photo of a person', ...) | input 768x768
+[guard] cached-query heads vs the full forward: logits 0.00e+00, boxes 0.00e+00
+/home/manu/m_work/Adversarial_Attack_Defence_Paper/phase3_common.py:127: UserWarning: median CUDA with indices output does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return patches.contiguous().view(N, C, H, W, -1).median(dim=-1).values
+/home/manu/m_work/Adversarial_Attack_Defence_Paper/phase4/p4_yolo.py:416: UserWarning: median CUDA with indices output does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return patches.contiguous().view(N, C, H, W, -1).median(dim=-1).values
+[guard] median_differentiable == pc.median_gpu (max |diff| = 0.00e+00)
+[guard] differentiable preprocessing vs the processor on 000000000139.jpg: max |diff| 0.1219, mean 0.00398
+================================================================================
+ADAPTIVE WHITE-BOX (OWL-ViT): BPDA vs Median | n=1000 | PGD eps=0.03 x50 | eot=max
+================================================================================
+/home/manu/miniforge3/envs/vlm_ftune/lib/python3.9/site-packages/torch/autograd/graph.py:823: UserWarning: upsample_bicubic2d_aa_backward_out_cuda does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+/home/manu/miniforge3/envs/vlm_ftune/lib/python3.9/site-packages/torch/autograd/graph.py:823: UserWarning: reflection_pad2d_backward_cuda does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True, warn_only=True)'. You can file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation. (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:92.)
+  return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+[bpda] 25/1000 | 6.9m | 16.64s/img
+[bpda] 50/1000 | 13.8m | 16.53s/img
+[bpda] 75/1000 | 20.6m | 16.44s/img
+[survey-ckpt] Flushed 100 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/adaptive_bpda_owl/checkpoint_adaptive_450a29b2.pkl
+[bpda] 100/1000 | 27.5m | 16.51s/img
+[bpda] 125/1000 | 34.6m | 16.59s/img
+[bpda] 150/1000 | 41.4m | 16.56s/img
+[bpda] 175/1000 | 48.4m | 16.59s/img
+[survey-ckpt] Flushed 200 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/adaptive_bpda_owl/checkpoint_adaptive_450a29b2.pkl
+[bpda] 200/1000 | 55.4m | 16.61s/img
+[bpda] 225/1000 | 62.4m | 16.64s/img
+[bpda] 250/1000 | 69.4m | 16.67s/img
+[bpda] 275/1000 | 76.3m | 16.65s/img
+[survey-ckpt] Flushed 300 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/adaptive_bpda_owl/checkpoint_adaptive_450a29b2.pkl
+[bpda] 300/1000 | 83.3m | 16.65s/img
+[bpda] 325/1000 | 90.2m | 16.66s/img
+[bpda] 350/1000 | 97.3m | 16.68s/img
+[bpda] 375/1000 | 104.4m | 16.70s/img
+[survey-ckpt] Flushed 400 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/adaptive_bpda_owl/checkpoint_adaptive_450a29b2.pkl
+[bpda] 400/1000 | 111.4m | 16.71s/img
+[bpda] 425/1000 | 118.3m | 16.70s/img
+[bpda] 450/1000 | 125.3m | 16.71s/img
+[bpda] 475/1000 | 132.3m | 16.71s/img
+[survey-ckpt] Flushed 500 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/adaptive_bpda_owl/checkpoint_adaptive_450a29b2.pkl
+[bpda] 500/1000 | 139.3m | 16.72s/img
+[bpda] 525/1000 | 146.4m | 16.73s/img
+[bpda] 550/1000 | 152.4m | 16.63s/img
+[bpda] 575/1000 | 158.4m | 16.52s/img
+[survey-ckpt] Flushed 600 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/adaptive_bpda_owl/checkpoint_adaptive_450a29b2.pkl
+[bpda] 600/1000 | 164.3m | 16.43s/img
+[bpda] 625/1000 | 169.8m | 16.30s/img
+[bpda] 650/1000 | 175.0m | 16.15s/img
+[bpda] 675/1000 | 179.5m | 15.96s/img
+[survey-ckpt] Flushed 700 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/adaptive_bpda_owl/checkpoint_adaptive_450a29b2.pkl
+[bpda] 700/1000 | 184.2m | 15.79s/img
+[bpda] 725/1000 | 188.6m | 15.60s/img
+[bpda] 750/1000 | 193.1m | 15.45s/img
+[bpda] 775/1000 | 197.6m | 15.30s/img
+[survey-ckpt] Flushed 800 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/adaptive_bpda_owl/checkpoint_adaptive_450a29b2.pkl
+[bpda] 800/1000 | 201.6m | 15.12s/img
+[bpda] 825/1000 | 205.5m | 14.94s/img
+[bpda] 850/1000 | 209.5m | 14.79s/img
+[bpda] 875/1000 | 213.5m | 14.64s/img
+[survey-ckpt] Flushed 900 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/adaptive_bpda_owl/checkpoint_adaptive_450a29b2.pkl
+[bpda] 900/1000 | 217.5m | 14.50s/img
+[bpda] 925/1000 | 221.4m | 14.36s/img
+[bpda] 950/1000 | 225.5m | 14.24s/img
+[bpda] 975/1000 | 229.5m | 14.12s/img
+[survey-ckpt] Flushed 1000 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/adaptive_bpda_owl/checkpoint_adaptive_450a29b2.pkl
+[bpda] 1000/1000 | 233.3m | 14.00s/img
+[survey-ckpt] Flushed 1000 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/adaptive_bpda_owl/checkpoint_adaptive_450a29b2.pkl
+[bpda] all 1000 images carry all 6 conditions.
+[survey-ckpt] Flushed 1000 images -> /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/adaptive_bpda_owl/checkpoint_adaptive_450a29b2.pkl
+[eval] 6 conditions |     mAP    AP50  detections
+[eval]    0.3099  0.4889   252293  clean
+[eval]    0.3043  0.4813   240901  clean+median
+[eval]    0.2444  0.4008   196972  pgd_adaptive
+[eval]    0.0213  0.0354     4096  pgd_adaptive+median
+[eval]    0.0108  0.0187     1082  pgd_oblivious
+[eval]    0.1687  0.2721   124005  pgd_oblivious+median
+[out] /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/adaptive_bpda_owl/summary_adaptive_bpda_owl_median_seed1_pgd-select-best_n1000_20261118-105111.json
+[out] /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/adaptive_bpda_owl/summary_adaptive_bpda_owl_median_seed1_pgd-select-best_latest.json  (mirror of the newest run)
+[out] /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/adaptive_bpda_owl/summary_adaptive_bpda_owl_median_seed1_pgd-select-best_n1000_20261118-105111.md
+[out] /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/adaptive_bpda_owl/summary_adaptive_bpda_owl_median_seed1_pgd-select-best_latest.md
+
+======================================================================
+RESULT DIGEST: adaptive vs Median (full table in the .md)
+======================================================================
+  clean_mAP                             : +0.3099
+  clean_defended_mAP                    : +0.3043
+  oblivious_attacked_undefended_mAP     : +0.0108
+  oblivious_attacked_defended_mAP       : +0.1687
+  adaptive_attacked_undefended_mAP      : +0.2444
+  adaptive_attacked_defended_mAP        : +0.0213
+  adaptive J below oblivious J on 1.000 of images
+
+======================================================================
+RUNTIME ESTIMATE (from this run's own s/image)
+======================================================================
+  measured: 14.00 s/image over 1000 image(s) on cuda:0
+    n=300   ->   1.17 h
+    n=1000  ->   3.89 h
+    n=5000  ->  19.44 h
+
+======================================================================
+                            RUN ARTIFACTS                             
+======================================================================
+  /home/manu/m_work/Adversarial_Attack_Defence_Paper/results/phase4/adaptive_bpda_owl
+
+  committed to git (share these):
+         6 KB  run_ens_jpeg_median_gaussian_s1.log
+         9 KB  run_median_s1.log
+        14 KB  summary_adaptive_bpda_owl_median_seed1_pgd-select-best_latest.json
+         1 KB  summary_adaptive_bpda_owl_median_seed1_pgd-select-best_latest.md
+        14 KB  summary_adaptive_bpda_owl_median_seed1_pgd-select-best_n1000_20261118-105111.json
+         1 KB  summary_adaptive_bpda_owl_median_seed1_pgd-select-best_n1000_20261118-105111.md
+
+  local only (gitignored, do not share):
+      52.4 MB  checkpoint_adaptive_450a29b2.pkl
+      46.3 MB  checkpoint_adaptive_b309831c.pkl
+       312 KB  per_image_adaptive_bpda_owl_median_seed1_pgd-select-best.json
+
+  committed total: 45 KB | directory total: 99.0 MB
+  ✓ every committed artifact is small enough to push and share.
+======================================================================
+==============================================================================
+RUN END    2026-11-18 14:45:32  | 234.3 min | OK
+==============================================================================

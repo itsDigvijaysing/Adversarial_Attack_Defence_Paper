@@ -2,7 +2,7 @@
 
 As of 18 Nov 2026.
 
-All Phase-4 runs finished on 18 Nov at 03:10: 20 GPU jobs and 0 failures.
+All Phase-4 runs finished on 18 Nov: the main 20 GPU jobs by 03:10 and a second round (a smaller attack budget and a fourth model, OWL-ViT) by the evening, with 0 failures.
 
 **Main finding.** The defenses that looked strong in Phase 3 collapse once the attacker accounts for them. On YOLO-World the best ensemble keeps only 0.05–0.07 mAP (clean: 0.48). That is close to the undefended model under attack (0.02).
 
@@ -176,7 +176,47 @@ On SmolVLM the strongest smoothing transforms work best against an oblivious att
 - Florence detection scores are geometric, because Florence emits no confidences. Comparisons across conditions are fair, but absolute mAP is not a confidence-ranked mAP.
 - The OCR metric is self-consistency, not accuracy.
 
-## 9. Where the numbers come from
+## 9. Smaller attack budget: 4/255 (first 300 images, seed 1)
+
+Defended mAP. Each cell pair is: the attack ignores the defense → the attack knows the defense. For EnsJMG, the second number is the worse of the two objectives.
+
+| Model | Defense | 4/255 | 7/255 |
+|---|---|---|---|
+| YOLO-World | no defense | 0.062 | 0.017 |
+| | Median | 0.430 → **0.054** | 0.402 → **0.022** |
+| | JPEG | 0.425 → **0.126** | 0.380 → **0.062** |
+| | Gaussian | 0.461 → **0.082** | 0.443 → **0.035** |
+| | EnsJMG | 0.469 → **0.137** | 0.441 → **0.066** |
+| Florence-2 | no defense | 0.195 | 0.169 |
+| | Median | 0.327 → **0.214** | 0.293 → **0.165** |
+| | EnsJMG | 0.332 → **0.256** | 0.300 → **0.199** |
+
+- **At the smaller budget every defense keeps more, and EnsJMG keeps the most:** 0.137 on YOLO against 0.062 with no defense, and 0.256 on Florence against 0.195. Its margin over no defense grows as the budget shrinks (YOLO 0.049 → 0.075, Florence 0.030 → 0.061).
+- **Its lead over its best member stays small:** 0.011 over JPEG at 4/255 and 0.004 at 7/255.
+- **JPEG's numbers are the most generous here.** Its attack gradient is approximated by the identity (BPDA).
+
+## 10. Fourth model: OWL-ViT-B/32 (1,000 images)
+
+OWL-ViT is a CLIP-based open-vocabulary detector with about 150M parameters (`phase4/p4_owl.py`). We chose it before seeing any of its results. It uses the same attack, budget and detection settings as YOLO.
+
+**Against an attacker who ignores the defense, the ensembles do what they were built to do:**
+- **Attack damage:** clean 0.310 → attacked 0.012.
+- **Every ensemble beats each of its own members.** For 6 of the 7, the 95% bootstrap interval of the difference excludes zero; the margins are 0.003–0.009 mAP. Examples: EnsJMG 0.201 against Gaussian 0.192; EnsBTC 0.243 against Blur+TVM 0.236.
+- **Every ensemble beats Median** by 0.03–0.08 mAP.
+- **No ensemble costs anything measurable on clean images,** while every single transform except SVD does (up to 0.042 for Blur+TVM).
+
+**Against an attacker who knows the defense, the advantage disappears:**
+
+| Defense | Ignores defense | **Knows defense** |
+|---|---|---|
+| No defense | 0.011 | 0.011 |
+| Median | 0.169 | **0.021** |
+| EnsJMG (max objective) | 0.201 | **0.061** |
+| EnsJMG, first 300 images, mean objective | 0.223 | **0.073** |
+
+On the first 300 images, the max objective gives 0.083.
+
+## 11. Where the numbers come from
 
 All folders are under `results/phase4/`. Each holds `summary_*_latest.json`, a matching `.md` file and the run logs.
 
@@ -189,3 +229,5 @@ All folders are under `results/phase4/`. Each holds `summary_*_latest.json`, a m
 | `adaptive_bpda_florence_n300/` | Florence mean vs max objective |
 | `clean_control_yolo/`, `clean_control_florence_det/`, `clean_control_florence_ocr/` | clean cost, 5,000 images |
 | `presence_qa_smolvlm/` | SmolVLM |
+| `oblivious_survey_owl/`, `adaptive_bpda_owl/`, `adaptive_bpda_owl_n300/` | OWL-ViT (the bootstrap file is `summary_bootstrap_oblivious_survey_owl_seed1.json`) |
+| `adaptive_bpda_{yolo,florence}_eps{4,7}of255_n300/`, `budget_curve_eps7of255_first300/` | attack budget |

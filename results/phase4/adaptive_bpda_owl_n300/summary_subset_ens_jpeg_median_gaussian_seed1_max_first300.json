@@ -1,0 +1,99 @@
+{
+  "source_checkpoint": "results/phase4/adaptive_bpda_owl/checkpoint_adaptive_b309831c.pkl",
+  "source_summary": "results/phase4/adaptive_bpda_owl/summary_adaptive_bpda_owl_ens_jpeg_median_gaussian_seed1_pgd-select-best_latest.json",
+  "first_k_images": 300,
+  "image_ids_sha1_16": "94c8dc9df724d3df",
+  "target": "ens_jpeg_median_gaussian",
+  "attack_flags": {
+    "target": "ens_jpeg_median_gaussian",
+    "eot_loss": "max",
+    "restarts": 1,
+    "median_surrogate": "true",
+    "quantize": "truncate",
+    "attack_space": "native",
+    "pgd_select": "best"
+  },
+  "attack": {
+    "type": "PGD",
+    "eps": 0.03,
+    "iters": 50,
+    "alpha": 0.002,
+    "seed": 1,
+    "restarts": 1,
+    "quantize": "truncate",
+    "iterate_selection": "best",
+    "init_scheme": "sha256(seed|image_id|restart)->cpu-generator-v1",
+    "pixel_space": "raw [0,1], native resolution",
+    "objective": "minimize the sum over patches of the max-class confidence"
+  },
+  "headline": {
+    "clean_mAP": 0.3231408610147603,
+    "clean_defended_mAP": 0.3371264266408931,
+    "oblivious_attacked_undefended_mAP": 0.012440750205023507,
+    "oblivious_attacked_defended_mAP": 0.22285337145393536,
+    "adaptive_attacked_undefended_mAP": 0.06281463231248648,
+    "adaptive_attacked_defended_mAP": 0.08292015277325825
+  },
+  "conditions": {
+    "clean": {
+      "mAP": 0.3231408610147603,
+      "AP50": 0.5207007898993781
+    },
+    "clean+jpeg": {
+      "mAP": 0.31869248799679367,
+      "AP50": 0.509378756428995
+    },
+    "clean+median": {
+      "mAP": 0.3184952140551994,
+      "AP50": 0.5121163676903993
+    },
+    "clean+gaussian": {
+      "mAP": 0.31505515496160585,
+      "AP50": 0.5034346750443063
+    },
+    "pgd_oblivious": {
+      "mAP": 0.012440750205023507,
+      "AP50": 0.024321605883551443
+    },
+    "pgd_oblivious+jpeg": {
+      "mAP": 0.18599664821026074,
+      "AP50": 0.297783303857448
+    },
+    "pgd_oblivious+median": {
+      "mAP": 0.18757934652381014,
+      "AP50": 0.30978791454705784
+    },
+    "pgd_oblivious+gaussian": {
+      "mAP": 0.21743197173786322,
+      "AP50": 0.36476623613405784
+    },
+    "pgd_adaptive": {
+      "mAP": 0.06281463231248648,
+      "AP50": 0.09965301588927747
+    },
+    "pgd_adaptive+jpeg": {
+      "mAP": 0.08421507750943755,
+      "AP50": 0.1408546083722078
+    },
+    "pgd_adaptive+median": {
+      "mAP": 0.06582675358571172,
+      "AP50": 0.11020844555343333
+    },
+    "pgd_adaptive+gaussian": {
+      "mAP": 0.06554119640721398,
+      "AP50": 0.11784382565059377
+    },
+    "clean+ens_jpeg_median_gaussian": {
+      "mAP": 0.3371264266408931,
+      "AP50": 0.5369265811487477
+    },
+    "pgd_oblivious+ens_jpeg_median_gaussian": {
+      "mAP": 0.22285337145393536,
+      "AP50": 0.36478555768034554
+    },
+    "pgd_adaptive+ens_jpeg_median_gaussian": {
+      "mAP": 0.08292015277325825,
+      "AP50": 0.13450815050555257
+    }
+  }
+}
